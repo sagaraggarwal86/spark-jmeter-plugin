@@ -68,7 +68,7 @@ public class SamplePluginSamplerUI extends AbstractSamplerGui {
         configureTestElement(el);
         if (el instanceof SamplePluginSampler s) {
             s.setTargetUrl(urlField.getText().trim());
-            s.setTimeoutMs(parseIntSafe(timeoutField.getText(), 5001));
+            s.setTimeoutMs(parseIntSafe(timeoutField.getText(), 5000));
             s.setPayload(payloadArea.getText());
         }
     }
