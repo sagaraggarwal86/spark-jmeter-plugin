@@ -1,4 +1,4 @@
-package com.sagar.jmeter.listener;
+package com.Sagar.jmeter.listener;
 
 import org.apache.jmeter.samplers.SampleEvent;
 import org.apache.jmeter.samplers.SampleListener;
@@ -18,6 +18,11 @@ public class SamplePluginListener extends AbstractTestElement implements SampleL
                 r.getSampleLabel(), r.isSuccessful(), r.getTime());
     }
 
-    @Override public void sampleStarted(SampleEvent e) {}
-    @Override public void sampleStopped(SampleEvent e) {}
+    @Override
+    public void sampleStarted(SampleEvent e) {
+    }
+
+    @Override
+    public void sampleStopped(SampleEvent e) {
+    }
 }

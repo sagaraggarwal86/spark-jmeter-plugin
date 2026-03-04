@@ -1,12 +1,14 @@
-package com.sagar.jmeter.parser;
+package com.Sagar.jmeter.parser;
 
-import com.sagar.jmeter.data.AggregateResult;
-import com.sagar.jmeter.data.JTLRecord;
+import com.Sagar.jmeter.data.AggregateResult;
+import com.Sagar.jmeter.data.JTLRecord;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
-import java.util.*;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 /**
  * Parses JTL files and generates aggregate statistics
@@ -18,6 +20,34 @@ public class JTLParser {
      */
     public Map<String, AggregateResult> parse(String filePath, FilterOptions options) throws IOException {
         Map<String, AggregateResult> results = new LinkedHashMap<>();
+
+        // First pass: find the minimum timestamp if offsets are used
+        long minTimestamp = Long.MAX_VALUE;
+        if (options.startOffset > 0 || options.endOffset > 0) {
+            try (BufferedReader reader = new BufferedReader(new FileReader(filePath))) {
+                String headerLine = reader.readLine();
+                if (headerLine == null) {
+                    throw new IOException("Empty JTL file");
+                }
+
+                String[] headers = headerLine.split(",");
+                Map<String, Integer> columnMap = buildColumnMap(headers);
+
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    JTLRecord record = parseLine(line, columnMap);
+                    if (record != null) {
+                        long timestamp = record.getTimeStamp();
+                        if (timestamp > 0 && timestamp < minTimestamp) {
+                            minTimestamp = timestamp;
+                        }
+                    }
+                }
+            }
+        }
+
+        // Store minTimestamp in options for use in shouldInclude
+        options.minTimestamp = (minTimestamp == Long.MAX_VALUE) ? 0 : minTimestamp;
 
         try (BufferedReader reader = new BufferedReader(new FileReader(filePath))) {
             String headerLine = reader.readLine();
@@ -96,7 +126,7 @@ public class JTLParser {
     }
 
     private boolean shouldInclude(JTLRecord record, FilterOptions options) {
-        // Apply filters
+        // Apply label filters
         String label = record.getLabel();
 
         // Check if label should be included
@@ -120,6 +150,29 @@ public class JTLParser {
                 }
             } else {
                 if (label.contains(options.excludeLabels)) {
+                    return false;
+                }
+            }
+        }
+
+        // Apply timestamp filters (offset in seconds relative to test start)
+        if (options.startOffset > 0 || options.endOffset > 0) {
+            long timestampMs = record.getTimeStamp();
+
+            // Calculate relative time from the start of the test (in milliseconds)
+            long relativeTimeMs = timestampMs - options.minTimestamp;
+            long relativeTimeSec = relativeTimeMs / 1000L;
+
+            // If start offset is set, filter out records before the start time
+            if (options.startOffset > 0) {
+                if (relativeTimeSec < options.startOffset) {
+                    return false;
+                }
+            }
+
+            // If end offset is set, filter out records after the end time
+            if (options.endOffset > 0) {
+                if (relativeTimeSec > options.endOffset) {
                     return false;
                 }
             }
@@ -172,5 +225,6 @@ public class JTLParser {
         public int startOffset = 0;
         public int endOffset = 0;
         public int percentile = 90;
+        public long minTimestamp = 0;  // Internal field to track test start time
     }
 }
