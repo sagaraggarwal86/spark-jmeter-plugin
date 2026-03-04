@@ -1,4 +1,4 @@
-package com.sagar.jmeter.data;
+package com.Sagar.jmeter.data;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -13,18 +13,32 @@ public class AggregateResult {
     private long totalTime;
     private long minTime = Long.MAX_VALUE;
     private long maxTime = Long.MIN_VALUE;
-    private List<Long> times = new ArrayList<>();
+    private final List<Long> times = new ArrayList<>();
     private int errorCount;
     private long totalBytes;
+
+    // For accurate throughput calculation
+    private long minTimestamp = Long.MAX_VALUE;
+    private long maxTimestamp = Long.MIN_VALUE;
+    private long maxElapsedAtMaxTimestamp = 0;
 
     public void addSample(JTLRecord record) {
         count++;
         long elapsed = record.getElapsed();
+        long timestamp = record.getTimeStamp();
+
         totalTime += elapsed;
         times.add(elapsed);
 
         if (elapsed < minTime) minTime = elapsed;
         if (elapsed > maxTime) maxTime = elapsed;
+
+        // Track timestamp range for throughput calculation
+        if (timestamp < minTimestamp) minTimestamp = timestamp;
+        if (timestamp > maxTimestamp) {
+            maxTimestamp = timestamp;
+            maxElapsedAtMaxTimestamp = elapsed;
+        }
 
         if (!record.isSuccess()) {
             errorCount++;
@@ -33,10 +47,17 @@ public class AggregateResult {
         totalBytes += record.getBytes();
     }
 
-    public String getLabel() { return label; }
-    public void setLabel(String label) { this.label = label; }
+    public String getLabel() {
+        return label;
+    }
 
-    public int getCount() { return count; }
+    public void setLabel(String label) {
+        this.label = label;
+    }
+
+    public int getCount() {
+        return count;
+    }
 
     public double getAverage() {
         return count > 0 ? (double) totalTime / count : 0;
@@ -80,13 +101,21 @@ public class AggregateResult {
     }
 
     public double getThroughput() {
-        if (count == 0 || times.isEmpty()) return 0;
+        if (count == 0) return 0;
+        if (minTimestamp == Long.MAX_VALUE || maxTimestamp == Long.MIN_VALUE) return 0;
 
-        // Calculate throughput as requests per second
-        // We'll approximate based on total samples and average time
-        // For more accurate calculation, we'd need actual timestamps
-        double totalSeconds = totalTime / 1000.0;
-        return totalSeconds > 0 ? count / totalSeconds : 0;
+        // Calculate throughput as requests per second based on actual time span
+        // Time span = from first request start to last request end
+        long timeSpanMs = maxTimestamp - minTimestamp + maxElapsedAtMaxTimestamp;
+
+        // Handle edge case: single request or all at same timestamp
+        if (timeSpanMs <= 0) {
+            // If all requests happened at the same timestamp, use total elapsed time
+            timeSpanMs = totalTime;
+        }
+
+        double timeSpanSeconds = timeSpanMs / 1000.0;
+        return timeSpanSeconds > 0 ? count / timeSpanSeconds : 0;
     }
 
     public long getAvgBytes() {

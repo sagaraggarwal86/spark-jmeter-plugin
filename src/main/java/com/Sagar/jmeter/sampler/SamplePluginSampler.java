@@ -1,4 +1,4 @@
-package com.sagar.jmeter.sampler;
+package com.Sagar.jmeter.sampler;
 
 import org.apache.jmeter.samplers.AbstractSampler;
 import org.apache.jmeter.samplers.Entry;
@@ -8,15 +8,14 @@ import org.slf4j.LoggerFactory;
 
 public class SamplePluginSampler extends AbstractSampler {
 
+    // Keys used to store properties (shown in GUI)
+    public static final String NAME = "SamplePlugin.name";
+    public static final String FILE_NAME = "SamplePlugin.fileName";
+    public static final String FILTER_SETTINGS = "SamplePlugin.filterSettings";
+    public static final String START = "SamplePlugin.start";
+    public static final String DURATION = "SamplePlugin.duration";
     private static final long serialVersionUID = 1L;
     private static final Logger log = LoggerFactory.getLogger(SamplePluginSampler.class);
-
-    // Keys used to store properties (shown in GUI)
-    public static final String NAME            = "SamplePlugin.name";
-    public static final String FILE_NAME       = "SamplePlugin.fileName";
-    public static final String FILTER_SETTINGS = "SamplePlugin.filterSettings";
-    public static final String START           = "SamplePlugin.start";
-    public static final String DURATION        = "SamplePlugin.duration";
 
     @Override
     public SampleResult sample(Entry entry) {
@@ -24,11 +23,11 @@ public class SamplePluginSampler extends AbstractSampler {
         result.setSampleLabel(getName());
         result.setDataType(SampleResult.TEXT);
 
-        String name           = getName();
-        String fileName       = getFileName();
+        String name = getName();
+        String fileName = getFileName();
         String filterSettings = getFilterSettings();
-        String start          = getStart();
-        String duration       = getDuration();
+        String start = getStart();
+        String duration = getDuration();
 
         log.info("SamplePlugin → Name: {}, FileName: {}, FilterSettings: {}, Start: {}, Duration: {}",
                 name, fileName, filterSettings, start, duration);
@@ -69,18 +68,43 @@ public class SamplePluginSampler extends AbstractSampler {
     }
 
     // Getters & setters bound to JMeter's property store
-    public String getName()           { return getPropertyAsString(NAME, ""); }
-    public void   setName(String v)   { setProperty(NAME, v); }
+    public String getName() {
+        return getPropertyAsString(NAME, "");
+    }
 
-    public String getFileName()       { return getPropertyAsString(FILE_NAME, ""); }
-    public void   setFileName(String v) { setProperty(FILE_NAME, v); }
+    public void setName(String v) {
+        setProperty(NAME, v);
+    }
 
-    public String getFilterSettings() { return getPropertyAsString(FILTER_SETTINGS, ""); }
-    public void   setFilterSettings(String v) { setProperty(FILTER_SETTINGS, v); }
+    public String getFileName() {
+        return getPropertyAsString(FILE_NAME, "");
+    }
 
-    public String getStart()          { return getPropertyAsString(START, ""); }
-    public void   setStart(String v)  { setProperty(START, v); }
+    public void setFileName(String v) {
+        setProperty(FILE_NAME, v);
+    }
 
-    public String getDuration()       { return getPropertyAsString(DURATION, ""); }
-    public void   setDuration(String v) { setProperty(DURATION, v); }
+    public String getFilterSettings() {
+        return getPropertyAsString(FILTER_SETTINGS, "");
+    }
+
+    public void setFilterSettings(String v) {
+        setProperty(FILTER_SETTINGS, v);
+    }
+
+    public String getStart() {
+        return getPropertyAsString(START, "");
+    }
+
+    public void setStart(String v) {
+        setProperty(START, v);
+    }
+
+    public String getDuration() {
+        return getPropertyAsString(DURATION, "");
+    }
+
+    public void setDuration(String v) {
+        setProperty(DURATION, v);
+    }
 }
