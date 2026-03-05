@@ -27,7 +27,7 @@ import java.util.Map;
  *
  * <p>Processes JTL files uploaded via Browse — no live metrics.
  * Provides offset filtering, configurable percentile, column
- * visibility toggles, and CSV export.</p>
+ * visibility toggles, and CSV export</p>
  */
 public class ListenerGUI extends AbstractVisualizer {
 

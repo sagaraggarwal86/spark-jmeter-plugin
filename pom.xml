@@ -295,7 +295,8 @@
                                                match="Configurable_Aggregate_Report-[0-9]+\.[0-9]+\.[0-9]+\.jar"
                                                replace="Configurable_Aggregate_Report-${project.version}.jar"
                                                flags="g"
-                                               byline="false"/>
+                                               byline="false"
+                                               encoding="UTF-8"/>
                             </target>
                         </configuration>
                     </execution>
