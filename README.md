@@ -65,10 +65,8 @@
 │             [Save Table Data]  ☑ Save Table Header                │
 └───────────────────────────────────────────────────────────────────┘
 
-<img src="img.jpg" alt="Alt text" width="500">
-
 ```
-
+<img src="img.jpg" alt="Alt text" width="500">
 ---
 
 ## 📋 Table Columns
