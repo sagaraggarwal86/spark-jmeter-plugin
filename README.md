@@ -10,11 +10,11 @@
 | Feature                        | Description                                                     |
 |--------------------------------|-----------------------------------------------------------------|
 | 📂 **JTL File Processing**     | Browse and load JTL files — metrics populate instantly          |
-| �?��? **Start / End Offset**      | Filter out ramp-up and ramp-down samples by seconds             |
+| ⏱️ **Start / End Offset**      | Filter out ramp-up and ramp-down samples by seconds             |
 | 📈 **Configurable Percentile** | Set any percentile value (50th, 95th, 99th…)                    |
-| �?�? **Column Visibility**      | Show/hide columns via dropdown multi-select                     |
+| 👁️ **Column Visibility**      | Show/hide columns via dropdown multi-select                     |
 | ✅ **Pass / Fail Counts**       | Dedicated columns for Transaction Passed and Transaction Failed |
-| �? **Test Time Info**          | Start Date/Time, End Date/Time, and Duration displayed          |
+| 🕐 **Test Time Info**          | Start Date/Time, End Date/Time, and Duration displayed          |
 | 🔀 **Sortable Columns**        | Click any column header to sort ascending/descending            |
 | 💾 **CSV Export**              | Save visible table data to CSV with one click                   |
 | 🚫 **No Live Metrics**         | Designed for post-test JTL analysis — no runtime overhead       |
@@ -23,7 +23,7 @@
 
 ## 📦 Installation
 
-1. Build the JAR (see [Building from Source](#�?-building-from-source)) or download from Releases
+1. Build the JAR (see [Building from Source](#️-building-from-source)) or download from Releases
 2. Copy it to your JMeter `lib/ext/` directory:
    ```
    <JMETER_HOME>/lib/ext/Configurable_Aggregate_Report-1.1.0.jar
@@ -40,16 +40,16 @@
 2. Click **Browse** → select a `.jtl` file → metrics populate immediately
 
 3. Adjust filters:
-    - **Start Offset** — skip the first N seconds (ramp-up exclusion)
-    - **End Offset** — skip everything after N seconds (ramp-down exclusion)
-    - **Percentile** — change from default 90th to any value
+   - **Start Offset** — skip the first N seconds (ramp-up exclusion)
+   - **End Offset** — skip everything after N seconds (ramp-down exclusion)
+   - **Percentile** — change from default 90th to any value
 
 ---
 
-## 🖥�? UI Layout
+## 🖥️ UI Layout
 
 ```
-┌─ Name / Comments ─────────────────────────────────────────────────�?
+┌─ Name / Comments ─────────────────────────────────────────────────┐
 ├─ Write results to file / Read from file ──────────────────────────┤
 │  Filename [________________________]  [Browse...]                  │
 ├─ Filter Settings ─────────────────────────────────────────────────┤
@@ -91,7 +91,7 @@ Use **Select Columns ▼** to show/hide any column except Transaction Name.
 
 ---
 
-## �?��? Start / End Offset Filtering
+## ⏱️ Start / End Offset Filtering
 
 Offsets let you exclude ramp-up and ramp-down periods from the analysis:
 
@@ -115,7 +115,7 @@ Changing offset values **re-parses the JTL file instantly** — no need to re-br
 
 ---
 
-## �? Test Time Info
+## 🕐 Test Time Info
 
 Displayed below the filter settings after loading a JTL file:
 
@@ -147,7 +147,7 @@ samples are aggregated.
 
 ---
 
-## �? Project Structure
+## 📁 Project Structure
 
 ```
 src/
@@ -171,7 +171,7 @@ src/
 
 ---
 
-## 🛠�? Building from Source
+## 🛠️ Building from Source
 
 **Prerequisites:** Java 17+, Maven 3.6+
 
@@ -217,7 +217,7 @@ Tests verify throughput and error percentage calculations using JMeter's `Sampli
 
 ---
 
-## �? Contributing
+## 🤝 Contributing
 
 Pull requests and issues are welcome!
 Please test with JMeter 5.6+ on Windows, macOS, and Linux.
