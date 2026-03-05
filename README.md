@@ -64,7 +64,8 @@
 ├───────────────────────────────────────────────────────────────────┤
 │             [Save Table Data]  ☑ Save Table Header                │
 └───────────────────────────────────────────────────────────────────┘
-![img.png](img.png)
+<img width="945" height="674" alt="image" src="https://github.com/user-attachments/assets/2816901b-4574-46d9-9e20-c2d2fd8e2d22" />
+
 
 ```
 
