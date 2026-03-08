@@ -6,7 +6,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>io.github.sagaraggarwal86</groupId>
     <artifactId>Configurable_Aggregate_Report</artifactId>
-    <version>1.1.0</version>
+    <version>2.0.0</version>
     <packaging>jar</packaging>
     <name>Configurable Aggregate Report Plugin</name>
     <description>A listener plugin to prepare report for configurable parameters for Apache JMeter</description>
@@ -41,6 +41,8 @@
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <!-- Override in settings.xml or with -Dgpg.executable=gpg for CI/CD -->
+        <gpg.executable>C:\Program Files\GnuPG\bin\gpg.exe</gpg.executable>
     </properties>
 
     <dependencyManagement>
@@ -176,6 +178,20 @@
             <scope>test</scope>
         </dependency>
 
+        <!-- AI Report: JSON serialisation -->
+        <dependency>
+            <groupId>com.google.code.gson</groupId>
+            <artifactId>gson</artifactId>
+            <version>2.10.1</version>
+        </dependency>
+
+        <!-- AI Report: Markdown to HTML rendering -->
+        <dependency>
+            <groupId>org.commonmark</groupId>
+            <artifactId>commonmark</artifactId>
+            <version>0.21.0</version>
+        </dependency>
+
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>
@@ -257,7 +273,20 @@
                         <arg>--pinentry-mode</arg>
                         <arg>loopback</arg>
                     </gpgArguments>
-                    <executable>C:\Program Files\GnuPG\bin\gpg.exe</executable>
+                    <executable>${gpg.executable}</executable>
+                </configuration>
+            </plugin>
+
+            <!-- exec:java uses the test classpath so that slf4j-simple (test scope)
+                 is available when running UIPreview standalone.
+                 Without this, slf4j-api has no provider and emits NOP warnings. -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>3.1.0</version>
+                <configuration>
+                    <mainClass>com.personal.jmeter.UIPreview</mainClass>
+                    <classpathScope>test</classpathScope>
                 </configuration>
             </plugin>
 
@@ -268,11 +297,46 @@
                 <version>3.5.5</version>
             </plugin>
 
-            <!-- Auto-update README.md JAR version when pom.xml version changes.
-                 README.md always holds the real version number (e.g. 1.1.0) so
-                 IntelliJ preview renders correctly without needing a Maven build.
-                 On every 'mvn' run, this task regex-replaces the old version in
-                 all JAR filenames with the current ${project.version}. -->
+            <!-- Fat JAR: bundle Gson + Commonmark into the plugin JAR.
+                 JMeter lib/ext classpath does not include these libraries.
+                 Shading merges them so the plugin works without extra installs.
+                 JMeter-provided jars (scope=provided) are NOT included. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-shade-plugin</artifactId>
+                <version>3.5.1</version>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>shade</goal>
+                        </goals>
+                        <configuration>
+                            <shadedArtifactAttached>false</shadedArtifactAttached>
+                            <filters>
+                                <filter>
+                                    <artifact>*:*</artifact>
+                                    <excludes>
+                                        <!-- Strip signature files to avoid JAR verification errors -->
+                                        <!-- FIX: Removed META-INF/MANIFEST.MF exclusion - excluding it
+                                             caused getManifest() to return null at runtime           -->
+                                        <exclude>META-INF/*.SF</exclude>
+                                        <exclude>META-INF/*.DSA</exclude>
+                                        <exclude>META-INF/*.RSA</exclude>
+                                    </excludes>
+                                </filter>
+                            </filters>
+                            <transformers>
+                                <!-- Generates a valid merged MANIFEST.MF in the shaded JAR -->
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer"/>
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
+                            </transformers>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- Auto-update README.md JAR version when pom.xml version changes -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-antrun-plugin</artifactId>
@@ -286,11 +350,6 @@
                         </goals>
                         <configuration>
                             <target>
-                                <!-- replaceregexp matches any existing semantic version
-                                     (e.g. 1.0.0, 1.1.0, 2.3.1) in JAR filenames and
-                                     replaces it with the current project version.
-                                     README.md always contains the real version — no
-                                     placeholder — so IntelliJ preview is always correct. -->
                                 <replaceregexp file="${project.basedir}/README.md"
                                                match="Configurable_Aggregate_Report-[0-9]+\.[0-9]+\.[0-9]+\.jar"
                                                replace="Configurable_Aggregate_Report-${project.version}.jar"
