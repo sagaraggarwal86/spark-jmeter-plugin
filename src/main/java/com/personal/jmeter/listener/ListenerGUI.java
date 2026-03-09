@@ -250,8 +250,8 @@ public class ListenerGUI extends AbstractVisualizer {
                             scenarioName, scenarioDesc, users, threadGrpName);
                 }
             }
-        } catch (Exception ex) {
-            log.warn("Could not read test plan info: {}", ex.getMessage());
+        } catch (RuntimeException ex) {
+            log.warn("readTestPlanMetadata: could not read test plan info. reason={}", ex.getMessage());
         }
         return AggregateReportPanel.ScenarioMetadata.empty();
     }

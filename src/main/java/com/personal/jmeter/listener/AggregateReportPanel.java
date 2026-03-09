@@ -1,12 +1,13 @@
 package com.personal.jmeter.listener;
 
+import com.personal.jmeter.ai.AiReportCoordinator;
 import com.personal.jmeter.ai.AiReportService;
 import com.personal.jmeter.ai.HtmlReportRenderer;
 import com.personal.jmeter.ai.PromptBuilder;
 import com.personal.jmeter.parser.JTLParser;
 import org.apache.jmeter.visualizers.SamplingStatCalculator;
-
-
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.swing.*;
 import javax.swing.border.TitledBorder;
@@ -19,6 +20,7 @@ import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.text.DecimalFormat;
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -36,21 +38,19 @@ import java.util.function.Supplier;
  * CSV export, and AI report generation.
  *
  * <p>Used by both {@link ListenerGUI} (JMeter plugin) and
- * {@code UIPreview} (standalone dev preview). Eliminates the duplication
- * that previously existed between those two classes.</p>
+ * {@code UIPreview} (standalone dev preview).</p>
  *
  * <h3>Public API for parent components</h3>
  * <ul>
  *   <li>{@link #loadJtlFile(String)} / {@link #loadJtlFile(String, boolean)}</li>
  *   <li>{@link #clearAll()}</li>
- *   <li>{@link #setSuppressReload(boolean)} — suppress auto-reload during bulk field updates</li>
- *   <li>{@link #setMetadataSupplier(Supplier)} — supply scenario metadata for the AI report</li>
- *   <li>Getters/setters for {@code startOffset}, {@code endOffset}, {@code percentile}</li>
+ *   <li>{@link #setSuppressReload(boolean)}</li>
+ *   <li>{@link #setMetadataSupplier(Supplier)}</li>
  * </ul>
  */
 public class AggregateReportPanel extends JPanel {
 
-
+    private static final Logger log = LoggerFactory.getLogger(AggregateReportPanel.class);
 
     // ── Column definitions ───────────────────────────────────────
     static final String[] ALL_COLUMNS = {
@@ -64,6 +64,22 @@ public class AggregateReportPanel extends JPanel {
     // ── Fonts ────────────────────────────────────────────────────
     public static final Font FONT_HEADER  = new Font("Calibri", Font.PLAIN, 13);
     public static final Font FONT_REGULAR = new Font("Calibri", Font.PLAIN, 11);
+
+    // ── Layout constants ─────────────────────────────────────────
+    private static final int    TABLE_SCROLL_WIDTH     = 900;
+    private static final int    TABLE_SCROLL_HEIGHT    = 250;
+    private static final int    PROGRESS_DIALOG_WIDTH  = 340;
+    private static final int    PROGRESS_DIALOG_HEIGHT = 90;
+    private static final double FILTER_FIELD_WEIGHT    = 0.25;
+    private static final double TIME_FIELD_WEIGHT      = 0.33;
+
+    // ── DecimalFormat constants (EDT-only; static final is safe here) ──
+    /** DecimalFormat for integer-rounded values (response times). */
+    private static final DecimalFormat FORMAT_INTEGER = new DecimalFormat("#");
+    /** DecimalFormat for one decimal place (std deviation). */
+    private static final DecimalFormat FORMAT_ONE_DP  = new DecimalFormat("0.0");
+    /** DecimalFormat for two decimal places (error rate). */
+    private static final DecimalFormat FORMAT_TWO_DP  = new DecimalFormat("0.00");
 
     /** Thread-safe; safe to use as a static constant unlike {@code SimpleDateFormat}. */
     private static final DateTimeFormatter DISPLAY_TIME_FORMAT =
@@ -116,6 +132,7 @@ public class AggregateReportPanel extends JPanel {
     // Constructor
     // ─────────────────────────────────────────────────────────────
 
+    /** Constructs the panel and wires up all internal listeners. */
     public AggregateReportPanel() {
         super(new BorderLayout(5, 5));
         setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
@@ -125,9 +142,9 @@ public class AggregateReportPanel extends JPanel {
         northPanel.add(buildFilterPanel());
         northPanel.add(buildTimeInfoPanel());
 
-        add(northPanel,           BorderLayout.NORTH);
+        add(northPanel,            BorderLayout.NORTH);
         add(buildTableScrollPane(), BorderLayout.CENTER);
-        add(buildBottomPanel(),   BorderLayout.SOUTH);
+        add(buildBottomPanel(),    BorderLayout.SOUTH);
 
         storeOriginalColumns();
         setupFieldListeners();
@@ -140,6 +157,7 @@ public class AggregateReportPanel extends JPanel {
     /**
      * Parses and displays the given JTL file. Shows an error dialog on failure.
      *
+     * @param filePath path to the JTL file
      * @return {@code true} on success
      */
     public boolean loadJtlFile(String filePath) {
@@ -149,6 +167,7 @@ public class AggregateReportPanel extends JPanel {
     /**
      * Parses and displays the given JTL file.
      *
+     * @param filePath          path to the JTL file
      * @param showSuccessDialog {@code true} to show a "Loaded N transactions" dialog
      * @return {@code true} on success
      */
@@ -170,7 +189,7 @@ public class AggregateReportPanel extends JPanel {
             }
             return true;
         } catch (IOException e) {
-            System.err.println("[AggregateReportPanel] Error loading JTL file: " + filePath + " — " + e.getMessage());
+            log.error("loadJtlFile: failed to parse JTL file. filePath={}, reason={}", filePath, e.getMessage(), e);
             JOptionPane.showMessageDialog(this,
                     "Error loading JTL file:\n" + e.getMessage(),
                     "Error", JOptionPane.ERROR_MESSAGE);
@@ -193,27 +212,63 @@ public class AggregateReportPanel extends JPanel {
     }
 
     /**
-     * Suppresses automatic JTL reloads while filter fields are being set programmatically
-     * (e.g., during {@code ListenerGUI.configure(TestElement)}).
+     * Suppresses automatic JTL reloads while filter fields are being set programmatically.
+     *
+     * @param suppress {@code true} to suppress reloads
      */
     public void setSuppressReload(boolean suppress) {
         this.suppressReload = suppress;
     }
 
     /**
-     * Sets the supplier invoked when the user clicks "Generate AI Report"
-     * to provide scenario-level metadata. Defaults to {@link ScenarioMetadata#empty()}.
+     * Sets the supplier invoked when the user clicks "Generate AI Report".
+     *
+     * @param supplier metadata supplier; {@code null} resets to the empty default
      */
     public void setMetadataSupplier(Supplier<ScenarioMetadata> supplier) {
         this.metadataSupplier = supplier != null ? supplier : ScenarioMetadata::empty;
     }
 
+    /**
+     * Returns the current start-offset text.
+     *
+     * @return start offset as entered by the user
+     */
     public String getStartOffset()    { return startOffsetField.getText().trim(); }
+
+    /**
+     * Returns the current end-offset text.
+     *
+     * @return end offset as entered by the user
+     */
     public String getEndOffset()      { return endOffsetField.getText().trim(); }
+
+    /**
+     * Returns the current percentile text.
+     *
+     * @return percentile as entered by the user
+     */
     public String getPercentileText() { return percentileField.getText().trim(); }
 
-    public void setStartOffset(String value)  { startOffsetField.setText(nullToEmpty(value)); }
-    public void setEndOffset(String value)    { endOffsetField.setText(nullToEmpty(value)); }
+    /**
+     * Sets the start-offset field value.
+     *
+     * @param value value to set; null is treated as empty string
+     */
+    public void setStartOffset(String value)  { startOffsetField.setText(Objects.requireNonNullElse(value, "")); }
+
+    /**
+     * Sets the end-offset field value.
+     *
+     * @param value value to set; null is treated as empty string
+     */
+    public void setEndOffset(String value)    { endOffsetField.setText(Objects.requireNonNullElse(value, "")); }
+
+    /**
+     * Sets the percentile field value.
+     *
+     * @param value value to set; null or blank resets to "90"
+     */
     public void setPercentile(String value)   {
         percentileField.setText((value == null || value.isBlank()) ? "90" : value);
     }
@@ -226,30 +281,26 @@ public class AggregateReportPanel extends JPanel {
         JPanel panel = titledPanel("Filter Settings");
         GridBagConstraints c = defaultConstraints();
 
-        // Row 0 — labels
         c.gridy = 0;
         addLabel(panel, "Start Offset (Seconds)", 0, c);
         addLabel(panel, "End Offset (Seconds)",   1, c);
         addLabel(panel, "Percentile (%)",         2, c);
         addLabel(panel, "Visible Columns",        3, c);
 
-        // Row 1 — inputs
         c.gridy = 1;
         c.fill  = GridBagConstraints.HORIZONTAL;
-        c.weightx = 0.25;
+        c.weightx = FILTER_FIELD_WEIGHT;
         addField(panel, startOffsetField, 0, c);
         addField(panel, endOffsetField,   1, c);
         addField(panel, percentileField,  2, c);
         c.gridx = 3; c.fill = GridBagConstraints.NONE; c.weightx = 0;
         panel.add(buildColumnDropdown(), c);
 
-        // Row 2 — transaction search label (spans all columns)
         c.gridy = 2; c.gridx = 0; c.gridwidth = 4;
         c.fill = GridBagConstraints.NONE; c.weightx = 1.0;
         addLabel(panel, "Transaction Search", c);
         c.gridwidth = 1;
 
-        // Row 3 — search field + regex toggle
         c.gridy = 3; c.gridx = 0; c.gridwidth = 3;
         c.fill = GridBagConstraints.HORIZONTAL; c.weightx = 1.0;
         transactionSearchField.setFont(FONT_REGULAR);
@@ -272,7 +323,7 @@ public class AggregateReportPanel extends JPanel {
             JCheckBoxMenuItem item = new JCheckBoxMenuItem(ALL_COLUMNS[i], true);
             item.setFont(FONT_REGULAR);
             if (i == 0) {
-                item.setEnabled(false);   // "Transaction Name" column is always visible
+                item.setEnabled(false);
             } else {
                 final int col = i;
                 item.addActionListener(e -> toggleColumnVisibility(col, item.isSelected()));
@@ -295,6 +346,7 @@ public class AggregateReportPanel extends JPanel {
         addLabel(panel, "Duration",        2, c);
 
         c.gridy = 1; c.fill = GridBagConstraints.HORIZONTAL;
+        c.weightx = TIME_FIELD_WEIGHT;
         addReadOnlyField(panel, startTimeField, 0, c);
         addReadOnlyField(panel, endTimeField,   1, c);
         addReadOnlyField(panel, durationField,  2, c);
@@ -325,7 +377,7 @@ public class AggregateReportPanel extends JPanel {
         });
 
         JScrollPane scroll = new JScrollPane(resultsTable);
-        scroll.setPreferredSize(new Dimension(900, 250));
+        scroll.setPreferredSize(new Dimension(TABLE_SCROLL_WIDTH, TABLE_SCROLL_HEIGHT));
         return scroll;
     }
 
@@ -339,8 +391,7 @@ public class AggregateReportPanel extends JPanel {
 
         JButton aiBtn = new JButton("Generate AI Report");
         aiBtn.setFont(FONT_REGULAR);
-        aiBtn.setToolTipText(
-                "Analyse the loaded JTL data with AI and generate an HTML performance report");
+        aiBtn.setToolTipText("Analyse the loaded JTL data with AI and generate an HTML performance report");
         aiBtn.addActionListener(e -> startAiReportGeneration(aiBtn));
 
         JPanel panel = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 4));
@@ -390,7 +441,7 @@ public class AggregateReportPanel extends JPanel {
             populateTable(cachedResults, opts.percentile);
             updateTimeInfo(result);
         } catch (IOException e) {
-            System.err.println("[AggregateReportPanel] Reload failed: " + e.getMessage());
+            log.error("reloadJtl: JTL reload failed. filePath={}, reason={}", lastLoadedFilePath, e.getMessage(), e);
         }
     }
 
@@ -405,36 +456,33 @@ public class AggregateReportPanel extends JPanel {
 
     private void populateTable(Map<String, SamplingStatCalculator> results, int percentile) {
         tableModel.setRowCount(0);
-        DecimalFormat df0  = new DecimalFormat("#");
-        DecimalFormat df1  = new DecimalFormat("0.0");
-        DecimalFormat df2  = new DecimalFormat("0.00");
-        double pFraction   = percentile / 100.0;
-        String searchPat   = transactionSearchField.getText().trim();
-        boolean useRegex   = regexCheckBox.isSelected();
+        double pFraction = percentile / 100.0;
+        String searchPat = transactionSearchField.getText().trim();
+        boolean useRegex = regexCheckBox.isSelected();
 
         List<Object[]> dataRows = new ArrayList<>();
         Object[]       totalRow = null;
 
         for (SamplingStatCalculator calc : results.values()) {
             if (calc.getCount() == 0) continue;
-            String label   = calc.getLabel();
+            String  label   = calc.getLabel();
             boolean isTotal = TOTAL_LABEL.equals(label);
 
             if (!isTotal && !TransactionFilter.matches(label, searchPat, useRegex)) continue;
 
-            long total   = calc.getCount();
-            long failed  = Math.round(calc.getErrorPercentage() * total);
-            Object[] row = {
+            long     total  = calc.getCount();
+            long     failed = Math.round(calc.getErrorPercentage() * total);
+            Object[] row    = {
                     label,
                     total,
                     total - failed,
                     failed,
-                    df0.format(calc.getMean()),
+                    FORMAT_INTEGER.format(calc.getMean()),
                     calc.getMin().intValue(),
                     calc.getMax().intValue(),
-                    df0.format(calc.getPercentPoint(pFraction).doubleValue()),
-                    df1.format(calc.getStandardDeviation()),
-                    df2.format(calc.getErrorPercentage() * 100.0) + "%",
+                    FORMAT_INTEGER.format(calc.getPercentPoint(pFraction).doubleValue()),
+                    FORMAT_ONE_DP.format(calc.getStandardDeviation()),
+                    FORMAT_TWO_DP.format(calc.getErrorPercentage() * 100.0) + "%",
                     String.format("%.1f/sec", calc.getRate())
             };
 
@@ -455,7 +503,7 @@ public class AggregateReportPanel extends JPanel {
         }
 
         dataRows.forEach(tableModel::addRow);
-        if (totalRow != null) tableModel.addRow(totalRow);   // TOTAL is always pinned last
+        if (totalRow != null) tableModel.addRow(totalRow);
     }
 
     /** Re-sorts the currently cached data without re-parsing the JTL file. */
@@ -469,6 +517,8 @@ public class AggregateReportPanel extends JPanel {
      * Snapshots the currently visible (filtered + sorted) table rows as plain
      * {@code String[]} arrays, excluding the TOTAL row.
      * Must be called on the Swing EDT.
+     *
+     * @return unmodifiable list of visible data rows
      */
     List<String[]> getVisibleTableRows() {
         List<String[]> rows = new ArrayList<>(tableModel.getRowCount());
@@ -498,7 +548,7 @@ public class AggregateReportPanel extends JPanel {
 
     private void toggleColumnVisibility(int colIndex, boolean visible) {
         TableColumnModel cm  = resultsTable.getColumnModel();
-        TableColumn       col = allTableColumns[colIndex];
+        TableColumn      col = allTableColumns[colIndex];
         if (visible) {
             int insertAt = 0;
             for (int i = 0; i < colIndex; i++) {
@@ -575,7 +625,7 @@ public class AggregateReportPanel extends JPanel {
                         "Saved to:\n" + file.getAbsolutePath(),
                         "Success", JOptionPane.INFORMATION_MESSAGE);
             } catch (IOException e) {
-                System.err.println("[AggregateReportPanel] Error saving CSV: " + file.getAbsolutePath() + " — " + e.getMessage());
+                log.error("saveTableData: error saving CSV. filePath={}, reason={}", file.getAbsolutePath(), e.getMessage(), e);
                 JOptionPane.showMessageDialog(this,
                         "Error saving file:\n" + e.getMessage(),
                         "Error", JOptionPane.ERROR_MESSAGE);
@@ -585,7 +635,8 @@ public class AggregateReportPanel extends JPanel {
 
     private void saveTableToCSV(File file) throws IOException {
         List<Integer> visibleCols = getVisibleColumnModelIndices();
-        try (BufferedWriter writer = new BufferedWriter(new FileWriter(file))) {
+        try (BufferedWriter writer = new BufferedWriter(
+                new OutputStreamWriter(new FileOutputStream(file), StandardCharsets.UTF_8))) {
             if (saveTableHeaderBox.isSelected()) {
                 StringBuilder header = new StringBuilder();
                 for (int i = 0; i < visibleCols.size(); i++) {
@@ -609,7 +660,7 @@ public class AggregateReportPanel extends JPanel {
         }
     }
 
-    /** RFC 4180 CSV escaping applied to every cell (not just the transaction name column). */
+    /** RFC 4180 CSV escaping applied to every cell. */
     private static String escapeCSV(String value) {
         if (value == null) return "";
         if (value.contains(",") || value.contains("\"") || value.contains("\n")) {
@@ -630,37 +681,49 @@ public class AggregateReportPanel extends JPanel {
             return;
         }
 
-        String apiKey = AiReportService.readApiKeyFromEnv();
-        if (apiKey == null) {
-            apiKey = promptForApiKey();
-            if (apiKey == null) return;
-        }
+        String apiKey = resolveApiKey();
+        if (apiKey == null) return;
 
-        // Snapshot all EDT state before handing off to background thread
-        final ScenarioMetadata metadata          = metadataSupplier.get();
-        final Map<String, SamplingStatCalculator> snapshot = Map.copyOf(cachedResults);
-        final List<String[]>                tableSnapshot = getVisibleTableRows();
-        final List<JTLParser.TimeBucket>   bucketsSnapshot = List.copyOf(cachedBuckets);
-        final int    percentile = readPercentile();
-        final String jtlPath    = lastLoadedFilePath;
-        final String startTxt   = startTimeField.getText();
-        final String endTxt     = endTimeField.getText();
-        final String durTxt     = durationField.getText();
-        final String finalKey   = apiKey;
-
-        JDialog    progressDialog = buildProgressDialog();
-        JLabel     progressLabel  = (JLabel) ((BorderLayout) progressDialog.getContentPane()
-                .getLayout()).getLayoutComponent(BorderLayout.CENTER);
+        AiReportCoordinator.ReportContext context = buildReportContext();
+        JDialog progressDialog = buildProgressDialog();
+        JLabel  progressLabel  = extractProgressLabel(progressDialog);
         progressDialog.setVisible(true);
         triggerBtn.setEnabled(false);
 
+        AiReportCoordinator coordinator = new AiReportCoordinator(
+                new PromptBuilder(),
+                new AiReportService(apiKey),
+                new HtmlReportRenderer(),
+                aiExecutor);
+        coordinator.start(context, progressDialog, progressLabel, triggerBtn);
+    }
+
+    private String resolveApiKey() {
+        String key = AiReportService.readApiKeyFromEnv();
+        return (key != null) ? key : promptForApiKey();
+    }
+
+    private AiReportCoordinator.ReportContext buildReportContext() {
+        final ScenarioMetadata metadata   = metadataSupplier.get();
+        final int              percentile = readPercentile();
         final HtmlReportRenderer.RenderConfig config = new HtmlReportRenderer.RenderConfig(
                 metadata.users, metadata.scenarioName, metadata.scenarioDesc,
-                metadata.threadGroupName, startTxt, endTxt, durTxt, percentile);
+                metadata.threadGroupName,
+                startTimeField.getText(), endTimeField.getText(),
+                durationField.getText(), percentile);
 
-        aiExecutor.submit(() -> runAiReport(
-                finalKey, snapshot, tableSnapshot, bucketsSnapshot,
-                config, jtlPath, progressDialog, progressLabel, triggerBtn));
+        return new AiReportCoordinator.ReportContext(
+                Map.copyOf(cachedResults),
+                getVisibleTableRows(),
+                List.copyOf(cachedBuckets),
+                config,
+                lastLoadedFilePath,
+                durationField.getText());
+    }
+
+    private JLabel extractProgressLabel(JDialog dialog) {
+        return (JLabel) ((BorderLayout) dialog.getContentPane().getLayout())
+                .getLayoutComponent(BorderLayout.CENTER);
     }
 
     private String promptForApiKey() {
@@ -701,64 +764,20 @@ public class AggregateReportPanel extends JPanel {
         label.setBorder(BorderFactory.createEmptyBorder(24, 36, 24, 36));
         dialog.add(label, BorderLayout.CENTER);
         dialog.pack();
-        dialog.setMinimumSize(new Dimension(340, 90));
+        dialog.setMinimumSize(new Dimension(PROGRESS_DIALOG_WIDTH, PROGRESS_DIALOG_HEIGHT));
         dialog.setLocationRelativeTo(this);
         return dialog;
-    }
-
-    private void runAiReport(String apiKey,
-                             Map<String, SamplingStatCalculator> results,
-                             List<String[]> tableRows,
-                             List<JTLParser.TimeBucket> buckets,
-                             HtmlReportRenderer.RenderConfig config,
-                             String jtlPath,
-                             JDialog progressDialog, JLabel progressLabel,
-                             JButton triggerBtn) {
-        try {
-            setProgress(progressLabel, "Building analysis prompt...");
-            String prompt = new PromptBuilder().build(
-                    results, config.percentile, config.users,
-                    config.scenarioName, config.scenarioDesc, config.startTime, config.duration);
-
-            setProgress(progressLabel, "Calling Groq AI (this may take ~30 seconds)...");
-            String markdown = new AiReportService(apiKey).generateReport(prompt);
-
-            setProgress(progressLabel, "Rendering HTML report...");
-            String htmlPath = new HtmlReportRenderer().render(markdown, jtlPath, config, tableRows, buckets);
-
-            SwingUtilities.invokeLater(() -> {
-                progressDialog.dispose();
-                triggerBtn.setEnabled(true);
-                try {
-                    Desktop.getDesktop().browse(new File(htmlPath).toURI());
-                } catch (IOException ex) {
-                    System.err.println("[AggregateReportPanel] Could not open browser: " + ex.getMessage());
-                }
-                JOptionPane.showMessageDialog(this,
-                        "AI Report saved to:\n" + htmlPath
-                                + "\n\nThe report has been opened in your browser.",
-                        "Report Generated", JOptionPane.INFORMATION_MESSAGE);
-            });
-        } catch (IOException ex) {
-            System.err.println("[AggregateReportPanel] AI report generation failed: " + ex.getMessage());
-            SwingUtilities.invokeLater(() -> {
-                progressDialog.dispose();
-                triggerBtn.setEnabled(true);
-                JOptionPane.showMessageDialog(this,
-                        "Report generation failed:\n\n" + ex.getMessage(),
-                        "Error", JOptionPane.ERROR_MESSAGE);
-            });
-        }
-    }
-
-    private static void setProgress(JLabel label, String text) {
-        SwingUtilities.invokeLater(() -> label.setText(text));
     }
 
     // ─────────────────────────────────────────────────────────────
     // Filter options
     // ─────────────────────────────────────────────────────────────
 
+    /**
+     * Builds filter options from the current field values.
+     *
+     * @return filter options reflecting the current UI state
+     */
     JTLParser.FilterOptions buildFilterOptions() {
         JTLParser.FilterOptions opts = new JTLParser.FilterOptions();
         opts.startOffset = parseIntField(startOffsetField, 0);
@@ -785,8 +804,7 @@ public class AggregateReportPanel extends JPanel {
     // ─────────────────────────────────────────────────────────────
 
     /**
-     * Compares two table cell values: numerically when both can be parsed as numbers
-     * (stripping "%" and "/sec" suffixes), otherwise lexicographically.
+     * Compares two table cell values numerically when possible, lexicographically otherwise.
      */
     private static int compareTableValues(Object a, Object b) {
         double da = parseNumericCell(a);
@@ -823,12 +841,11 @@ public class AggregateReportPanel extends JPanel {
         GridBagConstraints c = new GridBagConstraints();
         c.insets  = new Insets(4, 6, 4, 6);
         c.anchor  = GridBagConstraints.WEST;
-        c.weightx = 0.33;
+        c.weightx = TIME_FIELD_WEIGHT;
         return c;
     }
 
-    private static void addLabel(JPanel panel, String text, int gridx,
-                                 GridBagConstraints c) {
+    private static void addLabel(JPanel panel, String text, int gridx, GridBagConstraints c) {
         c.gridx = gridx;
         JLabel label = new JLabel(text);
         label.setFont(FONT_REGULAR);
@@ -841,8 +858,7 @@ public class AggregateReportPanel extends JPanel {
         panel.add(label, c);
     }
 
-    private static void addField(JPanel panel, JTextField field, int gridx,
-                                 GridBagConstraints c) {
+    private static void addField(JPanel panel, JTextField field, int gridx, GridBagConstraints c) {
         c.gridx = gridx;
         field.setFont(FONT_REGULAR);
         panel.add(field, c);
@@ -857,35 +873,44 @@ public class AggregateReportPanel extends JPanel {
         panel.add(field, c);
     }
 
-    private static String nullToEmpty(String s) {
-        return s != null ? s : "";
-    }
-
     // ─────────────────────────────────────────────────────────────
     // Inner types
     // ─────────────────────────────────────────────────────────────
 
     /** Scenario-level metadata passed to the AI report prompt. */
     public static final class ScenarioMetadata {
+        /** Test plan name. */
         public final String scenarioName;
+        /** Test plan description / comment. */
         public final String scenarioDesc;
+        /** Virtual user count label. */
         public final String users;
+        /** First thread group name. */
         public final String threadGroupName;
 
+        /**
+         * Constructs scenario metadata.
+         *
+         * @param scenarioName   test plan name (null → "")
+         * @param scenarioDesc   test plan description (null → "")
+         * @param users          virtual user count label (null → "")
+         * @param threadGroupName first thread group name (null → "")
+         */
         public ScenarioMetadata(String scenarioName, String scenarioDesc,
                                 String users, String threadGroupName) {
-            this.scenarioName    = nullToEmpty(scenarioName);
-            this.scenarioDesc    = nullToEmpty(scenarioDesc);
-            this.users           = nullToEmpty(users);
-            this.threadGroupName = nullToEmpty(threadGroupName);
+            this.scenarioName    = Objects.requireNonNullElse(scenarioName, "");
+            this.scenarioDesc    = Objects.requireNonNullElse(scenarioDesc, "");
+            this.users           = Objects.requireNonNullElse(users, "");
+            this.threadGroupName = Objects.requireNonNullElse(threadGroupName, "");
         }
 
+        /**
+         * Returns an empty {@code ScenarioMetadata} instance.
+         *
+         * @return metadata with all fields empty
+         */
         public static ScenarioMetadata empty() {
             return new ScenarioMetadata("", "", "", "");
-        }
-
-        private static String nullToEmpty(String s) {
-            return s != null ? s : "";
         }
     }
 
@@ -895,6 +920,7 @@ public class AggregateReportPanel extends JPanel {
      */
     @FunctionalInterface
     interface SimpleDocListener extends DocumentListener {
+        /** Called when the document changes. */
         void onUpdate();
 
         @Override default void insertUpdate(DocumentEvent e)  { onUpdate(); }

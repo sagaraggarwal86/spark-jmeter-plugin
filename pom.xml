@@ -172,9 +172,9 @@
         </dependency>
 
         <dependency>
-            <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-simple</artifactId>
-            <version>2.0.17</version>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
+            <version>1.5.6</version>
             <scope>test</scope>
         </dependency>
 
@@ -277,7 +277,7 @@
                 </configuration>
             </plugin>
 
-            <!-- exec:java uses the test classpath so that slf4j-simple (test scope)
+            <!-- exec:java uses the test classpath so that logback-classic (test scope)
                  is available when running UIPreview standalone.
                  Without this, slf4j-api has no provider and emits NOP warnings. -->
             <plugin>
