@@ -231,7 +231,6 @@ public class HtmlReportRenderer {
 
         StringBuilder name = new StringBuilder("AI_Generated_Report");
         if (!planPart.isEmpty()) name.append('_').append(planPart);
-        if (!tgPart.isEmpty())   name.append('_').append(tgPart);
         name.append('_').append(timestamp).append(".html");
 
         return parentDir.resolve(name.toString()).toString();

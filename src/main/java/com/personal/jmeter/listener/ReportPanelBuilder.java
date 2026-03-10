@@ -3,6 +3,7 @@ package com.personal.jmeter.listener;
 import javax.swing.*;
 import javax.swing.border.TitledBorder;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.table.TableCellRenderer;
 import javax.swing.table.TableColumn;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
@@ -96,61 +97,81 @@ final class ReportPanelBuilder {
      *
      * @return configured {@link JPanel}
      */
+    /**
+     * Builds the Filter Settings panel — all controls in a single row.
+     * Layout: Start | End | Percentile | Columns button | Search field | RegEx
+     *
+     * @return configured {@link JPanel}
+     */
     JPanel buildFilterPanel() {
-        JPanel panel = titledPanel("Filter Settings");
-        GridBagConstraints c = defaultGbc();
-        c.gridy = 0;
-        addLabel(panel, "Start Offset (Seconds)", 0, c);
-        addLabel(panel, "End Offset (Seconds)",   1, c);
-        addLabel(panel, "Percentile (%)",          2, c);
-        addLabel(panel, "Visible Columns",         3, c);
+        JPanel panel = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 4));
+        TitledBorder b = new TitledBorder("Filter Settings");
+        b.setTitleFont(FONT_HEADER);
+        panel.setBorder(b);
 
-        c.gridy = 1; c.fill = GridBagConstraints.HORIZONTAL; c.weightx = FILTER_FIELD_WEIGHT;
-        addField(panel, startOffsetField, 0, c);
-        addField(panel, endOffsetField,   1, c);
-        addField(panel, percentileField,  2, c);
-        c.gridx = 3; c.fill = GridBagConstraints.NONE; c.weightx = 0;
-        panel.add(buildColumnDropdown(), c);
+        panel.add(compactLabel("Start Offset (s):"));
+        startOffsetField.setFont(FONT_REGULAR);
+        startOffsetField.setColumns(6);
+        startOffsetField.setToolTipText("Exclude samples before this offset (seconds from test start)");
+        panel.add(startOffsetField);
 
-        c.gridy = 2; c.gridx = 0; c.gridwidth = 4;
-        c.fill = GridBagConstraints.NONE; c.weightx = 1.0;
-        addLabel(panel, "Transaction Search", c);
+        panel.add(Box.createHorizontalStrut(6));
+        panel.add(compactLabel("End Offset (s):"));
+        endOffsetField.setFont(FONT_REGULAR);
+        endOffsetField.setColumns(6);
+        endOffsetField.setToolTipText("Exclude samples after this offset (seconds from test start)");
+        panel.add(endOffsetField);
 
-        c.gridwidth = 1; c.gridy = 3; c.gridx = 0; c.gridwidth = 3;
-        c.fill = GridBagConstraints.HORIZONTAL; c.weightx = 1.0;
+        panel.add(Box.createHorizontalStrut(6));
+        panel.add(compactLabel("Percentile (%):"));
+        percentileField.setFont(FONT_REGULAR);
+        percentileField.setColumns(4);
+        panel.add(percentileField);
+
+        panel.add(Box.createHorizontalStrut(6));
+        panel.add(buildColumnDropdown());
+
+        panel.add(Box.createHorizontalStrut(6));
+        panel.add(compactLabel("Search:"));
         transactionSearchField.setFont(FONT_REGULAR);
+        transactionSearchField.setColumns(14);
         transactionSearchField.setToolTipText(
                 "Filter table by transaction name. Supports plain text and RegEx.");
-        panel.add(transactionSearchField, c);
+        panel.add(transactionSearchField);
 
-        c.gridx = 3; c.gridwidth = 1; c.weightx = 0; c.fill = GridBagConstraints.NONE;
         regexCheckBox.setFont(FONT_REGULAR);
         regexCheckBox.setToolTipText("Treat search text as a regular expression");
-        panel.add(regexCheckBox, c);
+        panel.add(regexCheckBox);
+
         return panel;
     }
 
     /**
-     * Builds the Test Time Info panel.
+     * Builds the Test Time Info panel — compact single row with inline labels.
+     * Fields are non-editable (gray background) to show read-only test metadata.
      *
      * @return configured {@link JPanel}
      */
     JPanel buildTimeInfoPanel() {
-        JPanel panel = titledPanel("Test Time Info");
-        GridBagConstraints c = defaultGbc();
-        c.gridy = 0;
-        addLabel(panel, "Start Date/Time", 0, c);
-        addLabel(panel, "End Date/Time",   1, c);
-        addLabel(panel, "Duration",        2, c);
-        c.gridy = 1; c.fill = GridBagConstraints.HORIZONTAL; c.weightx = TIME_FIELD_WEIGHT;
-        addReadOnlyField(panel, startTimeField, 0, c);
-        addReadOnlyField(panel, endTimeField,   1, c);
-        addReadOnlyField(panel, durationField,  2, c);
+        JPanel panel = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 1));
+        TitledBorder b = new TitledBorder("Test Time Info");
+        b.setTitleFont(FONT_HEADER);
+        panel.setBorder(b);
+        panel.add(compactLabel("Start:"));
+        panel.add(compactReadOnlyField(startTimeField, 14));
+        panel.add(Box.createHorizontalStrut(10));
+        panel.add(compactLabel("End:"));
+        panel.add(compactReadOnlyField(endTimeField, 14));
+        panel.add(Box.createHorizontalStrut(10));
+        panel.add(compactLabel("Duration:"));
+        panel.add(compactReadOnlyField(durationField, 10));
         return panel;
     }
 
     /**
-     * Builds and configures the table scroll pane, wiring the header-click listener.
+     * Builds and configures the table scroll pane, wiring the header-click listener
+     * and installing the sort-arrow header renderer.
+     * Arrow shows ↕ (unsorted), ↑ (ascending), or ↓ (descending) on each column.
      *
      * @return configured {@link JScrollPane} wrapping the results table
      */
@@ -166,6 +187,24 @@ final class ReportPanelBuilder {
                 headerClickHandler.onHeaderClick(resultsTable.columnAtPoint(e.getPoint()));
             }
         });
+
+        // Wrap native renderer to append sort-direction arrow — preserves platform L&F.
+        TableCellRenderer nativeRenderer = resultsTable.getTableHeader().getDefaultRenderer();
+        resultsTable.getTableHeader().setDefaultRenderer(
+                (table, value, isSelected, hasFocus, row, col) -> {
+                    Component c = nativeRenderer.getTableCellRendererComponent(
+                            table, value, isSelected, hasFocus, row, col);
+                    int modelCol = table.convertColumnIndexToModel(col);
+                    String arrow = modelCol == tablePopulator.getSortColumn()
+                            ? (tablePopulator.isSortAscending() ? " \u2191" : " \u2193")
+                            : " \u2195";
+                    if (c instanceof JLabel lbl) {
+                        lbl.setText(value + arrow);
+                        lbl.setHorizontalAlignment(JLabel.CENTER);
+                    }
+                    return c;
+                });
+
         JScrollPane scroll = new JScrollPane(resultsTable);
         scroll.setPreferredSize(new Dimension(TABLE_SCROLL_WIDTH, TABLE_SCROLL_HEIGHT));
         return scroll;
@@ -199,6 +238,20 @@ final class ReportPanelBuilder {
     // ─────────────────────────────────────────────────────────────
     // Static layout helpers
     // ─────────────────────────────────────────────────────────────
+
+    private static JLabel compactLabel(String text) {
+        JLabel l = new JLabel(text);
+        l.setFont(FONT_REGULAR);
+        return l;
+    }
+
+    private static JTextField compactReadOnlyField(JTextField f, int columns) {
+        f.setFont(FONT_REGULAR);
+        f.setEditable(false);
+        f.setColumns(columns);
+        f.setBackground(new Color(240, 240, 240));
+        return f;
+    }
 
     private static JPanel titledPanel(String title) {
         JPanel p = new JPanel(new GridBagLayout());

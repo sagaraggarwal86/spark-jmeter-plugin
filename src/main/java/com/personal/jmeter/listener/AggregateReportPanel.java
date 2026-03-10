@@ -52,9 +52,9 @@ public class AggregateReportPanel extends JPanel {
 
     // ── Column definitions ───────────────────────────────────────
     static final String[] ALL_COLUMNS = {
-            "Transaction Name", "Transaction Count", "Transaction Passed",
-            "Transaction Failed", "Avg Response Time(ms)", "Min Response Time(ms)",
-            "Max Response Time(ms)", "90th Percentile(ms)", "Std. Dev.", "Error Rate", "TPS"
+            "Transaction Name", "Count", "Passed",
+            "Failed", "Avg (ms)", "Min (ms)",
+            "Max (ms)", "P90 (ms)", "Std. Dev.", "Error Rate", "TPS"
     };
     static final int    PERCENTILE_COL_INDEX = 7;
     static final String TOTAL_LABEL          = "TOTAL";
@@ -289,7 +289,7 @@ public class AggregateReportPanel extends JPanel {
     private void updatePercentileColumnHeader() {
         String p = percentileField.getText().trim();
         if (p.isEmpty()) p = "90";
-        allTableColumns[PERCENTILE_COL_INDEX].setHeaderValue(p + "th Percentile(ms)");
+        allTableColumns[PERCENTILE_COL_INDEX].setHeaderValue("P" + p + " (ms)");
         resultsTable.getTableHeader().repaint();
     }
 

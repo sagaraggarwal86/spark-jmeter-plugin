@@ -13,7 +13,10 @@ import org.slf4j.LoggerFactory;
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.io.File;
+import java.net.URI;
 import java.util.Enumeration;
 import java.util.Set;
 
@@ -55,6 +58,24 @@ public class ListenerGUI extends AbstractVisualizer {
         // AbstractVisualizer's standard title / file-browse panel
         Container titlePanel = makeTitlePanel();
         add(titlePanel, BorderLayout.NORTH);
+
+        // Inject "Help on this plugin" link into the title panel
+        JLabel helpLink = new JLabel(
+                "<html><a href=''>&#x2139; Help on this plugin</a></html>");
+        helpLink.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        helpLink.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 11));
+        helpLink.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                try {
+                    Desktop.getDesktop().browse(new URI(
+                            "https://github.com/sagaraggarwal86/Configurable_Aggregate_Report"));
+                } catch (Exception ex) {
+                    log.warn("helpLink: could not open browser. reason={}", ex.getMessage());
+                }
+            }
+        });
+        titlePanel.add(helpLink);
 
         // Build the exclusion set — all reportPanel fields that are editable
         // must be excluded from hookFilenameField so only the JTL path field is hooked.

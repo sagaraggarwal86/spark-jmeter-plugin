@@ -126,7 +126,8 @@ final class TablePopulator {
     // ─────────────────────────────────────────────────────────────
 
     /**
-     * Toggles sort direction or sets a new sort column and repopulates.
+     * Cycles sort state and repopulates. Per-column cycle: ↕ unsorted → ↑ ascending
+     * → ↓ descending → ↕ unsorted. Repaints the header after each state change.
      *
      * @param viewCol  the clicked view-column index
      * @param repopFn  callback to repopulate the table after updating sort state
@@ -135,12 +136,35 @@ final class TablePopulator {
         if (viewCol < 0) return;
         int modelCol = resultsTable.convertColumnIndexToModel(viewCol);
         if (modelCol == sortColumn) {
-            sortAscending = !sortAscending;
+            if (sortAscending) {
+                sortAscending = false;   // ↑ → ↓
+            } else {
+                sortColumn = -1;         // ↓ → unsorted ↕
+            }
         } else {
-            sortColumn = modelCol;
-            sortAscending = true;
+            sortColumn    = modelCol;
+            sortAscending = true;        // new column → ↑
         }
         repopFn.run();
+        resultsTable.getTableHeader().repaint();
+    }
+
+    /**
+     * Returns the model column index currently used for sorting, or {@code -1} if unsorted.
+     *
+     * @return sort column index
+     */
+    int getSortColumn() {
+        return sortColumn;
+    }
+
+    /**
+     * Returns {@code true} if the current sort direction is ascending.
+     *
+     * @return {@code true} for ascending, {@code false} for descending
+     */
+    boolean isSortAscending() {
+        return sortAscending;
     }
 
     // ─────────────────────────────────────────────────────────────

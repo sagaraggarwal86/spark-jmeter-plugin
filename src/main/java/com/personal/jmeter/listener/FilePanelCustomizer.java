@@ -63,8 +63,9 @@ final class FilePanelCustomizer {
                                      java.util.function.Consumer<String> setFileFn,
                                      Component ownerComp) {
         for (Component comp : container.getComponents()) {
-            if (comp instanceof JButton btn && btn.isVisible()
-                    && btn.getText() != null && !btn.getText().contains("Configure")) {
+            if (comp instanceof JButton btn
+                    && btn.getText() != null
+                    && btn.getText().contains("Browse")) {
                 for (java.awt.event.ActionListener al : btn.getActionListeners()) {
                     btn.removeActionListener(al);
                 }
@@ -78,6 +79,7 @@ final class FilePanelCustomizer {
                         setFileFn.accept(fc.getSelectedFile().getAbsolutePath());
                     }
                 });
+                btn.setVisible(true);
             }
             if (comp instanceof Container c) {
                 overrideBrowseButton(c, currentFile, setFileFn, ownerComp);
@@ -95,8 +97,8 @@ final class FilePanelCustomizer {
      * @param onChangeFn       action to run on filename change
      */
     static void hookFilenameField(Container container,
-                                   java.util.Set<JTextField> excludeFields,
-                                   Runnable onChangeFn) {
+                                  java.util.Set<JTextField> excludeFields,
+                                  Runnable onChangeFn) {
         for (Component comp : container.getComponents()) {
             if (comp instanceof JTextField tf
                     && tf.isEditable()
