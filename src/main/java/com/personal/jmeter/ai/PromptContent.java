@@ -3,7 +3,7 @@ package com.personal.jmeter.ai;
 import java.util.Objects;
 
 /**
- * Immutable two-part AI request payload required by the Groq/OpenAI chat-completions API.
+ * Immutable two-part AI request payload required by the OpenAI-compatible chat-completions API.
  *
  * <p>The system message contains the static analytical framework and output-structure
  * instructions; the user message contains the runtime test-data with all scenario

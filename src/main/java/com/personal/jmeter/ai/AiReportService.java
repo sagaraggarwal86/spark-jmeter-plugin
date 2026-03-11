@@ -9,7 +9,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.URI;
-import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
@@ -22,7 +21,7 @@ import java.util.Objects;
  * {@link AiProviderConfig}, enabling any provider registered in
  * {@code ai-reporter.properties} to be used without code changes.</p>
  *
- * <p>The {@link HttpClient} is a shared singleton — it manages a connection pool
+ * <p>The {@link SharedHttpClient} provides a shared singleton — it manages a connection pool
  * internally and must not be recreated per request.  The per-request
  * {@link HttpRequest} timeout is taken from {@link AiProviderConfig#timeoutSeconds};
  * the client-level {@code connectTimeout} is a fixed generous value.</p>
@@ -176,8 +175,8 @@ public class AiReportService {
         if (aiText == null || aiText.isBlank()) {
             throw new AiServiceException(
                     config.displayName + " API returned an empty response. "
-                    + "Check model ID, API key, and response parsing format. "
-                    + "No file was written.");
+                            + "Check model ID, API key, and response parsing format. "
+                            + "No file was written.");
         }
 
         return aiText;

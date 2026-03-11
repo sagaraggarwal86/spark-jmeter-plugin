@@ -12,12 +12,15 @@
 | 📂 **JTL File Processing**     | Browse and load JTL files — the metrics table populates instantly                                 |
 | ⏱️ **Start / End Offset**      | Exclude ramp-up and ramp-down periods by entering a time window in seconds                        |
 | 📈 **Configurable Percentile** | Set any percentile value: 50th, 90th, 95th, 99th, or custom                                       |
+| 🔍 **Transaction Search**      | Filter the table by transaction name using plain text or regular expressions                       |
 | 👁️ **Column Visibility**      | Show or hide any column via a dropdown multi-select control                                       |
 | ✅ **Pass / Fail Counts**       | Dedicated columns for transactions passed and transactions failed                                 |
 | 🕐 **Test Time Info**          | Start Date/Time, End Date/Time, and total Duration shown automatically                            |
 | 🔀 **Sortable Columns**        | Click any column header to sort ascending; click again for descending                             |
+| 🚨 **SLA Thresholds**          | Set Error % and Response Time thresholds — breaching cells are highlighted in red                  |
 | 💾 **CSV Export**              | Save all visible columns to a CSV file with one click                                             |
-| 🤖 **AI Performance Report**   | Generate a styled HTML report with deep-dive bottleneck, error, and web diagnostics analysis, powered by Groq AI |
+| 🤖 **AI Performance Report**   | Generate a styled HTML report with deep-dive analysis, powered by any OpenAI-compatible AI provider |
+| 📊 **Chart Interval**          | Configure the time-bucket interval for performance charts (default: 30 seconds, or set custom)     |
 | 🚫 **No Live Metrics**         | Designed for post-test JTL analysis — no runtime overhead                                         |
 
 ---
@@ -30,12 +33,11 @@
    the [GitHub Releases](https://github.com/sagaraggarwal86/Configurable_Aggregate_Report/releases) page or click here
    to download
    instantly [latest JAR](https://github.com/sagaraggarwal86/Configurable_Aggregate_Report/releases/download/v2.7.0/Configurable_Aggregate_Report-2.7.0.jar)
-
-3. Copy it to your JMeter `lib/ext/` directory:
+2. Copy it to your JMeter `lib/ext/` directory:
    ```
    <JMETER_HOME>/lib/ext/Configurable_Aggregate_Report-2.7.0.jar
    ```
-4. Restart JMeter
+3. Restart JMeter
 
 ### Build from Source
 
@@ -44,7 +46,7 @@
 ```bash
 git clone https://github.com/sagaraggarwal86/Configurable_Aggregate_Report.git
 cd Configurable_Aggregate_Report
-mvn clean package
+mvn clean verify
 cp target/Configurable_Aggregate_Report-2.7.0.jar $JMETER_HOME/lib/ext/
 ```
 
@@ -73,19 +75,20 @@ cp target/Configurable_Aggregate_Report-2.7.0.jar $JMETER_HOME/lib/ext/
 ├─ Filter Settings ──────────────────────────────────────────────────────┤
 │   Start Offset (s)  │  End Offset (s)  │  Percentile (%)               │
 │   [Select Columns ▼]   Search: [______________]  [✓ RegEx]             │
-├─ Test Time Info ───────────────────────────────────────────────────────┤
-│   Start Date/Time          End Date/Time           Duration             │
-│   [03/04/26 15:52:04]     [03/04/26 15:52:15]     [0h 0m 11s]          │
+├─ Test Time Info ──────────────────────┬─ SLA Thresholds ───────────────┤
+│   Start    End    Duration            │  Error %  Response Time  (ms)   │
 ├─ Results Table (sortable) ─────────────────────────────────────────────┤
 │   Transaction Name  │  Count  │  Passed  │  Failed  │  Avg(ms)  │ ...  │
 │   HTTP Request      │   19    │    0     │    19    │   448     │ ...  │
 │   TOTAL             │   19    │    0     │    19    │   448     │ ...  │
 ├────────────────────────────────────────────────────────────────────────┤
-│            [Save Table Data]      [Generate AI Report]                 │
+│   [Save Table Data]  [▼ Provider]  [Generate AI Report]               │
+│                                    Chart Interval (s, 0=auto): [0]     │
 └────────────────────────────────────────────────────────────────────────┘
 ```
 
-<img src="img.jpg" alt="Alt text" width="500">
+<img src="img.jpg" alt="Plugin screenshot" width="500">
+
 ---
 
 ## 📋 Table Columns
@@ -93,20 +96,33 @@ cp target/Configurable_Aggregate_Report-2.7.0.jar $JMETER_HOME/lib/ext/
 | Column                     | Description                                    |
 |----------------------------|------------------------------------------------|
 | **Transaction Name**       | Sampler label — always visible                 |
-| **Transaction Count**      | Total number of samples                        |
-| **Transaction Passed**     | Count of successful samples                    |
-| **Transaction Failed**     | Count of failed samples                        |
-| **Avg Response Time (ms)** | Mean response time                             |
-| **Min Response Time (ms)** | Fastest recorded response                      |
-| **Max Response Time (ms)** | Slowest recorded response                      |
-| **Xth Percentile (ms)**    | Configurable percentile column (default: 90th) |
+| **Count**                  | Total number of samples                        |
+| **Passed**                 | Count of successful samples                    |
+| **Failed**                 | Count of failed samples                        |
+| **Avg (ms)**               | Mean response time                             |
+| **Min (ms)**               | Fastest recorded response                      |
+| **Max (ms)**               | Slowest recorded response                      |
+| **Pnn (ms)**               | Configurable percentile column (default: P90)  |
 | **Std. Dev.**              | Standard deviation of response times           |
 | **Error Rate**             | Percentage of failed samples                   |
 | **TPS**                    | Transactions per second (throughput)           |
 
-All columns are **sortable** — click the header to sort ascending, click again for descending.
+All columns are **sortable** — click the header to sort ascending, click again for descending, click a third time to reset.
 
 Use **Select Columns ▼** to show or hide any column except Transaction Name.
+
+---
+
+## 🔍 Transaction Search
+
+Filter the results table by typing in the **Search** field. Only matching transactions are shown.
+
+| Mode         | Behaviour                                     | Example                            |
+|--------------|-----------------------------------------------|------------------------------------|
+| **Plain text** (default) | Case-insensitive substring match  | `login` matches `Login Flow`       |
+| **RegEx** (checkbox on)  | Java regex via `Pattern.find()`   | `Login\|Checkout` matches either   |
+
+> Invalid regex patterns are silently ignored — the table shows no matches rather than throwing an error.
 
 ---
 
@@ -131,7 +147,7 @@ End Offset   = 25  →  skip samples after 25s from test start
 | *(empty)*    | `25`       | Include up to 25 seconds; skip everything after |
 | `5`          | `25`       | Include only the 5s – 25s window                |
 
-> **Tip:** Changing offset values re-parses the JTL file instantly — no need to re-browse.
+> **Tip:** Changing offset values re-parses the JTL file automatically after a brief pause (300 ms debounce) — no need to re-browse.
 
 ---
 
@@ -150,12 +166,39 @@ Displayed automatically below the filter settings after loading a JTL file.
 
 ---
 
+## 🚨 SLA Thresholds
+
+Set live SLA thresholds in the **SLA Thresholds** panel. Breaching cells are highlighted in **red bold** — no re-parse required.
+
+| Field                | What it does                                                        |
+|----------------------|---------------------------------------------------------------------|
+| **Error %**          | Highlight Error Rate cells exceeding this value (1–99)              |
+| **Response Time**    | Choose **Avg (ms)** or **Pnn (ms)** from the dropdown, then enter a threshold in milliseconds |
+
+- The TOTAL row is never highlighted regardless of values.
+- Leave a field blank to disable that threshold.
+
+---
+
 ## 💾 Saving Table Data
 
 1. Click **Save Table Data** at the bottom of the panel
 2. Choose a save location — the default filename is `aggregate_report.csv`
-3. Only **currently visible columns** are exported
-4. Toggle **Save Table Header** to include or exclude the column header row
+3. Only **currently visible columns** are exported (header row is always included)
+
+---
+
+## 📊 Chart Interval
+
+The **Chart Interval (s, 0=auto)** field at the bottom of the panel controls the time-bucket width used for performance charts in the AI report.
+
+| Value | Behaviour                                                   |
+|-------|-------------------------------------------------------------|
+| `0`   | Auto — uses the default 30-second bucket interval           |
+| `10`  | Each chart data point represents a 10-second window         |
+| `60`  | Each chart data point represents a 1-minute window          |
+
+Valid range: 0–3600 seconds.
 
 ---
 
@@ -169,8 +212,10 @@ built-in Aggregate Report.
 
 ## 🤖 AI Performance Report
 
-Click **Generate AI Report** to send the loaded JTL data to Groq AI (Llama 3.3-70B). The plugin produces a
-self-contained, styled HTML file saved next to your JTL file.
+Click **Generate AI Report** to analyse the loaded JTL data with any supported AI provider.
+A save dialog lets you choose where to save the self-contained HTML report.
+
+**Supported providers:** Groq (free), Gemini (free), Mistral (free), DeepSeek (free), OpenAI (paid), Claude (paid) — or any OpenAI-compatible endpoint.
 
 ### What the Report Contains
 
@@ -184,19 +229,25 @@ self-contained, styled HTML file saved next to your JTL file.
 | **Recommendations**           | Prioritised action table (3–7 items) derived directly from the analysis findings                                   |
 | **Verdict**                   | Single PASS or FAIL sentence anchored to the decisive aggregate metric and threshold value                         |
 | **Transaction Metrics Table** | Full per-transaction breakdown matching the plugin table                                                            |
-| **Performance Charts**        | Four time-series charts: Average Response Time, Error Rate, Throughput, and Bandwidth (30-second intervals)        |
+| **Performance Charts**        | Four time-series charts: Average Response Time, Error Rate, Throughput, and Bandwidth                              |
 
 ### API Key Setup
 
-Set the Groq API key in your environment before starting JMeter:
+Create `ai-reporter.properties` in `$JMETER_HOME/bin/` and set at least one provider's API key:
 
-```bash
-# macOS / Linux
-export GROQ_API_KEY=your-key-here
+```properties
+# Groq (free — recommended for getting started)
+ai.reporter.groq.api.key=gsk_your-key-here
 
-# Windows (PowerShell)
-$env:GROQ_API_KEY = "your-key-here"
+# Or any other provider:
+# ai.reporter.openai.api.key=sk-your-key-here
+# ai.reporter.gemini.api.key=AIza-your-key-here
+# ai.reporter.claude.api.key=sk-ant-your-key-here
+# ai.reporter.mistral.api.key=your-key-here
+# ai.reporter.deepseek.api.key=your-key-here
 ```
+
+Select the provider from the dropdown next to the **Generate AI Report** button.
 
 ---
 
@@ -207,18 +258,21 @@ $env:GROQ_API_KEY = "your-key-here"
 | Java          | 17+                        |
 | Apache JMeter | 5.6.3+                     |
 | Maven         | 3.6+ *(build only)*        |
-| Groq API key  | *(AI report feature only)* |
+| AI API key    | *(AI report feature only)* |
 
 ---
 
 ## 🧪 Running Tests
 
 ```bash
-# Unit tests
+# Build and run all tests
+mvn clean verify
+
+# Unit tests only
 mvn test
 
 # Standalone UI preview — no JMeter installation needed
-mvn exec:java -Dexec.mainClass="com.personal.jmeter.UIPreview"
+mvn test-compile exec:java
 ```
 
 ---

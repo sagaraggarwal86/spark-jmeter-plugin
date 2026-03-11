@@ -2,13 +2,16 @@ name: Build and Test
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ main, 'Release/**', 'Dev/**' ]
   pull_request:
     branches: [ main ]
 
 jobs:
   build:
-    runs-on: windows-latest
+    strategy:
+      matrix:
+        os: [ windows-latest, ubuntu-latest ]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -16,9 +19,9 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
           cache: maven
-      - run: mvn clean package -DskipTests
-      - run: mvn test
+      - run: mvn clean verify
       - uses: actions/upload-artifact@v4
+        if: matrix.os == 'windows-latest'
         with:
           name: Configurable_Aggregate_Report
           path: target/Configurable_Aggregate_Report-*.jar

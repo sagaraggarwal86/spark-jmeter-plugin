@@ -164,7 +164,7 @@ final class AiReportLauncher {
             return;
         }
 
-        AiReportCoordinator.ReportContext context = buildReportContext();
+        AiReportCoordinator.ReportContext context = buildReportContext(providerConfig.displayName);
         JDialog progressDialog = buildProgressDialog();
         JLabel progressLabel = extractProgressLabel(progressDialog);
         progressDialog.setVisible(true);
@@ -182,7 +182,7 @@ final class AiReportLauncher {
     // Private helpers
     // ─────────────────────────────────────────────────────────────
 
-    private AiReportCoordinator.ReportContext buildReportContext() {
+    private AiReportCoordinator.ReportContext buildReportContext(String providerDisplayName) {
         final ScenarioMetadata metadata = dataProvider.getMetadata();
         final int percentile = dataProvider.getPercentile();
         final HtmlReportRenderer.RenderConfig config = new HtmlReportRenderer.RenderConfig(
@@ -205,6 +205,7 @@ final class AiReportLauncher {
                 List.copyOf(dataProvider.getCachedBuckets()),
                 config,
                 dataProvider.getLastLoadedFilePath(),
+                providerDisplayName,
                 dataProvider.getDuration(),
                 slaErrorPct,
                 slaRtMs,

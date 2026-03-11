@@ -21,7 +21,7 @@ import java.util.concurrent.ExecutorService;
  * <p>Responsibilities:
  * <ol>
  *   <li>Build the analysis prompt via {@link PromptBuilder}.</li>
- *   <li>Call the Groq API via {@link AiReportService}.</li>
+ *   <li>Call the AI provider API via {@link AiReportService}.</li>
  *   <li>Render the HTML report via {@link HtmlReportRenderer}.</li>
  *   <li>Update the Swing progress dialog and re-enable the trigger button on the EDT.</li>
  * </ol>
@@ -102,7 +102,7 @@ public class AiReportCoordinator {
             setProgress(progressLabel, "Building analysis prompt...");
             PromptContent prompt = buildPrompt(ctx);
 
-            setProgress(progressLabel, "Calling Groq AI (this may take ~30 seconds)...");
+            setProgress(progressLabel, "Calling " + ctx.providerDisplayName + " (this may take ~30 seconds)...");
             String markdown = aiService.generateReport(prompt);
 
             setProgress(progressLabel, "Rendering HTML report...");
@@ -177,6 +177,8 @@ public class AiReportCoordinator {
         public final HtmlReportRenderer.RenderConfig config;
         /** Absolute path to the source JTL file. */
         public final String jtlPath;
+        /** Human-readable name of the selected AI provider (e.g. "Groq (Free)"). */
+        public final String providerDisplayName;
         /** Formatted test duration string. */
         public final String duration;
         /** User-configured error % SLA; "Not configured" if disabled. */
@@ -218,6 +220,7 @@ public class AiReportCoordinator {
          * @param timeBuckets          ordered list of time buckets
          * @param config               render metadata for the HTML template
          * @param jtlPath              absolute path to the source JTL file
+         * @param providerDisplayName  human-readable AI provider name; null → "AI Provider"
          * @param duration             formatted test duration string
          * @param slaErrorThresholdPct user error % SLA; null → "Not configured"
          * @param slaRtThresholdMs     user RT SLA in ms; null → "Not configured"
@@ -232,6 +235,7 @@ public class AiReportCoordinator {
                              List<JTLParser.TimeBucket> timeBuckets,
                              HtmlReportRenderer.RenderConfig config,
                              String jtlPath,
+                             String providerDisplayName,
                              String duration,
                              String slaErrorThresholdPct,
                              String slaRtThresholdMs,
@@ -245,6 +249,7 @@ public class AiReportCoordinator {
             this.timeBuckets  = Objects.requireNonNull(timeBuckets,  "timeBuckets must not be null");
             this.config       = Objects.requireNonNull(config,       "config must not be null");
             this.jtlPath      = Objects.requireNonNull(jtlPath,      "jtlPath must not be null");
+            this.providerDisplayName = providerDisplayName != null ? providerDisplayName : "AI Provider";
             this.duration     = duration != null ? duration : "";
             this.slaErrorThresholdPct = slaErrorThresholdPct != null ? slaErrorThresholdPct : NOT_CONFIGURED;
             this.slaRtThresholdMs     = slaRtThresholdMs     != null ? slaRtThresholdMs     : NOT_CONFIGURED;

@@ -3,7 +3,7 @@ package com.personal.jmeter.ai;
 import java.io.IOException;
 
 /**
- * Domain exception thrown when the Groq AI API returns an error, an empty response,
+ * Domain exception thrown when the AI API returns an error, an empty response,
  * or when all retry attempts are exhausted.
  *
  * <p>Extends {@link IOException} so callers that declare {@code throws IOException}
