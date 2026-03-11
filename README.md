@@ -38,6 +38,12 @@
    <JMETER_HOME>/lib/ext/Configurable_Aggregate_Report-2.7.0.jar
    ```
 3. Restart JMeter
+4. *(Optional — CLI mode)* Copy the wrapper scripts to `<JMETER_HOME>/bin/`:
+   ```
+   <JMETER_HOME>/bin/car-cli-report.bat     (Windows)
+   <JMETER_HOME>/bin/car-cli-report.sh      (macOS / Linux)
+   ```
+   The scripts are in the `src/main/scripts/` directory of the source repository.
 
 ### Build from Source
 
@@ -248,6 +254,94 @@ ai.reporter.groq.api.key=gsk_your-key-here
 ```
 
 Select the provider from the dropdown next to the **Generate AI Report** button.
+
+---
+
+## 💻 CLI Mode (Headless)
+
+Generate an AI performance report from the command line — no JMeter GUI required.
+
+### Setup
+
+Copy the wrapper scripts to your JMeter `bin/` directory:
+
+```
+<JMETER_HOME>/bin/car-cli-report.bat    ← Windows
+<JMETER_HOME>/bin/car-cli-report.sh     ← macOS / Linux
+<JMETER_HOME>/lib/ext/Configurable_Aggregate_Report-2.7.0.jar  ← already installed
+```
+
+The scripts auto-detect the JMeter installation from their own location — no environment variables needed.
+
+### Quick Start
+
+**Windows:**
+```cmd
+car-cli-report.bat -i results.jtl --ai --provider groq --config ai-reporter.properties
+```
+
+**macOS / Linux:**
+```bash
+./car-cli-report.sh -i results.jtl --ai --provider groq --config ai-reporter.properties
+```
+
+### All Options
+
+```
+Required:
+  -i, --input FILE            JTL file path
+  --ai                        enable AI analysis
+  --provider STRING           provider name, case-insensitive
+                              (groq, openai, claude, gemini, mistral, deepseek)
+  --config FILE               path to ai-reporter.properties
+
+Output:
+  -o, --output FILE           HTML report output path (default: ./report.html)
+
+Filter Options:
+  --start-offset INT          seconds to trim from start
+  --end-offset INT            seconds to trim from end
+  --percentile INT            percentile 1-99 (default: 90)
+  --chart-interval INT        seconds per chart bucket, 0=auto (default: 0)
+  --search STRING             label filter text
+  --regex                     treat --search as regex
+
+Report Metadata:
+  --scenario-name STRING      scenario name for report header
+  --description STRING        scenario description
+  --virtual-users INT         virtual user count for report header
+
+SLA Thresholds:
+  --error-sla INT             error rate threshold % (1-99)
+  --rt-sla LONG               response time threshold in ms
+  --rt-metric avg|percentile  which RT column for --rt-sla (default: percentile)
+
+Help:
+  -h, --help                  print usage and exit
+```
+
+### Exit Codes
+
+| Code | Meaning             |
+|------|---------------------|
+| `0`  | Success             |
+| `1`  | Invalid arguments   |
+| `2`  | JTL parse error     |
+| `3`  | AI provider error   |
+| `4`  | Report write error  |
+
+### Example — CI/CD Pipeline
+
+```bash
+./car-cli-report.sh \
+  -i results.jtl -o report.html \
+  --ai --provider openai --config /etc/jmeter/ai-reporter.properties \
+  --start-offset 10 --end-offset 300 --percentile 95 \
+  --scenario-name "Nightly Load Test" --virtual-users 200 \
+  --error-sla 5 --rt-sla 2000 --rt-metric percentile
+```
+
+On success, the absolute path of the generated report is printed to stdout.
 
 ---
 

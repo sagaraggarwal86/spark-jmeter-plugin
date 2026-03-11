@@ -20,7 +20,10 @@ jobs:
       - run: mvn clean verify
       - uses: softprops/action-gh-release@v2
         with:
-          files: target/Configurable_Aggregate_Report-*.jar
+          files: |
+            target/Configurable_Aggregate_Report-*.jar
+            src/main/scripts/car-cli-report.bat
+            src/main/scripts/car-cli-report.sh
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

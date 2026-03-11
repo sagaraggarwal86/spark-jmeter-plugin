@@ -126,6 +126,23 @@ public final class AiProviderRegistry {
     }
 
     /**
+     * Loads configured providers from an explicit properties file path.
+     * Used by the CLI module when {@code --config} is specified.
+     *
+     * @param configFile path to the {@code ai-reporter.properties} file; must not be null
+     * @return ordered, possibly empty, list of configured providers
+     * @throws IOException if the file cannot be read
+     */
+    public static List<AiProviderConfig> loadConfiguredProviders(java.nio.file.Path configFile)
+            throws IOException {
+        Properties props = new Properties();
+        try (InputStream in = java.nio.file.Files.newInputStream(configFile)) {
+            props.load(in);
+        }
+        return buildProviderList(props);
+    }
+
+    /**
      * Validates the given provider configuration, then performs a live
      * 1-token ping to confirm the API key is accepted.
      *

@@ -89,10 +89,7 @@ public class HtmlReportRenderer {
 
         log.info("render: generating HTML report. jtlFile={}", jtlFilePath);
 
-        String htmlBody     = HtmlPageBuilder.markdownToHtml(markdownContent);
-        String metricsTable = buildTransactionMetricsSection(tableRows, config.percentile);
-        String chartsBlock  = HtmlPageBuilder.buildChartsSection(timeBuckets);
-        String page         = HtmlPageBuilder.buildPage(htmlBody, metricsTable, chartsBlock, config);
+        String page = buildFullPage(markdownContent, config, tableRows, timeBuckets);
 
         String suggestedName = deriveSuggestedFileName(config.scenarioName);
         java.io.File startDir = Path.of(jtlFilePath).toAbsolutePath().getParent() != null
@@ -107,6 +104,48 @@ public class HtmlReportRenderer {
         writeReport(page, Path.of(outPath));
         log.info("render: HTML report written. outPath={}", outPath);
         return outPath;
+    }
+
+    /**
+     * Renders the full AI report to an HTML file at the specified output path.
+     * No Swing dialog is shown — suitable for headless / CLI invocation.
+     *
+     * @param markdownContent AI-generated report in Markdown; must not be null
+     * @param outputPath      absolute path of the output HTML file; must not be null
+     * @param config          scenario metadata; must not be null
+     * @param tableRows       visible table rows from the plugin (TOTAL excluded)
+     * @param timeBuckets     time buckets from the JTL parser
+     * @return absolute path of the written HTML file (same as {@code outputPath})
+     * @throws IOException if the file cannot be written
+     */
+    public String renderToFile(String markdownContent,
+                               String outputPath,
+                               RenderConfig config,
+                               List<String[]> tableRows,
+                               List<JTLParser.TimeBucket> timeBuckets) throws IOException {
+        Objects.requireNonNull(markdownContent, "markdownContent must not be null");
+        Objects.requireNonNull(outputPath,      "outputPath must not be null");
+        Objects.requireNonNull(config,          "config must not be null");
+
+        log.info("renderToFile: generating HTML report. outputPath={}", outputPath);
+
+        String page = buildFullPage(markdownContent, config, tableRows, timeBuckets);
+        writeReport(page, Path.of(outputPath));
+        log.info("renderToFile: HTML report written. outputPath={}", outputPath);
+        return outputPath;
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // Page assembly (shared by render and renderToFile)
+    // ─────────────────────────────────────────────────────────────
+
+    private String buildFullPage(String markdownContent, RenderConfig config,
+                                 List<String[]> tableRows,
+                                 List<JTLParser.TimeBucket> timeBuckets) {
+        String htmlBody     = HtmlPageBuilder.markdownToHtml(markdownContent);
+        String metricsTable = buildTransactionMetricsSection(tableRows, config.percentile);
+        String chartsBlock  = HtmlPageBuilder.buildChartsSection(timeBuckets);
+        return HtmlPageBuilder.buildPage(htmlBody, metricsTable, chartsBlock, config);
     }
 
     // ─────────────────────────────────────────────────────────────

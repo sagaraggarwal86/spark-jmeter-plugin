@@ -24,4 +24,7 @@ jobs:
         if: matrix.os == 'windows-latest'
         with:
           name: Configurable_Aggregate_Report
-          path: target/Configurable_Aggregate_Report-*.jar
+          path: |
+            target/Configurable_Aggregate_Report-*.jar
+            src/main/scripts/car-cli-report.bat
+            src/main/scripts/car-cli-report.sh
