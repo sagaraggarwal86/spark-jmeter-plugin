@@ -1,11 +1,19 @@
 ---
 name: Bug report
-about: Create a report to help us improve
+about: Report a problem with the Configurable Aggregate Report plugin
 title: ''
-labels: ''
+labels: bug
 assignees: ''
 
 ---
+
+**Plugin version**
+e.g. 2.7.0
+
+**Environment**
+- OS: [e.g. Windows 11, macOS 14, Ubuntu 22.04]
+- Java version: [e.g. OpenJDK 17.0.10]
+- JMeter version: [e.g. 5.6.3]
 
 **Describe the bug**
 A clear and concise description of what the bug is.
@@ -13,29 +21,19 @@ A clear and concise description of what the bug is.
 **To Reproduce**
 Steps to reproduce the behavior:
 
-1. Go to '...'
-2. Click on '....'
-3. Scroll down to '....'
+1. Load JTL file '...'
+2. Set filter '...'
+3. Click '...'
 4. See error
 
 **Expected behavior**
 A clear and concise description of what you expected to happen.
 
-**Screenshots**
-If applicable, add screenshots to help explain your problem.
+**Screenshots / Log output**
+If applicable, add screenshots or paste the relevant log output from the JMeter console.
 
-**Desktop (please complete the following information):**
-
-- OS: [e.g. iOS]
-- Browser [e.g. chrome, safari]
-- Version [e.g. 22]
-
-**Smartphone (please complete the following information):**
-
-- Device: [e.g. iPhone6]
-- OS: [e.g. iOS8.1]
-- Browser [e.g. stock browser, safari]
-- Version [e.g. 22]
+**JTL file (if possible)**
+Attach or link a sample JTL file that triggers the issue (sanitize sensitive data first).
 
 **Additional context**
 Add any other context about the problem here.

@@ -1,9 +1,12 @@
 package com.personal.jmeter.listener;
 
+import com.personal.jmeter.ai.AiProviderConfig;
+import com.personal.jmeter.ai.AiProviderRegistry;
 import com.personal.jmeter.ai.AiReportCoordinator;
 import com.personal.jmeter.ai.AiReportService;
 import com.personal.jmeter.ai.HtmlReportRenderer;
 import com.personal.jmeter.ai.PromptBuilder;
+import com.personal.jmeter.ai.PromptLoader;
 import com.personal.jmeter.parser.JTLParser;
 import org.apache.jmeter.visualizers.SamplingStatCalculator;
 import org.slf4j.Logger;
@@ -14,14 +17,13 @@ import java.awt.*;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
-import java.util.function.Supplier;
 
 /**
  * Handles the AI report generation workflow initiated from the panel's button.
  *
  * <p>Extracted from {@link AggregateReportPanel} to satisfy the 300-line class
- * design limit (Standard 3 SRP). Responsibility: API key resolution, context
- * building, progress dialog management, and coordinator wiring.</p>
+ * design limit (Standard 3 SRP). Responsibility: provider validation, prompt
+ * loading, context building, progress dialog management, and coordinator wiring.</p>
  *
  * <p>All data needed to build the report is supplied via constructor injection
  * and a {@link DataProvider} callback, keeping this class independently testable.</p>
@@ -42,50 +44,66 @@ final class AiReportLauncher {
      * Decouples {@link AiReportLauncher} from the panel's private fields.
      */
     interface DataProvider {
-        /**
-         * Returns a snapshot of the cached aggregated results.
-         */
+        /** Returns a snapshot of the cached aggregated results. */
         Map<String, SamplingStatCalculator> getCachedResults();
 
-        /**
-         * Returns the visible (filtered + sorted) table rows, TOTAL excluded.
-         */
+        /** Returns the visible (filtered + sorted) table rows, TOTAL excluded. */
         List<String[]> getVisibleTableRows();
 
-        /**
-         * Returns the cached time buckets.
-         */
+        /** Returns the cached time buckets. */
         List<JTLParser.TimeBucket> getCachedBuckets();
 
-        /**
-         * Returns the absolute path of the last loaded JTL file.
-         */
+        /** Returns the absolute path of the last loaded JTL file. */
         String getLastLoadedFilePath();
 
-        /**
-         * Returns the current scenario metadata.
-         */
+        /** Returns the current scenario metadata. */
         ScenarioMetadata getMetadata();
 
-        /**
-         * Returns the currently configured percentile (1–99).
-         */
+        /** Returns the currently configured percentile (1–99). */
         int getPercentile();
 
-        /**
-         * Returns the formatted start time string.
-         */
+        /** Returns the formatted start time string. */
         String getStartTime();
 
-        /**
-         * Returns the formatted end time string.
-         */
+        /** Returns the formatted end time string. */
         String getEndTime();
 
-        /**
-         * Returns the formatted duration string.
-         */
+        /** Returns the formatted duration string. */
         String getDuration();
+
+        /** Returns the provider selected in the UI dropdown, or {@code null} if none. */
+        AiProviderConfig getSelectedProvider();
+
+        /**
+         * Returns the current SLA configuration snapshot from the UI fields.
+         * Never null — returns a disabled SlaConfig if no thresholds are set.
+         */
+        com.personal.jmeter.listener.SlaConfig getSlaConfig();
+
+        /**
+         * Returns the top-5 error type summary from the last parsed JTL.
+         * Empty list when no failures occurred.
+         */
+        List<Map<String, Object>> getErrorTypeSummary();
+
+        /**
+         * Returns the average Latency (TTFB) in ms from the last parsed JTL.
+         * Zero when {@link #isLatencyPresent()} is false.
+         */
+        long getAvgLatencyMs();
+
+        /**
+         * Returns the average Connect time in ms from the last parsed JTL.
+         * Zero when {@link #isLatencyPresent()} is false.
+         */
+        long getAvgConnectMs();
+
+        /**
+         * Returns {@code true} when the last parsed JTL contained at least one
+         * non-zero Latency value.  Drives the direct vs inferred mode in the
+         * Advanced Web Diagnostics section of the AI prompt.
+         */
+        boolean isLatencyPresent();
     }
 
     /**
@@ -102,8 +120,9 @@ final class AiReportLauncher {
     }
 
     /**
-     * Validates data availability, resolves the API key, builds the report context,
-     * shows the progress dialog, and submits the workflow to the background executor.
+     * Validates provider selection, validates and pings the API key, loads the prompt,
+     * builds the report context, shows the progress dialog, and submits the workflow
+     * to the background executor.
      *
      * @param triggerBtn the button that initiated the workflow (re-enabled on completion)
      */
@@ -115,29 +134,55 @@ final class AiReportLauncher {
             return;
         }
 
-        String apiKey = resolveApiKey();
-        if (apiKey == null) return;
+        AiProviderConfig providerConfig = dataProvider.getSelectedProvider();
+        if (providerConfig == null) {
+            JOptionPane.showMessageDialog(parent,
+                    "<html>No AI provider configured.<br><br>"
+                            + "Add your API key to:<br>"
+                            + "&nbsp;&nbsp;<tt>$JMETER_HOME/bin/ai-reporter.properties</tt><br><br>"
+                            + "Set at least one provider's <tt>api.key</tt> to enable this feature.</html>",
+                    "No Provider Configured", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
 
-        AiReportCoordinator.ReportContext context = buildReportContext();
+        String validationError = AiProviderRegistry.validateAndPing(providerConfig);
+        if (validationError != null) {
+            JOptionPane.showMessageDialog(parent,
+                    "<html><b>Cannot connect to " + providerConfig.displayName + ".</b><br><br>"
+                            + validationError.replace("\n", "<br>") + "</html>",
+                    "Provider Validation Failed", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        String systemPrompt = PromptLoader.load();
+        if (systemPrompt == null) {
+            JOptionPane.showMessageDialog(parent,
+                    "<html><b>Could not load AI prompt.</b><br><br>"
+                            + "The bundled prompt resource is missing or empty.<br>"
+                            + "Please verify the plugin JAR is intact and reinstall if needed.</html>",
+                    "Prompt Resource Missing", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        AiReportCoordinator.ReportContext context = buildReportContext(providerConfig.displayName);
         JDialog progressDialog = buildProgressDialog();
         JLabel progressLabel = extractProgressLabel(progressDialog);
         progressDialog.setVisible(true);
         triggerBtn.setEnabled(false);
 
         AiReportCoordinator coordinator = new AiReportCoordinator(
-                new PromptBuilder(),
-                new AiReportService(apiKey),
+                new PromptBuilder(systemPrompt),
+                new AiReportService(providerConfig),
                 new HtmlReportRenderer(),
                 executor);
         coordinator.start(context, progressDialog, progressLabel, triggerBtn);
     }
 
-    private String resolveApiKey() {
-        String key = AiReportService.readApiKeyFromEnv();
-        return (key != null) ? key : promptForApiKey();
-    }
+    // ─────────────────────────────────────────────────────────────
+    // Private helpers
+    // ─────────────────────────────────────────────────────────────
 
-    private AiReportCoordinator.ReportContext buildReportContext() {
+    private AiReportCoordinator.ReportContext buildReportContext(String providerDisplayName) {
         final ScenarioMetadata metadata = dataProvider.getMetadata();
         final int percentile = dataProvider.getPercentile();
         final HtmlReportRenderer.RenderConfig config = new HtmlReportRenderer.RenderConfig(
@@ -146,41 +191,52 @@ final class AiReportLauncher {
                 dataProvider.getStartTime(), dataProvider.getEndTime(),
                 dataProvider.getDuration(), percentile);
 
+        final com.personal.jmeter.listener.SlaConfig sla = dataProvider.getSlaConfig();
+        final String slaErrorPct = sla.isErrorPctEnabled()
+                ? sla.errorPctThreshold + "%" : "Not configured";
+        final String slaRtMs = sla.isRtEnabled()
+                ? sla.rtThresholdMs + "ms" : "Not configured";
+        final String slaRtMetric = sla.rtMetric == com.personal.jmeter.listener.SlaConfig.RtMetric.AVG
+                ? "Avg (ms)" : "P" + percentile + " (ms)";
+
         return new AiReportCoordinator.ReportContext(
                 Map.copyOf(dataProvider.getCachedResults()),
                 dataProvider.getVisibleTableRows(),
                 List.copyOf(dataProvider.getCachedBuckets()),
                 config,
                 dataProvider.getLastLoadedFilePath(),
-                dataProvider.getDuration());
+                providerDisplayName,
+                dataProvider.getDuration(),
+                slaErrorPct,
+                slaRtMs,
+                slaRtMetric,
+                List.copyOf(dataProvider.getErrorTypeSummary()),
+                dataProvider.getAvgLatencyMs(),
+                dataProvider.getAvgConnectMs(),
+                dataProvider.isLatencyPresent());
     }
 
-    private String promptForApiKey() {
-        JPasswordField keyField = new JPasswordField(40);
-        keyField.setFont(AggregateReportPanel.FONT_REGULAR);
-        JPanel panel = new JPanel(new BorderLayout(0, 6));
-        panel.add(new JLabel("<html><b>Environment variable '"
-                        + AiReportService.ENV_VAR_NAME + "' not found.</b><br><br>"
-                        + "Set it permanently:<br>"
-                        + "&nbsp;&nbsp;Windows: <tt>setx " + AiReportService.ENV_VAR_NAME
-                        + " \"your-key\"</tt><br>"
-                        + "&nbsp;&nbsp;Linux/Mac: add <tt>export " + AiReportService.ENV_VAR_NAME
-                        + "=your-key</tt> to ~/.bashrc<br><br>"
-                        + "Or enter your Groq API key below for this session only:</html>"),
-                BorderLayout.NORTH);
-        panel.add(keyField, BorderLayout.CENTER);
+    /**
+     * Returns the JMeter home directory, or {@code null} if not set.
+     * Uses the {@code JMETER_HOME} system property or environment variable.
+     * Package-accessible so {@link AggregateReportPanel} can use it for provider loading.
+     */
+    static java.io.File resolveJmeterHomeStatic() {
+        return resolveJmeterHome();
+    }
 
-        int result = JOptionPane.showConfirmDialog(parent, panel, "API Key Missing",
-                JOptionPane.OK_CANCEL_OPTION, JOptionPane.WARNING_MESSAGE);
-        if (result != JOptionPane.OK_OPTION) return null;
-
-        String key = new String(keyField.getPassword()).trim();
-        if (key.isEmpty()) {
-            JOptionPane.showMessageDialog(parent, "No API key entered.",
-                    "API Key Missing", JOptionPane.WARNING_MESSAGE);
-            return null;
+    /**
+     * Returns the JMeter home directory, or {@code null} if not set.
+     * Uses the {@code JMETER_HOME} system property or environment variable.
+     */
+    private static java.io.File resolveJmeterHome() {
+        String home = System.getProperty("jmeter.home");
+        if (home == null || home.isBlank()) {
+            home = System.getenv("JMETER_HOME");
         }
-        return key;
+        if (home == null || home.isBlank()) return null;
+        java.io.File f = new java.io.File(home);
+        return f.isDirectory() ? f : null;
     }
 
     private JDialog buildProgressDialog() {

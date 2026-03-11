@@ -93,7 +93,7 @@ class PromptBuilderTest {
         @DisplayName("returns non-null PromptContent")
         void returnsNonNull() {
             PromptContent content = new PromptBuilder()
-                    .build(minimalResults(), 90, PromptRequest.empty());
+                    .build(minimalResults(), 90, PromptRequest.empty(), java.util.Collections.emptyList(), PromptBuilder.LatencyContext.ABSENT);
             assertNotNull(content);
         }
 
@@ -101,7 +101,7 @@ class PromptBuilderTest {
         @DisplayName("system prompt is non-blank")
         void systemPromptNonBlank() {
             PromptContent content = new PromptBuilder()
-                    .build(minimalResults(), 90, PromptRequest.empty());
+                    .build(minimalResults(), 90, PromptRequest.empty(), java.util.Collections.emptyList(), PromptBuilder.LatencyContext.ABSENT);
             assertFalse(content.systemPrompt().isBlank(),
                     "systemPrompt must not be blank");
         }
@@ -110,7 +110,7 @@ class PromptBuilderTest {
         @DisplayName("user message is non-blank")
         void userMessageNonBlank() {
             PromptContent content = new PromptBuilder()
-                    .build(minimalResults(), 90, PromptRequest.empty());
+                    .build(minimalResults(), 90, PromptRequest.empty(), java.util.Collections.emptyList(), PromptBuilder.LatencyContext.ABSENT);
             assertFalse(content.userMessage().isBlank(),
                     "userMessage must not be blank");
         }
@@ -119,8 +119,8 @@ class PromptBuilderTest {
         @DisplayName("system prompt is identical across two calls — it is a constant")
         void systemPromptIsConstant() {
             PromptBuilder builder = new PromptBuilder();
-            String first  = builder.build(minimalResults(), 90, PromptRequest.empty()).systemPrompt();
-            String second = builder.build(minimalResults(), 50, PromptRequest.empty()).systemPrompt();
+            String first  = builder.build(minimalResults(), 90, PromptRequest.empty(), java.util.Collections.emptyList(), PromptBuilder.LatencyContext.ABSENT).systemPrompt();
+            String second = builder.build(minimalResults(), 50, PromptRequest.empty(), java.util.Collections.emptyList(), PromptBuilder.LatencyContext.ABSENT).systemPrompt();
             assertEquals(first, second,
                     "systemPrompt must be the static constant regardless of input");
         }
@@ -137,9 +137,9 @@ class PromptBuilderTest {
         @Test
         @DisplayName("user message embeds scenario name from PromptRequest")
         void embedsScenarioName() {
-            PromptRequest req = new PromptRequest("50", "Checkout Flow", "", "", "");
+            PromptRequest req = new PromptRequest("50", "Checkout Flow", "", "", "", "", "", 90, "Not configured", "Not configured", "Not configured");
             String msg = new PromptBuilder()
-                    .build(minimalResults(), 90, req)
+                    .build(minimalResults(), 90, req, java.util.Collections.emptyList(), PromptBuilder.LatencyContext.ABSENT)
                     .userMessage();
             assertTrue(msg.contains("Checkout Flow"),
                     "userMessage must contain the scenario name");
@@ -148,9 +148,9 @@ class PromptBuilderTest {
         @Test
         @DisplayName("user message embeds user count from PromptRequest")
         void embedsUserCount() {
-            PromptRequest req = new PromptRequest("200", "", "", "", "");
+            PromptRequest req = new PromptRequest("200", "", "", "", "", "", "", 90, "Not configured", "Not configured", "Not configured");
             String msg = new PromptBuilder()
-                    .build(minimalResults(), 90, req)
+                    .build(minimalResults(), 90, req, java.util.Collections.emptyList(), PromptBuilder.LatencyContext.ABSENT)
                     .userMessage();
             assertTrue(msg.contains("200"),
                     "userMessage must contain the user count");
@@ -160,7 +160,7 @@ class PromptBuilderTest {
         @DisplayName("user message contains globalStats JSON section")
         void containsGlobalStatsJson() {
             String msg = new PromptBuilder()
-                    .build(minimalResults(), 90, PromptRequest.empty())
+                    .build(minimalResults(), 90, PromptRequest.empty(), java.util.Collections.emptyList(), PromptBuilder.LatencyContext.ABSENT)
                     .userMessage();
             assertTrue(msg.contains("globalStats"),
                     "userMessage must include the globalStats JSON section");
@@ -170,7 +170,7 @@ class PromptBuilderTest {
         @DisplayName("blank PromptRequest fields render as 'Not provided'")
         void blankFieldsRenderAsNotProvided() {
             String msg = new PromptBuilder()
-                    .build(minimalResults(), 90, PromptRequest.empty())
+                    .build(minimalResults(), 90, PromptRequest.empty(), java.util.Collections.emptyList(), PromptBuilder.LatencyContext.ABSENT)
                     .userMessage();
             assertTrue(msg.contains("Not provided"),
                     "blank PromptRequest fields must appear as 'Not provided'");
@@ -189,7 +189,7 @@ class PromptBuilderTest {
         @DisplayName("empty results map (no TOTAL row) — returns valid PromptContent without throwing")
         void emptyResultsNoThrow() {
             assertDoesNotThrow(() ->
-                    new PromptBuilder().build(new LinkedHashMap<>(), 90, PromptRequest.empty()));
+                    new PromptBuilder().build(new LinkedHashMap<>(), 90, PromptRequest.empty(), java.util.Collections.emptyList(), PromptBuilder.LatencyContext.ABSENT));
         }
 
         @Test
@@ -207,7 +207,7 @@ class PromptBuilderTest {
             results.put("Search", search);
 
             String msg = new PromptBuilder()
-                    .build(results, 90, PromptRequest.empty())
+                    .build(results, 90, PromptRequest.empty(), java.util.Collections.emptyList(), PromptBuilder.LatencyContext.ABSENT)
                     .userMessage();
 
             assertTrue(msg.contains("errorEndpoints"),
@@ -218,14 +218,79 @@ class PromptBuilderTest {
         @DisplayName("build rejects null results with NullPointerException")
         void nullResultsThrows() {
             assertThrows(NullPointerException.class, () ->
-                    new PromptBuilder().build(null, 90, PromptRequest.empty()));
+                    new PromptBuilder().build(null, 90, PromptRequest.empty(), java.util.Collections.emptyList(), PromptBuilder.LatencyContext.ABSENT));
         }
 
         @Test
         @DisplayName("build rejects null PromptRequest with NullPointerException")
         void nullRequestThrows() {
             assertThrows(NullPointerException.class, () ->
-                    new PromptBuilder().build(minimalResults(), 90, null));
+                    new PromptBuilder().build(minimalResults(), 90, null, java.util.Collections.emptyList(), PromptBuilder.LatencyContext.ABSENT));
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // Latency context
+    // ─────────────────────────────────────────────────────────────
+
+    @Nested
+    @DisplayName("LatencyContext integration")
+    class LatencyContextTests {
+
+        @Test
+        @DisplayName("latencyPresent=true — user message contains avgLatencyMs field")
+        void latencyPresentIncludesAvgLatency() {
+            PromptBuilder.LatencyContext present = new PromptBuilder.LatencyContext(150L, 40L, true);
+            String msg = new PromptBuilder()
+                    .build(minimalResults(), 90, PromptRequest.empty(), java.util.Collections.emptyList(), present)
+                    .userMessage();
+            assertTrue(msg.contains("avgLatencyMs"),
+                    "userMessage must include avgLatencyMs when latencyPresent=true");
+        }
+
+        @Test
+        @DisplayName("latencyPresent=true — user message contains avgConnectMs field")
+        void latencyPresentIncludesAvgConnect() {
+            PromptBuilder.LatencyContext present = new PromptBuilder.LatencyContext(150L, 40L, true);
+            String msg = new PromptBuilder()
+                    .build(minimalResults(), 90, PromptRequest.empty(), java.util.Collections.emptyList(), present)
+                    .userMessage();
+            assertTrue(msg.contains("avgConnectMs"),
+                    "userMessage must include avgConnectMs when latencyPresent=true");
+        }
+
+        @Test
+        @DisplayName("latencyPresent=true — user message contains latencyPresent: true in JSON")
+        void latencyPresentFlagInJson() {
+            PromptBuilder.LatencyContext present = new PromptBuilder.LatencyContext(100L, 50L, true);
+            String msg = new PromptBuilder()
+                    .build(minimalResults(), 90, PromptRequest.empty(), java.util.Collections.emptyList(), present)
+                    .userMessage();
+            assertTrue(msg.contains("\"latencyPresent\": true"),
+                    "userMessage JSON must contain latencyPresent: true");
+        }
+
+        @Test
+        @DisplayName("latencyPresent=false (ABSENT) — user message contains latencyPresent: false in JSON")
+        void latencyAbsentFlagInJson() {
+            String msg = new PromptBuilder()
+                    .build(minimalResults(), 90, PromptRequest.empty(), java.util.Collections.emptyList(), PromptBuilder.LatencyContext.ABSENT)
+                    .userMessage();
+            assertTrue(msg.contains("\"latencyPresent\": false"),
+                    "userMessage JSON must contain latencyPresent: false when ABSENT");
+        }
+
+        @Test
+        @DisplayName("latencyPresent=true — specific numeric values appear in JSON")
+        void latencyNumericValuesInJson() {
+            PromptBuilder.LatencyContext ctx = new PromptBuilder.LatencyContext(225L, 75L, true);
+            String msg = new PromptBuilder()
+                    .build(minimalResults(), 90, PromptRequest.empty(), java.util.Collections.emptyList(), ctx)
+                    .userMessage();
+            assertTrue(msg.contains("\"avgLatencyMs\": 225"),
+                    "userMessage JSON must contain the exact avgLatencyMs value");
+            assertTrue(msg.contains("\"avgConnectMs\": 75"),
+                    "userMessage JSON must contain the exact avgConnectMs value");
         }
     }
 }

@@ -18,7 +18,6 @@ import java.awt.event.MouseEvent;
 import java.io.File;
 import java.net.URI;
 import java.util.Enumeration;
-import java.util.Set;
 
 /**
  * JMeter listener plugin — Configurable Aggregate Report.
@@ -63,7 +62,7 @@ public class ListenerGUI extends AbstractVisualizer {
         JLabel helpLink = new JLabel(
                 "<html><a href=''>&#x2139; Help on this plugin</a></html>");
         helpLink.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        helpLink.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 11));
+        helpLink.setFont(AggregateReportPanel.FONT_REGULAR);
         helpLink.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
@@ -77,20 +76,12 @@ public class ListenerGUI extends AbstractVisualizer {
         });
         titlePanel.add(helpLink);
 
-        // Build the exclusion set — all reportPanel fields that are editable
-        // must be excluded from hookFilenameField so only the JTL path field is hooked.
-        Set<JTextField> excluded = Set.of(
-                reportPanel.startOffsetField, reportPanel.endOffsetField,
-                reportPanel.percentileField,  reportPanel.startTimeField,
-                reportPanel.endTimeField,     reportPanel.durationField,
-                reportPanel.transactionSearchField);
-
-        // Customise the built-in FilePanel: hide irrelevant controls,
-        // override Browse to start in the current file's directory,
-        // and monitor the filename field for auto-load.
+        // Customise the built-in FilePanel: hide irrelevant controls and
+        // override Browse so it opens a file chooser starting in the current
+        // file's directory, then immediately loads the selected file.
         FilePanelCustomizer.hideFilePanelExtras(titlePanel);
-        FilePanelCustomizer.overrideBrowseButton(titlePanel, getFile(), this::setFile, this);
-        FilePanelCustomizer.hookFilenameField(titlePanel, excluded, this::checkAndLoadFile);
+        FilePanelCustomizer.overrideBrowseButton(
+                titlePanel, getFile(), this::setFile, this, this::checkAndLoadFile);
 
         add(reportPanel, BorderLayout.CENTER);
     }
@@ -99,12 +90,24 @@ public class ListenerGUI extends AbstractVisualizer {
     // AbstractVisualizer contract
     // ─────────────────────────────────────────────────────────────
 
+    /**
+     * Called immediately after the user selects a file via Browse.
+     * Shows an error dialog if the selected file no longer exists on disk.
+     * On success, delegates to {@link AggregateReportPanel#loadJtlFile(String)}.
+     */
     private void checkAndLoadFile() {
         String filename = getFile();
-        if (filename != null && !filename.trim().isEmpty()
-                && new File(filename).exists()) {
-            reportPanel.loadJtlFile(filename);
+        if (filename == null || filename.trim().isEmpty()) {
+            // Safety net only — Browse always sets a non-blank path before calling this.
+            return;
         }
+        if (!new File(filename.trim()).exists()) {
+            JOptionPane.showMessageDialog(this,
+                    "File not found:\n" + filename.trim(),
+                    "File Not Found", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+        reportPanel.loadJtlFile(filename.trim());
     }
 
     @Override
@@ -146,8 +149,6 @@ public class ListenerGUI extends AbstractVisualizer {
         } finally {
             reportPanel.setSuppressReload(false);
         }
-        // hookFilenameField triggers checkAndLoadFile() via invokeLater after configure() returns,
-        // at which point all filter fields are already set.
     }
 
     @Override

@@ -2,7 +2,6 @@ package com.personal.jmeter.listener;
 
 import javax.swing.*;
 import javax.swing.border.TitledBorder;
-import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableCellRenderer;
 import javax.swing.table.TableColumn;
 import java.awt.*;
@@ -23,11 +22,10 @@ import static com.personal.jmeter.listener.AggregateReportPanel.*;
  */
 final class ReportPanelBuilder {
 
-    private static final double FILTER_FIELD_WEIGHT = 0.25;
-    private static final double TIME_FIELD_WEIGHT   = 0.33;
-    private static final int TABLE_SCROLL_WIDTH     = 900;
-    private static final int TABLE_SCROLL_HEIGHT    = 250;
+    private static final int TABLE_SCROLL_WIDTH  = 900;
+    private static final int TABLE_SCROLL_HEIGHT = 250;
 
+    // ── Filter / time fields ──────────────────────────────────────
     private final JTextField startOffsetField;
     private final JTextField endOffsetField;
     private final JTextField percentileField;
@@ -36,11 +34,21 @@ final class ReportPanelBuilder {
     private final JTextField startTimeField;
     private final JTextField endTimeField;
     private final JTextField durationField;
-    private final JTable     resultsTable;
+
+    // ── SLA fields ───────────────────────────────────────────────
+    private final JTextField        errorPctSlaField;
+    private final JComboBox<String> rtMetricCombo;
+    private final JTextField        rtThresholdSlaField;
+
+    // ── Table ────────────────────────────────────────────────────
+    private final JTable              resultsTable;
     private final JCheckBoxMenuItem[] columnMenuItems;
     private final TableColumn[]       allTableColumns;
     private final TablePopulator      tablePopulator;
-    private final int headerClickColumn;
+
+    // ─────────────────────────────────────────────────────────────
+    // Header-click callback
+    // ─────────────────────────────────────────────────────────────
 
     /**
      * Callback interface forwarding header-click events back to the panel.
@@ -48,13 +56,16 @@ final class ReportPanelBuilder {
     interface HeaderClickHandler {
         /**
          * Called when the user clicks a table-header column.
-         *
          * @param viewCol the clicked view-column index
          */
         void onHeaderClick(int viewCol);
     }
 
     private final HeaderClickHandler headerClickHandler;
+
+    // ─────────────────────────────────────────────────────────────
+    // Constructor
+    // ─────────────────────────────────────────────────────────────
 
     /**
      * Constructs the builder with all component references owned by the panel.
@@ -67,6 +78,9 @@ final class ReportPanelBuilder {
                        JTextField startTimeField,
                        JTextField endTimeField,
                        JTextField durationField,
+                       JTextField        errorPctSlaField,
+                       JComboBox<String> rtMetricCombo,
+                       JTextField        rtThresholdSlaField,
                        JTable     resultsTable,
                        JCheckBoxMenuItem[] columnMenuItems,
                        TableColumn[]       allTableColumns,
@@ -80,23 +94,20 @@ final class ReportPanelBuilder {
         this.startTimeField         = startTimeField;
         this.endTimeField           = endTimeField;
         this.durationField          = durationField;
+        this.errorPctSlaField       = errorPctSlaField;
+        this.rtMetricCombo          = rtMetricCombo;
+        this.rtThresholdSlaField    = rtThresholdSlaField;
         this.resultsTable           = resultsTable;
         this.columnMenuItems        = columnMenuItems;
         this.allTableColumns        = allTableColumns;
         this.tablePopulator         = tablePopulator;
         this.headerClickHandler     = headerClickHandler;
-        this.headerClickColumn      = -1; // unused; header click resolved via mouse point
     }
 
     // ─────────────────────────────────────────────────────────────
     // Panel builders
     // ─────────────────────────────────────────────────────────────
 
-    /**
-     * Builds the Filter Settings panel.
-     *
-     * @return configured {@link JPanel}
-     */
     /**
      * Builds the Filter Settings panel — all controls in a single row.
      * Layout: Start | End | Percentile | Columns button | Search field | RegEx
@@ -106,7 +117,7 @@ final class ReportPanelBuilder {
     JPanel buildFilterPanel() {
         JPanel panel = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 4));
         TitledBorder b = new TitledBorder("Filter Settings");
-        b.setTitleFont(FONT_HEADER);
+        b.setTitleFont(FONT_REGULAR);
         panel.setBorder(b);
 
         panel.add(compactLabel("Start Offset (s):"));
@@ -134,7 +145,7 @@ final class ReportPanelBuilder {
         panel.add(Box.createHorizontalStrut(6));
         panel.add(compactLabel("Search:"));
         transactionSearchField.setFont(FONT_REGULAR);
-        transactionSearchField.setColumns(14);
+        transactionSearchField.setColumns(20);
         transactionSearchField.setToolTipText(
                 "Filter table by transaction name. Supports plain text and RegEx.");
         panel.add(transactionSearchField);
@@ -147,6 +158,19 @@ final class ReportPanelBuilder {
     }
 
     /**
+     * Builds a combined row containing the Test Time Info panel (CENTER)
+     * and the SLA Thresholds panel (EAST) side by side.
+     *
+     * @return combined row panel
+     */
+    JPanel buildTimeInfoAndSlaRow() {
+        JPanel row = new JPanel(new BorderLayout(6, 0));
+        row.add(buildTimeInfoPanel(), BorderLayout.CENTER);
+        row.add(buildSlaPanel(),      BorderLayout.EAST);
+        return row;
+    }
+
+    /**
      * Builds the Test Time Info panel — compact single row with inline labels.
      * Fields are non-editable (gray background) to show read-only test metadata.
      *
@@ -155,7 +179,7 @@ final class ReportPanelBuilder {
     JPanel buildTimeInfoPanel() {
         JPanel panel = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 1));
         TitledBorder b = new TitledBorder("Test Time Info");
-        b.setTitleFont(FONT_HEADER);
+        b.setTitleFont(FONT_REGULAR);
         panel.setBorder(b);
         panel.add(compactLabel("Start:"));
         panel.add(compactReadOnlyField(startTimeField, 14));
@@ -169,9 +193,44 @@ final class ReportPanelBuilder {
     }
 
     /**
+     * Builds the SLA Thresholds panel — compact single row.
+     * Layout: Error % field | Response Time dropdown | RT value field
+     *
+     * @return configured {@link JPanel}
+     */
+    JPanel buildSlaPanel() {
+        JPanel panel = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 1));
+        TitledBorder b = new TitledBorder("SLA Thresholds");
+        b.setTitleFont(FONT_REGULAR);
+        panel.setBorder(b);
+
+        panel.add(compactLabel("Error %:"));
+        errorPctSlaField.setFont(FONT_REGULAR);
+        errorPctSlaField.setColumns(4);
+        errorPctSlaField.setToolTipText(
+                "Highlight Error Rate cells exceeding this value (1–99). Leave blank to disable.");
+        panel.add(errorPctSlaField);
+
+        panel.add(Box.createHorizontalStrut(10));
+
+        panel.add(compactLabel("Response Time:"));
+        rtMetricCombo.setFont(FONT_REGULAR);
+        rtMetricCombo.setToolTipText(
+                "Select which response time column to compare against the threshold");
+        panel.add(rtMetricCombo);
+
+        rtThresholdSlaField.setFont(FONT_REGULAR);
+        rtThresholdSlaField.setColumns(5);
+        rtThresholdSlaField.setToolTipText(
+                "Highlight response time cells exceeding this value (ms). Leave blank to disable.");
+        panel.add(rtThresholdSlaField);
+
+        return panel;
+    }
+
+    /**
      * Builds and configures the table scroll pane, wiring the header-click listener
      * and installing the sort-arrow header renderer.
-     * Arrow shows ↕ (unsorted), ↑ (ascending), or ↓ (descending) on each column.
      *
      * @return configured {@link JScrollPane} wrapping the results table
      */
@@ -251,49 +310,5 @@ final class ReportPanelBuilder {
         f.setColumns(columns);
         f.setBackground(new Color(240, 240, 240));
         return f;
-    }
-
-    private static JPanel titledPanel(String title) {
-        JPanel p = new JPanel(new GridBagLayout());
-        TitledBorder b = new TitledBorder(title);
-        b.setTitleFont(FONT_HEADER);
-        p.setBorder(b);
-        return p;
-    }
-
-    private static GridBagConstraints defaultGbc() {
-        GridBagConstraints c = new GridBagConstraints();
-        c.insets  = new Insets(4, 6, 4, 6);
-        c.anchor  = GridBagConstraints.WEST;
-        c.weightx = TIME_FIELD_WEIGHT;
-        return c;
-    }
-
-    private static void addLabel(JPanel p, String text, int gridx, GridBagConstraints c) {
-        c.gridx = gridx;
-        JLabel l = new JLabel(text);
-        l.setFont(FONT_REGULAR);
-        p.add(l, c);
-    }
-
-    private static void addLabel(JPanel p, String text, GridBagConstraints c) {
-        JLabel l = new JLabel(text);
-        l.setFont(FONT_REGULAR);
-        p.add(l, c);
-    }
-
-    private static void addField(JPanel p, JTextField f, int gridx, GridBagConstraints c) {
-        c.gridx = gridx;
-        f.setFont(FONT_REGULAR);
-        p.add(f, c);
-    }
-
-    private static void addReadOnlyField(JPanel p, JTextField f, int gridx,
-                                         GridBagConstraints c) {
-        c.gridx = gridx;
-        f.setFont(FONT_REGULAR);
-        f.setEditable(false);
-        f.setBackground(new Color(240, 240, 240));
-        p.add(f, c);
     }
 }

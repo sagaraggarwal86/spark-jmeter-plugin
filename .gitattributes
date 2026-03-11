@@ -12,6 +12,10 @@
 *.csv        text eol=lf
 *.html       text eol=lf
 *.json       text eol=lf
+*.sh         text eol=lf
+
+# Force CRLF for Windows batch scripts
+*.bat        text eol=crlf
 
 # Binary files — no conversion
 *.jar        binary

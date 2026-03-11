@@ -338,4 +338,63 @@ class JTLParserTest {
         double avg = result.results.get("Tx").getMean();
         assertEquals(400.0, avg, 1.0, "Avg response time should be unchanged when IdleTime=0");
     }
+
+    // ─────────────────────────────────────────────────────────────
+    // Latency / Connect metrics
+    // ─────────────────────────────────────────────────────────────
+
+    @Test
+    @DisplayName("latencyPresent=true when at least one non-zero Latency row exists")
+    void latencyPresentTrueWhenNonZeroLatency() throws IOException {
+        long ts = System.currentTimeMillis();
+        // Latency=200, Connect=50 — both non-zero
+        Path file = writeCsv(ts + ",250,Login,200,OK,t-1,text,true,1024,512,200,0,50");
+
+        JTLParser.ParseResult result = new JTLParser().parse(
+                file.toString(), new JTLParser.FilterOptions());
+
+        assertTrue(result.latencyPresent,
+                "latencyPresent must be true when at least one Latency value is non-zero");
+    }
+
+    @Test
+    @DisplayName("avgLatencyMs and avgConnectMs computed correctly over total sample count")
+    void avgLatencyAndConnectComputedCorrectly() throws IOException {
+        long ts = System.currentTimeMillis();
+        // Sample 1: Latency=200, Connect=50
+        // Sample 2: Latency=100, Connect=30
+        // Averages over 2 total samples: avgLatency = (200+100)/2 = 150, avgConnect = (50+30)/2 = 40
+        Path file = writeCsv(
+                ts + ",250,Login,200,OK,t-1,text,true,1024,512,200,0,50",
+                (ts + 1000) + ",300,Checkout,200,OK,t-1,text,true,1024,512,100,0,30");
+
+        JTLParser.ParseResult result = new JTLParser().parse(
+                file.toString(), new JTLParser.FilterOptions());
+
+        assertTrue(result.latencyPresent, "latencyPresent must be true");
+        assertEquals(150L, result.avgLatencyMs,
+                "avgLatencyMs should be (200+100)/2 = 150");
+        assertEquals(40L, result.avgConnectMs,
+                "avgConnectMs should be (50+30)/2 = 40");
+    }
+
+    @Test
+    @DisplayName("latencyPresent=false and averages=0 when all Latency values are zero")
+    void latencyAbsentWhenAllZero() throws IOException {
+        long ts = System.currentTimeMillis();
+        // Latency=0, Connect=0 for all rows
+        Path file = writeCsv(
+                ts + ",250,Login,200,OK,t-1,text,true,1024,512,0,0,0",
+                (ts + 1000) + ",300,Checkout,200,OK,t-1,text,true,1024,512,0,0,0");
+
+        JTLParser.ParseResult result = new JTLParser().parse(
+                file.toString(), new JTLParser.FilterOptions());
+
+        assertFalse(result.latencyPresent,
+                "latencyPresent must be false when all Latency values are zero");
+        assertEquals(0L, result.avgLatencyMs,
+                "avgLatencyMs must be 0 when latencyPresent is false");
+        assertEquals(0L, result.avgConnectMs,
+                "avgConnectMs must be 0 when latencyPresent is false");
+    }
 }

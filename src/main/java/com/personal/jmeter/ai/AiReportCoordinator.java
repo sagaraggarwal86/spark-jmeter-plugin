@@ -9,6 +9,7 @@ import javax.swing.*;
 import java.awt.*;
 import java.io.File;
 import java.io.IOException;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -20,7 +21,7 @@ import java.util.concurrent.ExecutorService;
  * <p>Responsibilities:
  * <ol>
  *   <li>Build the analysis prompt via {@link PromptBuilder}.</li>
- *   <li>Call the Groq API via {@link AiReportService}.</li>
+ *   <li>Call the AI provider API via {@link AiReportService}.</li>
  *   <li>Render the HTML report via {@link HtmlReportRenderer}.</li>
  *   <li>Update the Swing progress dialog and re-enable the trigger button on the EDT.</li>
  * </ol>
@@ -101,7 +102,7 @@ public class AiReportCoordinator {
             setProgress(progressLabel, "Building analysis prompt...");
             PromptContent prompt = buildPrompt(ctx);
 
-            setProgress(progressLabel, "Calling Groq AI (this may take ~30 seconds)...");
+            setProgress(progressLabel, "Calling " + ctx.providerDisplayName + " (this may take ~30 seconds)...");
             String markdown = aiService.generateReport(prompt);
 
             setProgress(progressLabel, "Rendering HTML report...");
@@ -117,9 +118,21 @@ public class AiReportCoordinator {
 
     private PromptContent buildPrompt(ReportContext ctx) {
         PromptRequest request = new PromptRequest(
-                ctx.config.users, ctx.config.scenarioName, ctx.config.scenarioDesc,
-                ctx.config.startTime, ctx.duration);
-        return promptBuilder.build(ctx.results, ctx.config.percentile, request);
+                ctx.config.users,
+                ctx.config.scenarioName,
+                ctx.config.scenarioDesc,
+                ctx.config.startTime,
+                ctx.config.endTime,
+                ctx.duration,
+                ctx.config.threadGroupName,
+                ctx.config.percentile,
+                ctx.slaErrorThresholdPct,
+                ctx.slaRtThresholdMs,
+                ctx.slaRtMetric);
+        PromptBuilder.LatencyContext latency = new PromptBuilder.LatencyContext(
+                ctx.avgLatencyMs, ctx.avgConnectMs, ctx.latencyPresent);
+        return promptBuilder.build(ctx.results, ctx.config.percentile, request,
+                ctx.errorTypeSummary, latency);
     }
 
     private String renderReport(ReportContext ctx, String markdown) throws IOException {
@@ -154,53 +167,98 @@ public class AiReportCoordinator {
      * all fields are final and all collections are unmodifiable copies.
      */
     public static final class ReportContext {
-        /**
-         * Per-label aggregated statistics snapshot.
-         */
+        /** Per-label aggregated statistics snapshot. */
         public final Map<String, SamplingStatCalculator> results;
-        /**
-         * Visible table rows as strings (TOTAL excluded).
-         */
+        /** Visible table rows as strings (TOTAL excluded). */
         public final List<String[]> tableRows;
-        /**
-         * Ordered list of 30-second time buckets.
-         */
+        /** Ordered list of 30-second time buckets. */
         public final List<JTLParser.TimeBucket> timeBuckets;
-        /**
-         * Render metadata for the HTML template.
-         */
+        /** Render metadata for the HTML template. */
         public final HtmlReportRenderer.RenderConfig config;
-        /**
-         * Absolute path to the source JTL file.
-         */
+        /** Absolute path to the source JTL file. */
         public final String jtlPath;
-        /**
-         * Formatted test duration string.
-         */
+        /** Human-readable name of the selected AI provider (e.g. "Groq (Free)"). */
+        public final String providerDisplayName;
+        /** Formatted test duration string. */
         public final String duration;
+        /** User-configured error % SLA; "Not configured" if disabled. */
+        public final String slaErrorThresholdPct;
+        /** User-configured response time SLA in ms; "Not configured" if disabled. */
+        public final String slaRtThresholdMs;
+        /** Response time metric the RT SLA applies to (e.g. "Avg (ms)", "P90 (ms)"). */
+        public final String slaRtMetric;
+        /**
+         * Top-5 failure types by frequency from the full JTL.
+         * Each entry: responseCode, responseMessage, count.
+         * Empty list when no failures occurred.
+         */
+        public final List<Map<String, Object>> errorTypeSummary;
+        /**
+         * Average Latency (TTFB) in ms across all filtered samples.
+         * Zero when {@link #latencyPresent} is false.
+         */
+        public final long avgLatencyMs;
+        /**
+         * Average Connect time in ms across all filtered samples.
+         * Zero when {@link #latencyPresent} is false.
+         */
+        public final long avgConnectMs;
+        /**
+         * {@code true} when the parsed JTL contains at least one non-zero Latency value.
+         * Passed to {@link PromptBuilder.LatencyContext} to select direct vs inferred
+         * timing-decomposition mode in the AI prompt.
+         */
+        public final boolean latencyPresent;
+
+        private static final String NOT_CONFIGURED = "Not configured";
 
         /**
          * Constructs the report context.
          *
-         * @param results     per-label aggregated statistics snapshot
-         * @param tableRows   visible table rows as strings (TOTAL excluded)
-         * @param timeBuckets ordered list of 30-second time buckets
-         * @param config      render metadata for the HTML template
-         * @param jtlPath     absolute path to the source JTL file
-         * @param duration    formatted test duration string
+         * @param results              per-label aggregated statistics snapshot
+         * @param tableRows            visible table rows as strings (TOTAL excluded)
+         * @param timeBuckets          ordered list of time buckets
+         * @param config               render metadata for the HTML template
+         * @param jtlPath              absolute path to the source JTL file
+         * @param providerDisplayName  human-readable AI provider name; null → "AI Provider"
+         * @param duration             formatted test duration string
+         * @param slaErrorThresholdPct user error % SLA; null → "Not configured"
+         * @param slaRtThresholdMs     user RT SLA in ms; null → "Not configured"
+         * @param slaRtMetric          RT metric label; null → "Not configured"
+         * @param errorTypeSummary     top-5 failure types; null → empty list
+         * @param avgLatencyMs         average Latency ms (0 if latencyPresent is false)
+         * @param avgConnectMs         average Connect ms (0 if latencyPresent is false)
+         * @param latencyPresent       true iff ≥ 1 non-zero Latency value was parsed
          */
         public ReportContext(Map<String, SamplingStatCalculator> results,
                              List<String[]> tableRows,
                              List<JTLParser.TimeBucket> timeBuckets,
                              HtmlReportRenderer.RenderConfig config,
                              String jtlPath,
-                             String duration) {
-            this.results = Objects.requireNonNull(results, "results must not be null");
-            this.tableRows = Objects.requireNonNull(tableRows, "tableRows must not be null");
-            this.timeBuckets = Objects.requireNonNull(timeBuckets, "timeBuckets must not be null");
-            this.config = Objects.requireNonNull(config, "config must not be null");
-            this.jtlPath = Objects.requireNonNull(jtlPath, "jtlPath must not be null");
-            this.duration = duration != null ? duration : "";
+                             String providerDisplayName,
+                             String duration,
+                             String slaErrorThresholdPct,
+                             String slaRtThresholdMs,
+                             String slaRtMetric,
+                             List<Map<String, Object>> errorTypeSummary,
+                             long avgLatencyMs,
+                             long avgConnectMs,
+                             boolean latencyPresent) {
+            this.results      = Objects.requireNonNull(results,      "results must not be null");
+            this.tableRows    = Objects.requireNonNull(tableRows,    "tableRows must not be null");
+            this.timeBuckets  = Objects.requireNonNull(timeBuckets,  "timeBuckets must not be null");
+            this.config       = Objects.requireNonNull(config,       "config must not be null");
+            this.jtlPath      = Objects.requireNonNull(jtlPath,      "jtlPath must not be null");
+            this.providerDisplayName = providerDisplayName != null ? providerDisplayName : "AI Provider";
+            this.duration     = duration != null ? duration : "";
+            this.slaErrorThresholdPct = slaErrorThresholdPct != null ? slaErrorThresholdPct : NOT_CONFIGURED;
+            this.slaRtThresholdMs     = slaRtThresholdMs     != null ? slaRtThresholdMs     : NOT_CONFIGURED;
+            this.slaRtMetric          = slaRtMetric          != null ? slaRtMetric          : NOT_CONFIGURED;
+            this.errorTypeSummary     = errorTypeSummary     != null
+                    ? Collections.unmodifiableList(errorTypeSummary) : Collections.emptyList();
+            this.avgLatencyMs   = avgLatencyMs;
+            this.avgConnectMs   = avgConnectMs;
+            this.latencyPresent = latencyPresent;
         }
     }
 }

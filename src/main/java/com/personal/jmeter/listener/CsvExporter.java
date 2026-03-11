@@ -27,7 +27,6 @@ final class CsvExporter {
     private final DefaultTableModel tableModel;
     private final TableColumn[] allTableColumns;
     private final JCheckBoxMenuItem[] columnMenuItems;
-    private final JCheckBox saveTableHeaderBox;
 
     /**
      * Constructs the exporter with all required references from the parent panel.
@@ -36,18 +35,15 @@ final class CsvExporter {
      * @param tableModel       the table data model; must not be null
      * @param allTableColumns  all column objects (visible and hidden); must not be null
      * @param columnMenuItems  column visibility checkboxes; must not be null
-     * @param saveTableHeaderBox checkbox controlling header row inclusion; must not be null
      */
     CsvExporter(JComponent parent,
                 DefaultTableModel tableModel,
                 TableColumn[] allTableColumns,
-                JCheckBoxMenuItem[] columnMenuItems,
-                JCheckBox saveTableHeaderBox) {
+                JCheckBoxMenuItem[] columnMenuItems) {
         this.parent = parent;
         this.tableModel = tableModel;
         this.allTableColumns = allTableColumns;
         this.columnMenuItems = columnMenuItems;
-        this.saveTableHeaderBox = saveTableHeaderBox;
     }
 
     /**
@@ -90,17 +86,19 @@ final class CsvExporter {
     private void saveTableToCSV(File file) throws IOException {
         List<Integer> visibleCols = getVisibleColumnModelIndices();
         try (BufferedWriter writer = new BufferedWriter(
-                new OutputStreamWriter(new FileOutputStream(file), StandardCharsets.UTF_8))) {
-            if (saveTableHeaderBox.isSelected()) {
-                StringBuilder header = new StringBuilder();
-                for (int i = 0; i < visibleCols.size(); i++) {
-                    if (i > 0) header.append(',');
-                    header.append(escapeCSV(
-                            allTableColumns[visibleCols.get(i)].getHeaderValue().toString()));
-                }
-                writer.write(header.toString());
-                writer.newLine();
+                new OutputStreamWriter(
+                        java.nio.file.Files.newOutputStream(file.toPath(),
+                                java.nio.file.StandardOpenOption.CREATE,
+                                java.nio.file.StandardOpenOption.TRUNCATE_EXISTING),
+                        StandardCharsets.UTF_8))) {
+            StringBuilder header = new StringBuilder();
+            for (int i = 0; i < visibleCols.size(); i++) {
+                if (i > 0) header.append(',');
+                header.append(escapeCSV(
+                        allTableColumns[visibleCols.get(i)].getHeaderValue().toString()));
             }
+            writer.write(header.toString());
+            writer.newLine();
             for (int row = 0; row < tableModel.getRowCount(); row++) {
                 StringBuilder line = new StringBuilder();
                 for (int i = 0; i < visibleCols.size(); i++) {

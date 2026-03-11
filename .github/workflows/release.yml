@@ -13,11 +13,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
-        with: { java-version: '17', distribution: 'temurin' }
-      - run: mvn clean package -DskipTests
-      - uses: softprops/action-gh-release@v1
         with:
-          files: target/Configurable_Aggregate_Report-*.jar
+          java-version: '17'
+          distribution: 'temurin'
+          cache: maven
+      - run: mvn clean verify
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            target/Configurable_Aggregate_Report-*.jar
+            src/main/scripts/car-cli-report.bat
+            src/main/scripts/car-cli-report.sh
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
