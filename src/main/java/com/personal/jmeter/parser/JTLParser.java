@@ -148,6 +148,11 @@ public class JTLParser {
         }
 
         // ── Pass 2: aggregate ────────────────────────────────────
+        // Resolve the chart bucket size: user setting > default 30s
+        final long bucketSizeMs = (options.chartIntervalSeconds > 0)
+                ? options.chartIntervalSeconds * 1_000L
+                : BUCKET_SIZE_MS;
+
         Map<String, SamplingStatCalculator> results = new LinkedHashMap<>();
         SamplingStatCalculator totalCalc = new SamplingStatCalculator(TOTAL_LABEL);
         long testStartMs = Long.MAX_VALUE;
@@ -208,7 +213,7 @@ public class JTLParser {
                 if (sampleStart < testStartMs) testStartMs = sampleStart;
                 if (sampleEnd   > testEndMs)   testEndMs   = sampleEnd;
 
-                long bucketKey = (sampleStart / BUCKET_SIZE_MS) * BUCKET_SIZE_MS;
+                long bucketKey = (sampleStart / bucketSizeMs) * bucketSizeMs;
                 long[] acc = bucketMap.computeIfAbsent(bucketKey, k -> new long[4]);
                 acc[0] += sr.getTime();
                 acc[1] += 1;
@@ -232,7 +237,7 @@ public class JTLParser {
                 ? totalConnectMs / totalSampleCount : 0L;
         final boolean latencyPresent = latencySampleCount > 0;
 
-        List<TimeBucket> timeBuckets = JtlParserCore.buildTimeBuckets(bucketMap, BUCKET_SIZE_MS);
+        List<TimeBucket> timeBuckets = JtlParserCore.buildTimeBuckets(bucketMap, bucketSizeMs);
         log.info("parse: completed. labels={}, samples={}, buckets={}, latencyPresent={}",
                 results.size(), totalCalc.getCount(), timeBuckets.size(), latencyPresent);
         return new ParseResult(results, testStartMs, testEndMs, timeBuckets, errorTypeCount,
@@ -408,5 +413,15 @@ public class JTLParser {
          * elapsed time before aggregation, yielding net processing-only response times.</p>
          */
         public boolean includeTimerDuration = true;
+
+        /**
+         * Chart time-bucket interval in seconds. {@code 0} (default) means auto-calculate
+         * using the built-in 30-second bucket size.
+         *
+         * <p>When the user sets a positive value via the "Chart Interval" field, the
+         * parser uses that value (converted to milliseconds) as the bucket width for
+         * time-series charts.</p>
+         */
+        public int chartIntervalSeconds = 0;
     }
 }

@@ -130,6 +130,17 @@ public class AggregateReportPanel extends JPanel {
     private boolean suppressReload;
     private Supplier<ScenarioMetadata> metadataSupplier = ScenarioMetadata::empty;
 
+    /**
+     * Debounce timer for JTL reloads triggered by DocumentListener keystrokes.
+     * Each keystroke restarts the 300 ms window; the parse only fires when the
+     * user pauses typing.  This prevents a full two-pass file read on every
+     * character in percentileField, startOffsetField, and endOffsetField.
+     */
+    private final Timer reloadDebounceTimer = new Timer(300, e -> reloadJtl());
+    {
+        reloadDebounceTimer.setRepeats(false);
+    }
+
     // ─────────────────────────────────────────────────────────────
     // Constructor
     // ─────────────────────────────────────────────────────────────
@@ -295,9 +306,10 @@ public class AggregateReportPanel extends JPanel {
 
     JTLParser.FilterOptions buildFilterOptions() {
         JTLParser.FilterOptions opts = new JTLParser.FilterOptions();
-        opts.startOffset = parseIntField(startOffsetField, 0);
-        opts.endOffset   = parseIntField(endOffsetField,   0);
-        opts.percentile  = readPercentile();
+        opts.startOffset         = parseIntField(startOffsetField, 0);
+        opts.endOffset           = parseIntField(endOffsetField,   0);
+        opts.percentile          = readPercentile();
+        opts.chartIntervalSeconds = parseIntField(chartIntervalField, 0);
         return opts;
     }
 
@@ -442,17 +454,21 @@ public class AggregateReportPanel extends JPanel {
     // ─────────────────────────────────────────────────────────────
 
     private void setupFieldListeners() {
-        // ── Percentile: update column header + reload JTL + update combo label ──
+        // ── Percentile: update column header + debounced reload + update combo label ──
         percentileField.getDocument().addDocumentListener((SimpleDocListener) () -> {
             updatePercentileColumnHeader();
             updateRtMetricComboLabel();
-            reloadJtl();
+            reloadDebounceTimer.restart();
         });
 
-        // ── Offset fields: reload JTL on change ──
-        SimpleDocListener offsetListener = this::reloadJtl;
+        // ── Offset fields: debounced reload on change ──
+        SimpleDocListener offsetListener = () -> reloadDebounceTimer.restart();
         startOffsetField.getDocument().addDocumentListener(offsetListener);
         endOffsetField.getDocument().addDocumentListener(offsetListener);
+
+        // ── Chart interval field: debounced reload on change ──
+        chartIntervalField.getDocument().addDocumentListener(
+                (SimpleDocListener) () -> reloadDebounceTimer.restart());
 
         // ── Transaction search: repopulate on change ──
         transactionSearchField.getDocument().addDocumentListener(
@@ -472,6 +488,10 @@ public class AggregateReportPanel extends JPanel {
                 "End Offset must be a positive integer (or leave blank).");
         addRangeFocusValidator(percentileField, 1, 99,
                 "Percentile must be an integer between 1 and 99.");
+
+        // ── Focus-lost validation: Chart interval field ──
+        addRangeFocusValidator(chartIntervalField, 0, 3600,
+                "Chart Interval must be an integer between 0 and 3600 seconds (0 = auto).");
 
         // ── Focus-lost validation: SLA fields ──
         addRangeFocusValidator(errorPctSlaField, 1, 99,
