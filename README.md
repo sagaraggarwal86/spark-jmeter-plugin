@@ -264,7 +264,7 @@ Set live SLA thresholds in the **SLA Thresholds** panel. Breaching cells are hig
 Click **Generate AI Report** to analyse the loaded JTL data with any supported AI provider.
 A save dialog lets you choose where to save the self-contained HTML report.
 
-**Supported providers:** Groq (free), Gemini (free), Mistral (free), DeepSeek (free),
+**Supported providers:** Groq (free, **Recommended Option**), Gemini (free), Mistral (free), DeepSeek (free),
 OpenAI (paid), Claude (paid) — or any OpenAI-compatible endpoint.
 
 ### Report Contents
