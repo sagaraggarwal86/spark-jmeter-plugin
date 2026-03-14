@@ -182,7 +182,7 @@ public class JTLParser {
         long testEndMs   = Long.MIN_VALUE;
         TreeMap<Long, long[]> bucketMap = new TreeMap<>();
         // Error-type accumulator: "responseCode | responseMessage" → count
-        Map<String, Long> errorTypeCount = new LinkedHashMap<>();
+        Map<String, Long> errorTypeCount = new HashMap<>(); // insertion order unused — sorted by frequency in buildErrorTypeSummary()
         // Latency / Connect accumulators for Advanced Web Diagnostics
         long totalLatencyMs    = 0L;
         long totalConnectMs    = 0L;

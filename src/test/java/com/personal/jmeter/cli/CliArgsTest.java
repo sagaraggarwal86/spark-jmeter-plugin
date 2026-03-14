@@ -451,13 +451,14 @@ class CliArgsTest {
         }
 
         @Test
-        @DisplayName("error-sla=0 produces no validation error but hasErrorSla() returns false")
-        void errorSlaZeroHasNoSla(@TempDir Path dir) throws IOException {
+        @DisplayName("error-sla=0 produces a validation error (0 is not a valid threshold)")
+        void errorSlaZeroIsRejected(@TempDir Path dir) throws IOException {
             CliArgs cli = CliArgs.parse(new String[]{
                     "--input", tempJtl(dir), "--provider", "groq",
                     "--config", tempConfig(dir), "--error-sla", "0"
             });
-            assertFalse(cli.hasErrorSla(), "errorSla=0 is not a valid SLA threshold");
+            assertTrue(cli.errors().stream().anyMatch(e -> e.contains("--error-sla")),
+                    "errorSla=0 should fail validation — 0 is not a valid SLA threshold (range is 1–99)");
         }
 
         @Test

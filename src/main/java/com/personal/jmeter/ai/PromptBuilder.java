@@ -197,12 +197,87 @@ public class PromptBuilder {
                                              List<Map<String, Object>> errorTypeSummary,
                                              LatencyContext latency) {
         final double pFraction = percentile / 100.0;
+        final String pKey = percentile + "thPctMs";
+
+        // ── Single merged pass over the results map ───────────────────────────
+        // Previously three separate loops called getPercentPoint(pFraction) and
+        // getErrorPercentage() independently per entry. SamplingStatCalculator.
+        // getPercentPoint() sorts all stored sample values internally (O(n log n)
+        // where n = sample count for that label), so calling it twice per entry
+        // on a large JTL was unnecessarily expensive.
+        // Now each value is computed once and shared across all three accumulators.
+        List<Map<String, Object>> anomalies = new ArrayList<>();
+        List<Map<String, Object>> errors    = new ArrayList<>();
+        List<Map.Entry<String, Double>> ranked = new ArrayList<>();
+
+        for (Map.Entry<String, SamplingStatCalculator> entry : results.entrySet()) {
+            if (TOTAL_LABEL.equals(entry.getKey())) continue;
+            SamplingStatCalculator c = entry.getValue();
+            if (c.getCount() == 0) continue;
+
+            // Compute once — shared by anomaly, error-endpoint, and slowest checks
+            final double avg    = c.getMean();
+            final double pVal   = c.getPercentPoint(pFraction).doubleValue(); // O(n log n) — called once
+            final double errPct = c.getErrorPercentage() * 100.0;
+            final double stdDev = c.getStandardDeviation();
+
+            // ── Slowest endpoints accumulator ─────────────────────────────────
+            ranked.add(Map.entry(entry.getKey(), pVal));
+
+            // ── Error endpoints accumulator ───────────────────────────────────
+            if (c.getErrorPercentage() > 0) {
+                final long cnt    = c.getCount();
+                final long failed = Math.round(c.getErrorPercentage() * cnt);
+                Map<String, Object> ep = new LinkedHashMap<>();
+                ep.put("label",         entry.getKey());
+                ep.put("errorCount",    failed);
+                ep.put("totalCount",    cnt);
+                ep.put(KEY_ERROR_RATE_PCT, round2(errPct));
+                errors.add(ep);
+            }
+
+            // ── Anomaly transactions accumulator ──────────────────────────────
+            boolean isAnomaly = avg > THRESHOLD_AVG_MS
+                    || pVal > THRESHOLD_PCT_MS
+                    || errPct > THRESHOLD_ERROR_PCT
+                    || (avg > 0 && stdDev / avg > THRESHOLD_STD_DEV_RATIO);
+            if (isAnomaly) {
+                final long cnt    = c.getCount();
+                final long failed = Math.round(c.getErrorPercentage() * cnt);
+                Map<String, Object> ep = new LinkedHashMap<>();
+                ep.put("label",      entry.getKey());
+                ep.put("count",      cnt);
+                ep.put("failed",     failed);
+                ep.put("avgMs",      round2(avg));
+                ep.put("medianMs",   round2(c.getPercentPoint(MEDIAN).doubleValue()));
+                ep.put(pKey,         round2(pVal));
+                ep.put("stdDevMs",   round2(stdDev));
+                ep.put(KEY_ERROR_RATE_PCT, round2(errPct));
+                ep.put("throughputTPS",         round2(c.getRate()));
+                ep.put("receivedBandwidthKBps", round2(c.getKBPerSecond()));
+                ep.put("breachedThresholds", buildBreachList(avg, pVal, errPct, stdDev, percentile));
+                anomalies.add(ep);
+            }
+        }
+
+        // ── Post-loop sort / trim ─────────────────────────────────────────────
+        anomalies.sort((a, b) ->
+                Double.compare(asDouble(b.get(pKey)), asDouble(a.get(pKey))));
+        errors.sort((a, b) ->
+                Double.compare(asDouble(b.get(KEY_ERROR_RATE_PCT)), asDouble(a.get(KEY_ERROR_RATE_PCT))));
+        ranked.sort((a, b) -> Double.compare(b.getValue(), a.getValue()));
+        List<String> slowest = new ArrayList<>();
+        for (int i = 0; i < Math.min(SLOWEST_TOP_N, ranked.size()); i++) {
+            Map.Entry<String, Double> e = ranked.get(i);
+            slowest.add(e.getKey() + " (" + round2(e.getValue()) + " ms)");
+        }
+
         Map<String, Object> summary = new LinkedHashMap<>();
-        summary.put("globalStats",          buildGlobalStats(results, percentile, pFraction, latency));
-        summary.put("anomalyTransactions",  buildAnomalyTransactions(results, percentile, pFraction));
-        summary.put("errorEndpoints",       buildErrorEndpointList(results));
-        summary.put("errorTypeSummary",     errorTypeSummary);
-        summary.put("slowestEndpoints",     buildSlowestList(results, pFraction));
+        summary.put("globalStats",         buildGlobalStats(results, percentile, pFraction, latency));
+        summary.put("anomalyTransactions", anomalies);
+        summary.put("errorEndpoints",      errors);
+        summary.put("errorTypeSummary",    errorTypeSummary);
+        summary.put("slowestEndpoints",    slowest);
         return summary;
     }
 
@@ -238,47 +313,6 @@ public class PromptBuilder {
         return global;
     }
 
-    private List<Map<String, Object>> buildAnomalyTransactions(
-            Map<String, SamplingStatCalculator> results, int percentile, double pFraction) {
-
-        List<Map<String, Object>> anomalies = new ArrayList<>();
-        final String pKey = percentile + "thPctMs";
-
-        for (Map.Entry<String, SamplingStatCalculator> entry : results.entrySet()) {
-            SamplingStatCalculator c = entry.getValue();
-            final double avg = c.getMean();
-            final double pVal = c.getPercentPoint(pFraction).doubleValue();
-            final double errPct = c.getErrorPercentage() * 100.0;
-            final double stdDev = c.getStandardDeviation();
-            boolean isAnomaly = avg > THRESHOLD_AVG_MS
-                    || pVal > THRESHOLD_PCT_MS
-                    || errPct > THRESHOLD_ERROR_PCT
-                    || (avg > 0 && stdDev / avg > THRESHOLD_STD_DEV_RATIO);
-            if (TOTAL_LABEL.equals(entry.getKey()) || c.getCount() == 0 || !isAnomaly) continue;
-
-            final long cnt = c.getCount();
-            final long failed = Math.round(c.getErrorPercentage() * cnt);
-
-            Map<String, Object> ep = new LinkedHashMap<>();
-            ep.put("label", entry.getKey());
-            ep.put("count", cnt);
-            ep.put("failed", failed);
-            ep.put("avgMs", round2(avg));
-            ep.put("medianMs", round2(c.getPercentPoint(MEDIAN).doubleValue()));
-            ep.put(pKey, round2(pVal));
-            ep.put("stdDevMs", round2(stdDev));
-            ep.put(KEY_ERROR_RATE_PCT, round2(errPct));
-            ep.put("throughputTPS", round2(c.getRate()));
-            ep.put("receivedBandwidthKBps", round2(c.getKBPerSecond()));
-            ep.put("breachedThresholds", buildBreachList(avg, pVal, errPct, stdDev, percentile));
-            anomalies.add(ep);
-        }
-
-        anomalies.sort((a, b) ->
-                Double.compare(asDouble(b.get(pKey)), asDouble(a.get(pKey))));
-        return anomalies;
-    }
-
     private List<String> buildBreachList(double avg, double pVal, double errPct,
                                          double stdDev, int percentile) {
         List<String> breaches = new ArrayList<>();
@@ -290,48 +324,4 @@ public class PromptBuilder {
         return breaches;
     }
 
-    private List<Map<String, Object>> buildErrorEndpointList(
-            Map<String, SamplingStatCalculator> results) {
-        List<Map<String, Object>> errors = new ArrayList<>();
-        for (Map.Entry<String, SamplingStatCalculator> entry : results.entrySet()) {
-            SamplingStatCalculator c = entry.getValue();
-            if (TOTAL_LABEL.equals(entry.getKey()) || c.getCount() == 0 || c.getErrorPercentage() <= 0) continue;
-
-            final long cnt = c.getCount();
-            final long failed = Math.round(c.getErrorPercentage() * cnt);
-            final double errPct = c.getErrorPercentage() * 100.0;
-
-            Map<String, Object> ep = new LinkedHashMap<>();
-            ep.put("label", entry.getKey());
-            ep.put("errorCount", failed);
-            ep.put("totalCount", cnt);
-            ep.put(KEY_ERROR_RATE_PCT, round2(errPct));
-            errors.add(ep);
-        }
-        errors.sort((a, b) ->
-                Double.compare(asDouble(b.get(KEY_ERROR_RATE_PCT)), asDouble(a.get(KEY_ERROR_RATE_PCT))));
-        return errors;
-    }
-
-    // ─────────────────────────────────────────────────────────────
-    // Helpers
-    // ─────────────────────────────────────────────────────────────
-
-    private List<String> buildSlowestList(Map<String, SamplingStatCalculator> results,
-                                          double pFraction) {
-        List<Map.Entry<String, Double>> ranked = new ArrayList<>();
-        for (Map.Entry<String, SamplingStatCalculator> entry : results.entrySet()) {
-            SamplingStatCalculator c = entry.getValue();
-            if (TOTAL_LABEL.equals(entry.getKey()) || c.getCount() == 0) continue;
-            ranked.add(Map.entry(entry.getKey(), c.getPercentPoint(pFraction).doubleValue()));
-        }
-        ranked.sort((a, b) -> Double.compare(b.getValue(), a.getValue()));
-
-        List<String> top = new ArrayList<>();
-        for (int i = 0; i < Math.min(SLOWEST_TOP_N, ranked.size()); i++) {
-            Map.Entry<String, Double> e = ranked.get(i);
-            top.add(e.getKey() + " (" + round2(e.getValue()) + " ms)");
-        }
-        return top;
-    }
 }

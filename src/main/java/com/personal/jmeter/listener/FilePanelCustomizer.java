@@ -56,13 +56,19 @@ final class FilePanelCustomizer {
      * via {@code setFileFn} and the file is immediately loaded via
      * {@code onLoadFn} — no separate Load button is required.
      *
-     * @param container    root container to search recursively
-     * @param currentFile  the currently selected file path (may be null/empty)
-     * @param setFileFn    callback to update the file path after selection
-     * @param ownerComp    parent component for the file-chooser dialog
-     * @param onLoadFn     callback to load and process the selected file
+     * <p>{@code currentFileFn} is a {@link java.util.function.Supplier} rather than
+     * a plain {@code String} so that the lambda reads the <em>live</em> file path on
+     * every Browse click. Passing a {@code String} snapshot captured at construction
+     * time would freeze the start directory to whatever was selected first.</p>
+     *
+     * @param container      root container to search recursively
+     * @param currentFileFn  supplier of the currently selected file path (may return null/empty)
+     * @param setFileFn      callback to update the file path after selection
+     * @param ownerComp      parent component for the file-chooser dialog
+     * @param onLoadFn       callback to load and process the selected file
      */
-    static void overrideBrowseButton(Container container, String currentFile,
+    static void overrideBrowseButton(Container container,
+                                     java.util.function.Supplier<String> currentFileFn,
                                      java.util.function.Consumer<String> setFileFn,
                                      Component ownerComp,
                                      Runnable onLoadFn) {
@@ -74,7 +80,7 @@ final class FilePanelCustomizer {
                     btn.removeActionListener(al);
                 }
                 btn.addActionListener(e -> {
-                    File startDir = resolveStartDirectory(currentFile);
+                    File startDir = resolveStartDirectory(currentFileFn.get());
                     JFileChooser fc = new JFileChooser(startDir);
                     fc.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter(
                             "JTL Files (*.jtl)", "jtl"));
@@ -87,7 +93,7 @@ final class FilePanelCustomizer {
                 btn.setVisible(true);
             }
             if (comp instanceof Container c) {
-                overrideBrowseButton(c, currentFile, setFileFn, ownerComp, onLoadFn);
+                overrideBrowseButton(c, currentFileFn, setFileFn, ownerComp, onLoadFn);
             }
         }
     }

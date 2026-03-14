@@ -274,6 +274,7 @@ public class AggregateReportPanel extends JPanel {
         percentileField.setText("90");
         transactionSearchField.setText("");
         regexCheckBox.setSelected(false);
+        chartIntervalField.setText("0"); // filter setting — reset only on full Clear, not on Load
         startTimeField.setText("");
         endTimeField.setText("");
         durationField.setText("");
@@ -281,14 +282,17 @@ public class AggregateReportPanel extends JPanel {
     }
 
     /**
-     * Resets SLA threshold inputs and chart interval to defaults, then clears
-     * any breach highlighting. Called on every Load and on Clear.
+     * Resets SLA threshold inputs to defaults and clears any breach highlighting.
+     * Called on every Load and on Clear.
+     *
+     * <p>Does <em>not</em> reset {@code chartIntervalField} — that is a filter
+     * setting (it affects JTL parsing) and must survive a JTL reload so that the
+     * user's configured interval is applied to the newly loaded file.</p>
      */
     private void resetSlaFields() {
         errorPctSlaField.setText("");
         rtThresholdSlaField.setText("");
         rtMetricCombo.setSelectedIndex(1); // default: P90 (ms)
-        chartIntervalField.setText("0");
         resultsTable.repaint();
     }
 
@@ -543,11 +547,16 @@ public class AggregateReportPanel extends JPanel {
     // ─────────────────────────────────────────────────────────────
 
     private void setupFieldListeners() {
-        // ── Percentile: update column header + debounced reload + update combo label ──
+        // ── Percentile: update column header + repopulate from cache + update combo label ──
+        // Percentile only selects which pre-computed value to read from the already-cached
+        // SamplingStatCalculator — no file I/O is needed. repopulate() reads cachedResults
+        // in memory, identical to how transactionSearchField works.
+        // startOffset, endOffset, and chartInterval stay on the debounce→reload path because
+        // they change which rows are included, which genuinely requires re-parsing the file.
         percentileField.getDocument().addDocumentListener((SimpleDocListener) () -> {
             updatePercentileColumnHeader();
             updateRtMetricComboLabel();
-            reloadDebounceTimer.restart();
+            if (!cachedResults.isEmpty()) repopulate(readPercentile());
         });
 
         // ── Offset fields: debounced reload on change ──

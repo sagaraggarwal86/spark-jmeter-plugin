@@ -1,5 +1,7 @@
 package com.personal.jmeter.ai;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -412,9 +414,19 @@ public final class AiProviderRegistry {
     }
 
     private static String buildPingBody(AiProviderConfig config) {
-        return "{\"model\":\"" + config.model + "\","
-                + "\"max_tokens\":1,"
-                + "\"messages\":[{\"role\":\"user\",\"content\":\"hi\"}]}";
+        JsonObject userMsg = new JsonObject();
+        userMsg.addProperty("role", "user");
+        userMsg.addProperty("content", "hi");
+
+        JsonArray messages = new JsonArray();
+        messages.add(userMsg);
+
+        JsonObject body = new JsonObject();
+        body.addProperty("model", config.model);
+        body.addProperty("max_tokens", 1);
+        body.add("messages", messages);
+
+        return body.toString();
     }
 
     private static String buildPingErrorMessage(AiProviderConfig config, int status, String responseBody) {

@@ -25,6 +25,9 @@ final class HtmlPageBuilder {
 
     private static final String TD_CLOSE = "</td>";
 
+    private static final DateTimeFormatter CHART_TIME_FMT =
+            DateTimeFormatter.ofPattern("HH:mm:ss");
+
     private HtmlPageBuilder() { /* static utility — not instantiable */ }
 
     // ─────────────────────────────────────────────────────────────
@@ -106,7 +109,6 @@ final class HtmlPageBuilder {
                             + "the test runs long enough to produce multiple data points.");
         }
 
-        DateTimeFormatter timeFmt = DateTimeFormatter.ofPattern("HH:mm:ss");
         List<String> jLabels = new ArrayList<>();
         List<String> jAvg = new ArrayList<>();
         List<String> jErr = new ArrayList<>();
@@ -115,7 +117,7 @@ final class HtmlPageBuilder {
 
         for (JTLParser.TimeBucket b : timeBuckets) {
             String label = LocalDateTime.ofInstant(
-                    Instant.ofEpochMilli(b.epochMs), ZoneId.systemDefault()).format(timeFmt);
+                    Instant.ofEpochMilli(b.epochMs), ZoneId.systemDefault()).format(CHART_TIME_FMT);
             jLabels.add("\"" + label + "\"");
             jAvg.add(String.format(Locale.US, "%.2f", b.avgResponseMs));
             jErr.add(String.format(Locale.US, "%.2f", b.errorPct));
@@ -129,10 +131,14 @@ final class HtmlPageBuilder {
         String tpsArr = "[" + String.join(",", jTps) + "]";
         String kbArr  = "[" + String.join(",", jKb)  + "]";
 
+        long intervalSeconds = (timeBuckets.get(1).epochMs - timeBuckets.get(0).epochMs) / 1_000L;
+
         return new StringBuilder(2048)
                 .append("<div class=\"charts-section\">\n")
                 .append("  <h2>Performance Charts Over Time</h2>\n")
-                .append("  <p class=\"charts-note\">Each point represents a 30-second interval.</p>\n")
+                .append("  <p class=\"charts-note\">Each point represents a ")
+                .append(intervalSeconds)
+                .append("-second interval.</p>\n")
                 .append(chartBox("chartAvgRt",  "Average Response Time Over Time (ms)"))
                 .append(chartBox("chartErrPct", "Error Rate Over Time (%)"))
                 .append(chartBox("chartTps",    "Throughput Over Time (req/s)"))

@@ -97,7 +97,21 @@ final class CliReportPipeline {
         // Step 7 — Call AI
         progress("Calling %s (this may take 30-60 seconds)...", provider.displayName);
         AiReportService service = new AiReportService(provider);
-        String markdown = service.generateReport(prompt);
+        final String markdown;
+        try {
+            markdown = service.generateReport(prompt);
+        } catch (AiServiceException ex) {
+            // Evict the ping cache when the provider rejects the request with an auth error
+            // (HTTP 401 = key rejected, HTTP 403 = access denied / quota exceeded).
+            // This forces a fresh live ping on the next run instead of hitting the stale
+            // cached-success entry — which would otherwise bypass the ping indefinitely.
+            if (ex.getMessage().contains("HTTP 401") || ex.getMessage().contains("HTTP 403")) {
+                progress("Auth failure from provider — evicting ping cache for next run. provider=%s",
+                        provider.providerKey);
+                AiProviderRegistry.evictPingCache(provider);
+            }
+            throw ex;
+        }
         progress("AI response received (%d characters).", markdown.length());
 
         // Step 8 — Extract verdict and strip machine verdict line before rendering

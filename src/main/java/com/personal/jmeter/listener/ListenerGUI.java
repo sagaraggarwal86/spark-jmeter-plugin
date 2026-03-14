@@ -95,7 +95,7 @@ public class ListenerGUI extends AbstractVisualizer {
         // file's directory, then immediately loads the selected file.
         FilePanelCustomizer.hideFilePanelExtras(titlePanel);
         FilePanelCustomizer.overrideBrowseButton(
-                titlePanel, getFile(), this::setFile, this, this::checkAndLoadFile);
+                titlePanel, this::getFile, this::setFile, this, this::checkAndLoadFile);
 
         add(reportPanel, BorderLayout.CENTER);
     }

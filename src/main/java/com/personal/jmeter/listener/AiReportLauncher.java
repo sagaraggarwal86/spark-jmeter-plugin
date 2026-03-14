@@ -6,7 +6,9 @@ import com.personal.jmeter.ai.AiReportCoordinator;
 import com.personal.jmeter.ai.AiReportService;
 import com.personal.jmeter.ai.HtmlReportRenderer;
 import com.personal.jmeter.ai.PromptBuilder;
+import com.personal.jmeter.ai.PromptContent;
 import com.personal.jmeter.ai.PromptLoader;
+import com.personal.jmeter.ai.PromptRequest;
 import com.personal.jmeter.parser.JTLParser;
 import org.apache.jmeter.visualizers.SamplingStatCalculator;
 import org.slf4j.Logger;
@@ -157,14 +159,20 @@ final class AiReportLauncher {
             return;
         }
 
-        AiReportCoordinator.ReportContext context = buildReportContext(providerConfig.displayName);
+        AiReportCoordinator.ReportContext context = buildReportContext(providerConfig);
+
+        // Build prompt on the EDT — same thread that wrote the SamplingStatCalculator values.
+        // This guarantees JMM visibility: no mutable calculator references cross the
+        // thread boundary. The resulting PromptContent is an immutable record (two
+        // final Strings) and is safe to hand off to the background executor.
+        PromptContent prompt = buildPromptOnEdt(systemPrompt, providerConfig.displayName);
+
         JDialog progressDialog = buildProgressDialog();
         JLabel progressLabel = extractProgressLabel(progressDialog);
         progressDialog.setVisible(true);
         triggerBtn.setEnabled(false);
 
         AiReportCoordinator coordinator = new AiReportCoordinator(
-                new PromptBuilder(systemPrompt),
                 new AiReportService(providerConfig),
                 new HtmlReportRenderer(),
                 executor);
@@ -183,7 +191,7 @@ final class AiReportLauncher {
                     });
                     return;
                 }
-                coordinator.start(context, progressDialog, progressLabel, triggerBtn);
+                coordinator.start(prompt, context, progressDialog, progressLabel, triggerBtn);
             } catch (RuntimeException ex) {
                 log.error("launch: unexpected error during provider validation. reason={}", ex.getMessage(), ex);
                 SwingUtilities.invokeLater(() -> {
@@ -201,16 +209,23 @@ final class AiReportLauncher {
     // Private helpers
     // ─────────────────────────────────────────────────────────────
 
-    private AiReportCoordinator.ReportContext buildReportContext(String providerDisplayName) {
-        final ScenarioMetadata metadata = dataProvider.getMetadata();
-        final int percentile = dataProvider.getPercentile();
-        final HtmlReportRenderer.RenderConfig config = new HtmlReportRenderer.RenderConfig(
-                metadata.users, metadata.scenarioName, metadata.scenarioDesc,
-                metadata.threadGroupName,
-                dataProvider.getStartTime(), dataProvider.getEndTime(),
-                dataProvider.getDuration(), percentile, providerDisplayName);
-
+    /**
+     * Builds the AI analysis prompt on the Swing EDT.
+     *
+     * <p>Must be called on the EDT — the same thread that wrote the
+     * {@code SamplingStatCalculator} values — to guarantee JMM visibility.
+     * The returned {@link PromptContent} is an immutable record safe to
+     * pass across the thread boundary to the background executor.</p>
+     *
+     * @param systemPrompt       loaded system prompt text
+     * @param providerDisplayName display name of the selected provider
+     * @return immutable prompt content ready for the AI API call
+     */
+    private PromptContent buildPromptOnEdt(String systemPrompt, String providerDisplayName) {
+        final ScenarioMetadata metadata   = dataProvider.getMetadata();
+        final int              percentile = dataProvider.getPercentile();
         final com.personal.jmeter.listener.SlaConfig sla = dataProvider.getSlaConfig();
+
         final String slaErrorPct = sla.isErrorPctEnabled()
                 ? sla.errorPctThreshold + "%" : "Not configured";
         final String slaRtMs = sla.isRtEnabled()
@@ -218,21 +233,37 @@ final class AiReportLauncher {
         final String slaRtMetric = sla.rtMetric == com.personal.jmeter.listener.SlaConfig.RtMetric.AVG
                 ? "Avg (ms)" : "P" + percentile + " (ms)";
 
+        PromptRequest request = new PromptRequest(
+                metadata.users, metadata.scenarioName, metadata.scenarioDesc,
+                dataProvider.getStartTime(), dataProvider.getEndTime(),
+                dataProvider.getDuration(), metadata.threadGroupName,
+                percentile, slaErrorPct, slaRtMs, slaRtMetric);
+
+        PromptBuilder.LatencyContext latency = new PromptBuilder.LatencyContext(
+                dataProvider.getAvgLatencyMs(), dataProvider.getAvgConnectMs(),
+                dataProvider.isLatencyPresent());
+
+        return new PromptBuilder(systemPrompt).build(
+                dataProvider.getCachedResults(), percentile, request,
+                dataProvider.getErrorTypeSummary(), latency);
+    }
+
+    private AiReportCoordinator.ReportContext buildReportContext(AiProviderConfig providerConfig) {
+        final ScenarioMetadata metadata   = dataProvider.getMetadata();
+        final int              percentile = dataProvider.getPercentile();
+        final HtmlReportRenderer.RenderConfig config = new HtmlReportRenderer.RenderConfig(
+                metadata.users, metadata.scenarioName, metadata.scenarioDesc,
+                metadata.threadGroupName,
+                dataProvider.getStartTime(), dataProvider.getEndTime(),
+                dataProvider.getDuration(), percentile, providerConfig.displayName);
+
         return new AiReportCoordinator.ReportContext(
-                Map.copyOf(dataProvider.getCachedResults()),
                 dataProvider.getVisibleTableRows(),
                 List.copyOf(dataProvider.getCachedBuckets()),
                 config,
                 dataProvider.getLastLoadedFilePath(),
-                providerDisplayName,
-                dataProvider.getDuration(),
-                slaErrorPct,
-                slaRtMs,
-                slaRtMetric,
-                List.copyOf(dataProvider.getErrorTypeSummary()),
-                dataProvider.getAvgLatencyMs(),
-                dataProvider.getAvgConnectMs(),
-                dataProvider.isLatencyPresent());
+                providerConfig.displayName,
+                providerConfig);
     }
 
     /**

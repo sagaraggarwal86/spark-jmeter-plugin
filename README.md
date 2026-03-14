@@ -431,15 +431,16 @@ Help:
 
 ### Exit Codes
 
-| Code | Meaning                                          |
-|------|--------------------------------------------------|
-| `0`  | AI verdict **PASS** — pipeline continues         |
-| `1`  | AI verdict **FAIL** — pipeline gate fails        |
-| `2`  | AI verdict **UNDECISIVE** — pipeline continues   |
-| `3`  | Invalid arguments                                |
-| `4`  | JTL parse error                                  |
-| `5`  | AI provider error (key, ping, or API failure)    |
-| `6`  | Report write error                               |
+| Code | Meaning                                                               |
+|------|-----------------------------------------------------------------------|
+| `0`  | AI verdict **PASS** — pipeline continues                              |
+| `1`  | AI verdict **FAIL** — pipeline gate fails                             |
+| `2`  | AI verdict **UNDECISIVE** — pipeline continues                        |
+| `3`  | Invalid arguments                                                     |
+| `4`  | JTL parse error                                                       |
+| `5`  | AI provider error (key, ping, or API failure)                         |
+| `6`  | Report write error                                                    |
+| `7`  | Unexpected error — full stack trace printed to `stderr`               |
 
 ### Example — CI/CD Pipeline
 
