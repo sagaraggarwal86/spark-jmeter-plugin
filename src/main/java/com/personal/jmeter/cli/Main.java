@@ -24,6 +24,7 @@ import com.personal.jmeter.parser.JtlParseException;
  *   <li>{@code 4} — JTL parse error</li>
  *   <li>{@code 5} — AI provider error (key invalid, ping failed, API error)</li>
  *   <li>{@code 6} — report file write failure</li>
+ *   <li>{@code 7} — unexpected error (unhandled RuntimeException, Error, etc.) — full stack trace printed to stderr</li>
  * </ul>
  *
  * <h3>Usage</h3>
@@ -48,6 +49,8 @@ public final class Main {
     static final int EXIT_AI_ERROR            = 5;
     /** Exit code: report file write failure. */
     static final int EXIT_WRITE_ERROR         = 6;
+    /** Exit code: unexpected / unhandled error (RuntimeException, Error, etc.) — full stack trace printed to stderr. */
+    static final int EXIT_UNEXPECTED_ERROR    = 7;
 
     private Main() {}
 
@@ -95,6 +98,10 @@ public final class Main {
         } catch (IOException e) {
             System.err.println("Error: " + e.getMessage());
             System.exit(EXIT_WRITE_ERROR);
+        } catch (Throwable t) {
+            System.err.println("Unexpected error: " + t.getMessage());
+            t.printStackTrace(System.err);
+            System.exit(EXIT_UNEXPECTED_ERROR);
         }
     }
 

@@ -175,9 +175,31 @@ public class AiReportService {
         final JsonObject choice;
         final String aiText;
         try {
-            root   = JsonParser.parseString(responseBody).getAsJsonObject();
-            choice = root.getAsJsonArray("choices").get(0).getAsJsonObject();
+            root = JsonParser.parseString(responseBody).getAsJsonObject();
+
+            // Explicit guard: choices key absent or null — provider returned a non-standard response.
+            // Checked before any array access to avoid NPE on getAsJsonArray() return value.
+            if (!root.has("choices") || root.get("choices").isJsonNull()) {
+                log.warn("extractAndValidateContent: choices field missing. provider={}",
+                        config.providerKey);
+                throw new AiServiceException("Failed to parse " + config.displayName
+                        + " API response: choices field missing.");
+            }
+
+            // Explicit guard: choices array empty — provider returned zero completions.
+            // Checked before .get(0) to avoid IndexOutOfBoundsException.
+            JsonArray choicesArr = root.getAsJsonArray("choices");
+            if (choicesArr.isEmpty()) {
+                log.warn("extractAndValidateContent: choices array is empty. provider={}",
+                        config.providerKey);
+                throw new AiServiceException("Failed to parse " + config.displayName
+                        + " API response: choices array is empty.");
+            }
+
+            choice = choicesArr.get(0).getAsJsonObject();
             aiText = choice.getAsJsonObject("message").get("content").getAsString();
+        } catch (AiServiceException e) {
+            throw e; // already structured — re-throw without re-wrapping
         } catch (JsonParseException | IllegalStateException | IndexOutOfBoundsException | NullPointerException e) {
             log.error("extractAndValidateContent: failed to parse response. provider={} reason={}",
                     config.providerKey, e.getMessage(), e);

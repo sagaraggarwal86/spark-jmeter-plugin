@@ -127,6 +127,11 @@ public class AiReportCoordinator {
         } catch (IOException ex) {
             log.error("executeReport: AI report generation failed. reason={}", ex.getMessage(), ex);
             SwingUtilities.invokeLater(() -> onFailure(ex, progressDialog, triggerBtn));
+        } catch (RuntimeException ex) {
+            log.error("executeReport: unexpected error during report generation. reason={}", ex.getMessage(), ex);
+            SwingUtilities.invokeLater(() -> onFailure(
+                    new IOException("Unexpected error: " + ex.getMessage(), ex),
+                    progressDialog, triggerBtn));
         }
     }
 
@@ -197,7 +202,9 @@ public class AiReportCoordinator {
             Thread.currentThread().interrupt();
             throw new IOException("Save dialog interrupted", e);
         } catch (java.lang.reflect.InvocationTargetException e) {
-            throw new IOException("Save dialog failed: " + e.getCause().getMessage(), e);
+            Throwable cause = e.getCause();
+            String msg = (cause != null) ? cause.getMessage() : e.getMessage();
+            throw new IOException("Save dialog failed: " + msg, e);
         }
         return result[0];
     }
