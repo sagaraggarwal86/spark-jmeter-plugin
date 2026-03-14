@@ -169,20 +169,31 @@ final class AiReportLauncher {
                 new HtmlReportRenderer(),
                 executor);
         executor.submit(() -> {
-            SwingUtilities.invokeLater(() -> progressLabel.setText("Validating API key..."));
-            String pingError = AiProviderRegistry.validateAndPing(providerConfig);
-            if (pingError != null) {
+            try {
+                SwingUtilities.invokeLater(() -> progressLabel.setText("Validating API key..."));
+                String pingError = AiProviderRegistry.validateAndPing(providerConfig);
+                if (pingError != null) {
+                    SwingUtilities.invokeLater(() -> {
+                        progressDialog.dispose();
+                        triggerBtn.setEnabled(true);
+                        JOptionPane.showMessageDialog(parent,
+                                "<html><b>Cannot connect to " + providerConfig.displayName + ".</b><br><br>"
+                                        + pingError.replace("\n", "<br>") + "</html>",
+                                "Provider Validation Failed", JOptionPane.ERROR_MESSAGE);
+                    });
+                    return;
+                }
+                coordinator.start(context, progressDialog, progressLabel, triggerBtn);
+            } catch (RuntimeException ex) {
+                log.error("launch: unexpected error during provider validation. reason={}", ex.getMessage(), ex);
                 SwingUtilities.invokeLater(() -> {
                     progressDialog.dispose();
                     triggerBtn.setEnabled(true);
                     JOptionPane.showMessageDialog(parent,
-                            "<html><b>Cannot connect to " + providerConfig.displayName + ".</b><br><br>"
-                                    + pingError.replace("\n", "<br>") + "</html>",
-                            "Provider Validation Failed", JOptionPane.ERROR_MESSAGE);
+                            "Unexpected error during report generation:\n\n" + ex.getMessage(),
+                            "Unexpected Error", JOptionPane.ERROR_MESSAGE);
                 });
-                return;
             }
-            coordinator.start(context, progressDialog, progressLabel, triggerBtn);
         });
     }
 

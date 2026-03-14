@@ -241,6 +241,16 @@ final class CliArgs {
                 Help:
                   -h, --help                  print this message and exit
 
+                Exit Codes:
+                  0   AI verdict PASS — pipeline continues
+                  1   AI verdict FAIL — pipeline gate fails
+                  2   AI verdict UNDECISIVE — pipeline continues
+                  3   Invalid arguments
+                  4   JTL parse error
+                  5   AI provider error (key, ping, or API failure)
+                  6   Report write error
+                  7   Unexpected error — full stack trace printed to stderr
+
                 Examples:
                   # Minimal
                   car-cli-report.sh -i results.jtl --provider groq --config ai-reporter.properties
