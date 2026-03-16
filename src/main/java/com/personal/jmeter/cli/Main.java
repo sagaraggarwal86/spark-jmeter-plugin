@@ -10,7 +10,7 @@ import com.personal.jmeter.ai.AiServiceException;
 import com.personal.jmeter.parser.JtlParseException;
 
 /**
- * Command-line entry point for SPARK — Smart Performance Analyser & Report Kit.
+ * Command-line entry point for SPARK — Smart Performance Analyser &amp; Report Kit.
  *
  * <p>Parses a JTL file, calls the configured AI provider, and generates a
  * standalone HTML performance report — no JMeter GUI or Swing required.</p>
