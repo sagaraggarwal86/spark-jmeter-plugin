@@ -12,7 +12,7 @@ import java.util.*;
 
 /**
  * Handles table population, sorting, and column visibility for the
- * Configurable Aggregate Report results table.
+ * JAAR results table.
  *
  * <p>Extracted from {@link AggregateReportPanel} to satisfy the 300-line class
  * design limit (Standard 3 SRP). Responsibility: data rendering only — no I/O,

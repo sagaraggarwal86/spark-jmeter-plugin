@@ -21,9 +21,9 @@ jobs:
       - uses: softprops/action-gh-release@v2
         with:
           files: |
-            target/spark-jmeter-plugin-*.jar
-            src/main/scripts/spark-cli-report.bat
-            src/main/scripts/spark-cli-report.sh
+            target/jaar-jmeter-plugin-*.jar
+            src/main/scripts/jaar-cli-report.bat
+            src/main/scripts/jaar-cli-report.sh
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

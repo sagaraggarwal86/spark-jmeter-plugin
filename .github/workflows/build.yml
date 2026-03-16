@@ -25,11 +25,11 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: matrix.os == 'windows-latest'
         with:
-          name: spark-jmeter-plugin
+          name: jaar-jmeter-plugin
           path: |
-            target/spark-jmeter-plugin-*.jar
-            src/main/scripts/spark-cli-report.bat
-            src/main/scripts/spark-cli-report.sh
+            target/jaar-jmeter-plugin-*.jar
+            src/main/scripts/jaar-cli-report.bat
+            src/main/scripts/jaar-cli-report.sh
       - uses: actions/upload-artifact@v4
         if: matrix.os == 'ubuntu-latest'
         with:

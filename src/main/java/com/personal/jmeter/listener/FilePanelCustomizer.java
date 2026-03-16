@@ -6,7 +6,7 @@ import java.io.File;
 
 /**
  * Customises the {@code FilePanel} inherited from
- * {@code AbstractVisualizer} for the Configurable Aggregate Report plugin.
+ * {@code AbstractVisualizer} for the JAAR plugin.
  *
  * <p>Extracted from {@link ListenerGUI} to satisfy the 300-line class design
  * limit (Standard 3 SRP). Responsibility: component-tree surgery on the

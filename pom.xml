@@ -5,12 +5,12 @@
              http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <groupId>io.github.sagaraggarwal86</groupId>
-    <artifactId>spark-jmeter-plugin</artifactId>
-    <version>4.2.0</version>
+    <artifactId>jaar-jmeter-plugin</artifactId>
+    <version>4.2.1</version>
     <packaging>jar</packaging>
-    <name>SPARK — Smart Performance Analyser &amp; Report Kit</name>
-    <description>SPARK is an AI-powered JMeter listener plugin that analyses load test results and generates intelligent performance reports with PASS/FAIL verdicts.</description>
-    <url>https://github.com/sagaraggarwal86/spark-jmeter-plugin</url>
+    <name>JAAR — JTL AI Analysis &amp; Reporting</name>
+    <description>JAAR is an AI-powered JMeter listener plugin that analyses load test results and generates intelligent performance reports with PASS/FAIL verdicts.</description>
+    <url>https://github.com/sagaraggarwal86/jaar-jmeter-plugin</url>
 
     <licenses>
         <license>
@@ -29,10 +29,10 @@
     </developers>
 
     <scm>
-        <connection>scm:git:git://github.com/sagaraggarwal86/spark-jmeter-plugin.git</connection>
-        <developerConnection>scm:git:ssh://github.com:sagaraggarwal86/spark-jmeter-plugin.git
+        <connection>scm:git:git://github.com/sagaraggarwal86/jaar-jmeter-plugin.git</connection>
+        <developerConnection>scm:git:ssh://github.com:sagaraggarwal86/jaar-jmeter-plugin.git
         </developerConnection>
-        <url>https://github.com/sagaraggarwal86/spark-jmeter-plugin/tree/main</url>
+        <url>https://github.com/sagaraggarwal86/jaar-jmeter-plugin/tree/main</url>
     </scm>
 
     <properties>
@@ -354,8 +354,8 @@
                         <configuration>
                             <target>
                                 <replaceregexp file="${project.basedir}/README.md"
-                                               match="spark-jmeter-plugin-[0-9]+\.[0-9]+\.[0-9]+\.jar"
-                                               replace="spark-jmeter-plugin-${project.version}.jar"
+                                               match="jaar-jmeter-plugin-[0-9]+\.[0-9]+\.[0-9]+\.jar"
+                                               replace="jaar-jmeter-plugin-${project.version}.jar"
                                                flags="g"
                                                byline="false"
                                                encoding="UTF-8"/>

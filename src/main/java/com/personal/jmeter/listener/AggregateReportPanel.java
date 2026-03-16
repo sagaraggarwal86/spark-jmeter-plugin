@@ -21,7 +21,7 @@ import java.util.concurrent.Executors;
 import java.util.function.Supplier;
 
 /**
- * Reusable Swing panel for the Configurable Aggregate Report.
+ * Reusable Swing panel for the JAAR.
  *
  * // DESIGN: extends JPanel — required by Swing API; composition not possible
  * for a reusable embedded panel used by both ListenerGUI and UIPreview.

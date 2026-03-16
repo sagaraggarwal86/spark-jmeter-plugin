@@ -216,8 +216,8 @@ public class AiReportCoordinator {
     /**
      * Builds a suggested filename for the AI report (no directory component).
      *
-     * <p>Format: {@code SPARK_<AIName>_Report_<yyyyMMdd_HHmmss>.html}<br>
-     * Example: {@code SPARK_Groq_Report_20260315_143022.html}</p>
+     * <p>Format: {@code JAAR_<AIName>_Report_<yyyyMMdd_HHmmss>.html}<br>
+     * Example: {@code JAAR_Groq_Report_20260315_143022.html}</p>
      *
      * @param providerDisplayName display name of the AI provider (e.g. "Groq (Free)")
      * @return suggested filename
@@ -230,7 +230,7 @@ public class AiReportCoordinator {
                 : "";
         String providerPart = sanitizeSegment(baseName);
         if (providerPart.isEmpty()) providerPart = "AI";
-        return "SPARK_" + providerPart + "_Report_" + timestamp + ".html";
+        return "JAAR_" + providerPart + "_Report_" + timestamp + ".html";
     }
 
     private static String sanitizeSegment(String raw) {

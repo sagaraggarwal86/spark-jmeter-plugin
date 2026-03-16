@@ -1,12 +1,12 @@
 @echo off
 REM ──────────────────────────────────────────────────────────────────
-REM  SPARK — Smart Performance Analyser & Report Kit  (Windows)
+REM  JAAR — JTL AI Analysis & Reporting  (Windows)
 REM
 REM  Place this script in %JMETER_HOME%\bin\ alongside jmeter.bat.
 REM  The plugin JAR must be in %JMETER_HOME%\lib\ext\.
 REM
 REM  Usage:
-REM    spark-cli-report.bat -i results.jtl --provider groq --config ai-reporter.properties
+REM    jaar-cli-report.bat -i results.jtl --provider groq --config ai-reporter.properties
 REM ──────────────────────────────────────────────────────────────────
 
 setlocal

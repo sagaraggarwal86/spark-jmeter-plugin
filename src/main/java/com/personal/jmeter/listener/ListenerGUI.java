@@ -20,7 +20,7 @@ import java.net.URI;
 import java.util.Enumeration;
 
 /**
- * JMeter listener plugin — SPARK (Smart Performance Analyser &amp; Report Kit).
+ * JMeter listener plugin — JAAR (JTL AI Analysis &amp; Reporting).
  *
  * <p>This class handles JMeter-specific integration only:
  * lifecycle callbacks ({@code configure}, {@code modifyTestElement}, {@code clearGui}),
@@ -128,7 +128,7 @@ public class ListenerGUI extends AbstractVisualizer {
 
     @Override
     public String getLabelResource() {
-        return "spark_ai_performance_reporter";
+        return "jaar_ai_performance_reporter";
     }
 
     @Override
