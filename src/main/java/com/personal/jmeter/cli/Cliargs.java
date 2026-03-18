@@ -41,7 +41,6 @@ final class CliArgs {
 
     // ── State ─────────────────────────────────────────────────────
     private boolean helpRequested = false;
-    private boolean aiFlag        = false;
     private final List<String> errors = new ArrayList<>();
 
     private CliArgs() {}
@@ -101,7 +100,6 @@ final class CliArgs {
             switch (arg) {
                 case "-i", "--input"          -> inputFile     = nextValue(args, i++, arg);
                 case "-o", "--output"         -> outputFile    = nextValue(args, i++, arg);
-                case "--ai"                   -> aiFlag        = true;
                 case "--provider"             -> provider      = nextValue(args, i++, arg);
                 case "--config"               -> configFile    = nextValue(args, i++, arg);
                 case "--start-offset"         -> startOffset   = nextInt(args, i++, arg);
@@ -124,8 +122,18 @@ final class CliArgs {
     }
 
     private String nextValue(String[] args, int current, String flag) {
-        if (current + 1 < args.length && !args[current + 1].startsWith("-")) {
-            return args[current + 1];
+        if (current + 1 < args.length) {
+            String next = args[current + 1];
+            // A token is treated as a flag only when it starts with "--"
+            // OR is exactly two characters: "-" + a single letter (e.g. -i, -o, -h).
+            // Everything else — including "-MyTest", "-5", or "--" — is a valid value.
+            boolean looksLikeFlag = next.startsWith("--")
+                    || (next.length() == 2
+                    && next.charAt(0) == '-'
+                    && Character.isLetter(next.charAt(1)));
+            if (!looksLikeFlag) {
+                return next;
+            }
         }
         errors.add(flag + " requires a value");
         return null;
@@ -164,8 +172,6 @@ final class CliArgs {
         else if (!new File(inputFile).isFile())
             errors.add("JTL file not found: " + inputFile);
 
-        if (!aiFlag)
-            errors.add("--ai is required");
         if (provider == null || provider.isBlank())
             errors.add("--provider is required");
         if (configFile == null || configFile.isBlank())
@@ -178,8 +184,13 @@ final class CliArgs {
             errors.add("--percentile must be between 1 and 99");
         if (chartInterval < 0 || chartInterval > 3600)
             errors.add("--chart-interval must be between 0 and 3600");
-        if (errorSla > 0 && (errorSla < 1 || errorSla > 99))
+        // BUG FIX: guard was (errorSla > 0) which made the inner (errorSla < 1) branch
+        // unreachable, silently accepting 0 and negative values as "disabled".
+        // Correct guard is (errorSla != -1) — -1 is the internal "not provided" sentinel.
+        if (errorSla != -1 && (errorSla < 1 || errorSla > 99))
             errors.add("--error-sla must be between 1 and 99");
+        if (rtSla != -1 && rtSla < 1)
+            errors.add("--rt-sla must be a positive integer in ms");
 
         // SLA dependency
         if (rtMetric != null && !rtMetric.isBlank()) {
@@ -206,18 +217,17 @@ final class CliArgs {
 
     static String helpText() {
         return """
-                Configurable Aggregate Report — CLI Mode
+                JAAR — JTL AI Analysis & Reporting  (CLI Mode)
 
                 Usage:
-                  car-cli-report.sh  [options]     (macOS / Linux)
-                  car-cli-report.bat [options]     (Windows)
+                  jaar-cli-report.sh  [options]     (macOS / Linux)
+                  jaar-cli-report.bat [options]     (Windows)
 
                   Place the wrapper script in $JMETER_HOME/bin/.
                   The plugin JAR must be in $JMETER_HOME/lib/ext/.
 
                 Required:
                   -i, --input FILE            JTL file path
-                  --ai                        enable AI analysis
                   --provider STRING           provider name, case-insensitive
                                               (groq, openai, claude, gemini, mistral, deepseek)
                   --config FILE               path to ai-reporter.properties
@@ -246,14 +256,24 @@ final class CliArgs {
                 Help:
                   -h, --help                  print this message and exit
 
+                Exit Codes:
+                  0   AI verdict PASS — pipeline continues
+                  1   AI verdict FAIL — pipeline gate fails
+                  2   AI verdict UNDECISIVE — pipeline continues
+                  3   Invalid arguments
+                  4   JTL parse error
+                  5   AI provider error (key, ping, or API failure)
+                  6   Report write error
+                  7   Unexpected error — full stack trace printed to stderr
+
                 Examples:
                   # Minimal
-                  car-cli-report.sh -i results.jtl --ai --provider groq --config ai-reporter.properties
+                  jaar-cli-report.sh -i results.jtl --provider groq --config ai-reporter.properties
 
                   # Full
-                  car-cli-report.sh \\
+                  jaar-cli-report.sh \\
                     -i results.jtl -o report.html \\
-                    --ai --provider openai --config /path/to/ai-reporter.properties \\
+                    --provider openai --config /path/to/ai-reporter.properties \\
                     --start-offset 10 --end-offset 300 --percentile 95 \\
                     --chart-interval 60 --search "Login" \\
                     --scenario-name "Load Test" --description "Peak hour" --virtual-users 200 \\

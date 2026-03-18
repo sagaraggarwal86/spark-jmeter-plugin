@@ -1,5 +1,7 @@
 package com.personal.jmeter.ai;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -50,7 +52,7 @@ public final class AiProviderRegistry {
 
     // ── Global defaults ────────────────────────────────────────────────────
     private static final int    DEFAULT_TIMEOUT   = 60;
-    private static final int    DEFAULT_MAX_TOKENS = 4096;
+    private static final int    DEFAULT_MAX_TOKENS = 8192;
     private static final double DEFAULT_TEMPERATURE = 0.3;
 
     // ── Known-provider metadata ────────────────────────────────────────────
@@ -59,45 +61,51 @@ public final class AiProviderRegistry {
      * Groq is always first when configured.
      */
     static final List<String> KNOWN_PROVIDERS = List.of(
-            "groq", "gemini", "mistral", "deepseek", "openai", "claude"
+            "groq", "gemini", "mistral", "deepseek", "cerebras", "openai", "claude"
     );
 
     private static final Map<String, String> KNOWN_LABELS = Map.of(
-            "groq",     "Groq (Free)",
-            "gemini",   "Gemini (Free)",
-            "mistral",  "Mistral (Free)",
-            "deepseek", "DeepSeek (Free)",
-            "openai",   "OpenAI (Paid)",
-            "claude",   "Claude (Paid)"
+            "groq",      "Groq (Free)",
+            "gemini",    "Gemini (Free)",
+            "mistral",   "Mistral (Free)",
+            "deepseek",  "DeepSeek (Free)",
+            "cerebras",  "Cerebras (Free)",
+            "openai",    "OpenAI (Paid)",
+            "claude",    "Claude (Paid)"
     );
 
     private static final Map<String, String> KNOWN_DEFAULT_MODELS = Map.of(
-            "groq",     "llama-3.3-70b-versatile",
-            "gemini",   "gemini-1.5-pro",
-            "mistral",  "mistral-large-latest",
-            "deepseek", "deepseek-chat",
-            "openai",   "gpt-4o",
-            "claude",   "claude-sonnet-4-6"
+            "groq",      "llama-3.3-70b-versatile",
+            "gemini",    "gemini-1.5-pro",
+            "mistral",   "mistral-large-latest",
+            "deepseek",  "deepseek-chat",
+            "cerebras",  "qwen-3-235b-a22b-instruct-2507",
+            "openai",    "gpt-4o",
+            "claude",    "claude-sonnet-4-6"
     );
 
     private static final Map<String, String> KNOWN_BASE_URLS = Map.of(
-            "groq",     "https://api.groq.com/openai/v1",
-            "gemini",   "https://generativelanguage.googleapis.com/v1beta/openai",
-            "mistral",  "https://api.mistral.ai/v1",
-            "deepseek", "https://api.deepseek.com/v1",
-            "openai",   "https://api.openai.com/v1",
-            "claude",   "https://api.anthropic.com/v1"
+            "groq",      "https://api.groq.com/openai/v1",
+            "gemini",    "https://generativelanguage.googleapis.com/v1beta/openai",
+            "mistral",   "https://api.mistral.ai/v1",
+            "deepseek",  "https://api.deepseek.com/v1",
+            "cerebras",  "https://api.cerebras.ai/v1",
+            "openai",    "https://api.openai.com/v1",
+            "claude",    "https://api.anthropic.com/v1"
     );
 
     // ── Known API key format prefixes (for structural validation) ──────────
     private static final Map<String, String> KNOWN_KEY_PREFIXES = Map.of(
-            "groq",   "gsk_",
-            "openai", "sk-",
-            "claude", "sk-ant-",
-            "gemini", "AIza"
+            "groq",      "gsk_",
+            "openai",    "sk-",
+            "claude",    "sk-ant-",
+            "gemini",    "AIza",
+            "cerebras",  "csk-"
     );
 
-    // ── Ping cache: providerKey → true (only successful pings are cached) ──
+    // ── Ping cache: "providerKey:apiKey" → true (only successful pings are cached).
+    //    Composite key ensures a rotated API key always produces a cache miss,
+    //    preventing stale validation bypass after key changes. ──────────────────
     private static final ConcurrentHashMap<String, Boolean> PING_CACHE =
             new ConcurrentHashMap<>();
 
@@ -161,7 +169,7 @@ public final class AiProviderRegistry {
         if (formatError != null) return formatError;
 
         // 2 — ping (skip if cached)
-        if (Boolean.TRUE.equals(PING_CACHE.get(config.providerKey))) {
+        if (Boolean.TRUE.equals(PING_CACHE.get(cacheKey(config)))) {
             log.debug("validateAndPing: ping cache hit for provider={}", config.providerKey);
             return null;
         }
@@ -170,13 +178,16 @@ public final class AiProviderRegistry {
     }
 
     /**
-     * Clears the ping cache entry for the given provider key.
+     * Clears the ping cache entry for the given provider configuration.
      * Useful after the user edits the properties file.
      *
-     * @param providerKey the provider key to evict
+     * <p>The cache is keyed on {@code providerKey + ":" + apiKey} so this method
+     * requires the full config to locate the correct entry.</p>
+     *
+     * @param config the provider config whose cache entry should be evicted
      */
-    public static void evictPingCache(String providerKey) {
-        PING_CACHE.remove(providerKey);
+    public static void evictPingCache(AiProviderConfig config) {
+        PING_CACHE.remove(cacheKey(config));
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -239,13 +250,16 @@ public final class AiProviderRegistry {
             }
         }
 
-        // Order: known providers first (in canonical order), then unknowns alphabetically
+        // Order: ai.reporter.order (user-defined) → KNOWN_PROVIDERS (built-in) → unknowns alphabetically
+        // ai.reporter.order takes precedence when present; missing/blank falls back to KNOWN_PROVIDERS.
+        List<String> canonical = resolveOrder(props);
         List<String> ordered = new ArrayList<>();
-        for (String known : KNOWN_PROVIDERS) {
-            if (allConfigured.contains(known)) ordered.add(known);
+        for (String key : canonical) {
+            if (allConfigured.contains(key)) ordered.add(key);
         }
+        // Append any configured providers not covered by the canonical order, alphabetically
         allConfigured.stream()
-                .filter(k -> !KNOWN_PROVIDERS.contains(k))
+                .filter(k -> !canonical.contains(k))
                 .sorted()
                 .forEach(ordered::add);
 
@@ -256,6 +270,38 @@ public final class AiProviderRegistry {
         }
         log.debug("buildProviderList: {} configured provider(s): {}", result.size(), ordered);
         return result;
+    }
+
+    /**
+     * Resolves the canonical provider order.
+     *
+     * <p>Resolution order:</p>
+     * <ol>
+     *   <li>{@code ai.reporter.order} in the properties file — user-defined, comma-separated
+     *       list of provider keys (e.g. {@code cerebras,mistral,groq}).</li>
+     *   <li>{@link #KNOWN_PROVIDERS} — built-in fallback when the property is absent or blank.</li>
+     * </ol>
+     *
+     * @param props loaded properties
+     * @return ordered list of provider keys to use as the canonical ordering
+     */
+    private static List<String> resolveOrder(Properties props) {
+        String orderProp = props.getProperty(PREFIX + "order", "").trim();
+        if (!orderProp.isBlank()) {
+            List<String> userOrder = new ArrayList<>();
+            for (String part : orderProp.split(",")) {
+                String key = part.trim().toLowerCase();
+                if (!key.isEmpty() && !userOrder.contains(key)) {
+                    userOrder.add(key);
+                }
+            }
+            if (!userOrder.isEmpty()) {
+                log.debug("resolveOrder: using ai.reporter.order: {}", userOrder);
+                return userOrder;
+            }
+        }
+        log.debug("resolveOrder: ai.reporter.order absent — using built-in KNOWN_PROVIDERS order.");
+        return KNOWN_PROVIDERS;
     }
 
     /**
@@ -275,8 +321,7 @@ public final class AiProviderRegistry {
             return null;
         }
 
-        String label = KNOWN_LABELS.getOrDefault(key,
-                Character.toUpperCase(key.charAt(0)) + key.substring(1));
+        String label = resolveLabel(key, props);
 
         try {
             return new AiProviderConfig(key, label, apiKey, model, baseUrl, timeout, maxTok, temp);
@@ -284,6 +329,32 @@ public final class AiProviderRegistry {
             log.warn("buildConfig: provider '{}' skipped — {}.", key, e.getMessage());
             return null;
         }
+    }
+
+    /**
+     * Resolves the display label for a provider.
+     *
+     * <p>Resolution order:</p>
+     * <ol>
+     *   <li>{@code ai.reporter.<key>.tier} in the properties file — appended as
+     *       {@code "Key (tier)"} (e.g. {@code "Cerebras (Free)"}).</li>
+     *   <li>{@link #KNOWN_LABELS} — built-in label for known providers.</li>
+     *   <li>Capitalised key with no suffix — fallback for unknown providers
+     *       with no tier property.</li>
+     * </ol>
+     *
+     * @param key   provider key (e.g. {@code "cerebras"})
+     * @param props loaded properties
+     * @return display label for the provider
+     */
+    private static String resolveLabel(String key, Properties props) {
+        String tier = resolve(props, key, "tier", "").trim();
+        if (!tier.isBlank()) {
+            String base = Character.toUpperCase(key.charAt(0)) + key.substring(1);
+            return base + " (" + tier + ")";
+        }
+        return KNOWN_LABELS.getOrDefault(key,
+                Character.toUpperCase(key.charAt(0)) + key.substring(1));
     }
 
     private static String resolve(Properties props, String providerKey,
@@ -336,6 +407,25 @@ public final class AiProviderRegistry {
     }
 
     // ─────────────────────────────────────────────────────────────────────────
+    // Cache key
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Builds the composite ping-cache key from provider key and API key value.
+     *
+     * <p>Keying on both fields ensures that when a user rotates their API key
+     * and {@code ai-reporter.properties} is reloaded, the old cache entry never
+     * matches the new {@link AiProviderConfig} — forcing a fresh live ping rather
+     * than silently reusing a stale success result.</p>
+     *
+     * @param config provider configuration
+     * @return composite cache key in the form {@code "providerKey:apiKey"}
+     */
+    private static String cacheKey(AiProviderConfig config) {
+        return config.providerKey + ":" + config.apiKey;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
     // Live ping
     // ─────────────────────────────────────────────────────────────────────────
 
@@ -348,6 +438,7 @@ public final class AiProviderRegistry {
         String url = config.chatCompletionsUrl();
         String body = buildPingBody(config);
         log.debug("executePing: pinging provider={} url={}", config.providerKey, url);
+        long pingStart = System.currentTimeMillis();
 
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(url))
@@ -361,39 +452,53 @@ public final class AiProviderRegistry {
             HttpResponse<String> response =
                     SharedHttpClient.get().send(request, HttpResponse.BodyHandlers.ofString());
             int status = response.statusCode();
-            log.debug("executePing: provider={} status={}", config.providerKey, status);
+            long elapsedMs = System.currentTimeMillis() - pingStart;
 
             if (status >= 200 && status < 300) {
-                PING_CACHE.put(config.providerKey, Boolean.TRUE);
+                PING_CACHE.put(cacheKey(config), Boolean.TRUE);
+                log.info("executePing: provider={} status={} elapsed={}ms — OK",
+                        config.providerKey, status, elapsedMs);
                 return null;
             }
-            PING_CACHE.remove(config.providerKey);
-            return buildPingErrorMessage(config, status);
+            log.warn("executePing: provider={} status={} elapsed={}ms — FAIL",
+                    config.providerKey, status, elapsedMs);
+            PING_CACHE.remove(cacheKey(config));
+            return buildPingErrorMessage(config, status, response.body());
 
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            PING_CACHE.remove(config.providerKey);
+            PING_CACHE.remove(cacheKey(config));
             return "Connection to " + config.displayName + " was interrupted. Please try again.";
         } catch (IOException e) {
-            PING_CACHE.remove(config.providerKey);
+            PING_CACHE.remove(cacheKey(config));
             log.warn("executePing: network error for provider={}. reason={}", config.providerKey, e.getMessage());
             return "Could not connect to " + config.displayName + ".\n\n"
                     + "Please check your network connection and that the base URL is correct:\n"
                     + "  " + config.baseUrl;
         } catch (RuntimeException e) {
-            PING_CACHE.remove(config.providerKey);
+            PING_CACHE.remove(cacheKey(config));
             log.error("executePing: unexpected runtime error for provider={}. reason={}", config.providerKey, e.getMessage(), e);
             throw e;
         }
     }
 
     private static String buildPingBody(AiProviderConfig config) {
-        return "{\"model\":\"" + config.model + "\","
-                + "\"max_tokens\":1,"
-                + "\"messages\":[{\"role\":\"user\",\"content\":\"hi\"}]}";
+        JsonObject userMsg = new JsonObject();
+        userMsg.addProperty("role", "user");
+        userMsg.addProperty("content", "hi");
+
+        JsonArray messages = new JsonArray();
+        messages.add(userMsg);
+
+        JsonObject body = new JsonObject();
+        body.addProperty("model", config.model);
+        body.addProperty("max_tokens", 1);
+        body.add("messages", messages);
+
+        return body.toString();
     }
 
-    private static String buildPingErrorMessage(AiProviderConfig config, int status) {
+    private static String buildPingErrorMessage(AiProviderConfig config, int status, String responseBody) {
         if (status == 401) {
             return "The " + config.displayName + " API key was rejected (HTTP 401).\n\n"
                     + "The key may have expired or been revoked. Please update:\n"
@@ -405,8 +510,35 @@ public final class AiProviderRegistry {
                     + "Your account may lack permissions or have exceeded its quota.\n"
                     + "Please check your account at the provider's dashboard.";
         }
+        if (status == 404) {
+            return "Endpoint not found for " + config.displayName + " (HTTP 404).\n\n"
+                    + "The base URL may be misconfigured. Please verify:\n"
+                    + "  ai.reporter." + config.providerKey + ".base.url\n"
+                    + "in ai-reporter.properties.\n"
+                    + "Current URL: " + config.chatCompletionsUrl();
+        }
+        if (status == 429) {
+            return "Rate limit exceeded for " + config.displayName + " (HTTP 429).\n\n"
+                    + "Too many requests have been sent to the provider.\n"
+                    + "Please wait a moment and try again.";
+        }
+        if (status == 500) {
+            return "Internal server error from " + config.displayName + " (HTTP 500).\n\n"
+                    + "The provider encountered an unexpected error.\n"
+                    + "Please try again or check the provider's status page.";
+        }
+        if (status == 503) {
+            return "Service temporarily unavailable for " + config.displayName + " (HTTP 503).\n\n"
+                    + "The provider is currently unavailable.\n"
+                    + "Please try again later or check the provider's status page.";
+        }
+        if (status == 408 || status == 504) {
+            return "Request timed out for " + config.displayName + " (HTTP " + status + ").\n\n"
+                    + "The provider did not respond in time.\n"
+                    + "Please check your network connection and try again.";
+        }
         return "Unexpected response from " + config.displayName + " (HTTP " + status + ").\n\n"
-                + "Provider: " + config.providerKey + "\n"
-                + "URL: " + config.chatCompletionsUrl();
+                + "Provider: " + config.providerKey + "\n\n"
+                + "Response body:\n" + responseBody;
     }
 }

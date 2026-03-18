@@ -10,6 +10,10 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 /**
@@ -26,8 +30,20 @@ public class JTLParser {
 
     private static final Logger log = LoggerFactory.getLogger(JTLParser.class);
 
-    private static final String TOTAL_LABEL  = "TOTAL";
-    private static final long BUCKET_SIZE_MS = 30_000L;
+    public static final String TOTAL_LABEL  = "TOTAL";
+
+    /** Target number of chart data points when chart interval is set to auto (0). */
+    private static final int  AUTO_BUCKET_TARGET  = 120;
+
+    /**
+     * Clean snap intervals for auto bucket-size rounding, in milliseconds, ascending.
+     * The computed raw interval is rounded up to the nearest value in this list so
+     * that x-axis labels always land on round clock times (e.g. :00, :30, :00).
+     */
+    private static final long[] SNAP_INTERVALS_MS = {
+            10_000L, 30_000L, 60_000L, 120_000L, 300_000L,
+            600_000L, 1_800_000L, 3_600_000L
+    };
 
     // ─────────────────────────────────────────────────────────────
     // Public API
@@ -37,7 +53,7 @@ public class JTLParser {
      * Parses a JTL file and returns aggregated results with time metadata.
      *
      * @param filePath path to the JTL CSV file; must not be null
-     * @param options  filter and display options (mutated: minTimestamp is set); must not be null
+     * @param options  filter and display options (mutated: minTimestamp is set internally); must not be null
      * @return {@link ParseResult} containing per-label stats, time range, and time buckets
      * @throws IOException              if the file cannot be read or is empty
      * @throws IllegalArgumentException if filePath or options is null
@@ -65,24 +81,44 @@ public class JTLParser {
         Set<String> allLabels        = new HashSet<>();
         Set<String> subResultLabels  = new HashSet<>();
         long        minTimestamp     = Long.MAX_VALUE;
+        long        maxTimestamp     = Long.MIN_VALUE;
+
+        // ── Header parse (M1) — done once here; Pass 2 reuses colMap ───────────
+        // colMap and the four index variables are declared in the outer scope so
+        // Pass 2 can reference them without rebuilding from the header line again.
+        final Map<String, Integer> colMap;
+        final Integer tsIdx, labelIdx, elapsedIdx, dataTypeIdx;
 
         try (BufferedReader reader = new BufferedReader(
-                new InputStreamReader(new FileInputStream(filePath), StandardCharsets.UTF_8))) {
+                new InputStreamReader(new FileInputStream(filePath), StandardCharsets.UTF_8), 65_536)) {
             String headerLine = reader.readLine();
-            if (headerLine == null) throw new IOException("JTL file is empty: " + filePath);
+            if (headerLine == null) throw new JtlParseException("JTL file is empty: " + filePath);
 
-            Map<String, Integer> colMap     = JtlParserCore.buildColumnMap(headerLine.split(","));
-            Integer tsIdx       = colMap.get("timeStamp");
-            Integer labelIdx    = colMap.get("label");
-            Integer elapsedIdx  = colMap.get("elapsed");
-            Integer dataTypeIdx = colMap.get("dataType");
+            colMap      = JtlParserCore.buildColumnMap(headerLine.split(","));
+            tsIdx       = colMap.get("timeStamp");
+            labelIdx    = colMap.get("label");
+            elapsedIdx  = colMap.get("elapsed");
+            dataTypeIdx = colMap.get("dataType");
+
+            // ── Pass 1 max-index (H2) ─────────────────────────────────────────
+            // Determines how far extractPass1Fields needs to scan each line.
+            // Only the four fields above are needed in Pass 1; all columns beyond
+            // the highest of their indices are ignored, saving ~13 field allocations
+            // per row on a standard 17-column JTL.
+            int p1Max = 0;
+            if (tsIdx       != null) p1Max = Math.max(p1Max, tsIdx);
+            if (labelIdx    != null) p1Max = Math.max(p1Max, labelIdx);
+            if (elapsedIdx  != null) p1Max = Math.max(p1Max, elapsedIdx);
+            if (dataTypeIdx != null) p1Max = Math.max(p1Max, dataTypeIdx);
+            final int pass1MaxIdx = p1Max;
 
             // Previous-row fields for consecutive-row detection
             String prevTs = null, prevElapsed = null, prevDataType = null;
 
             String line;
             while ((line = reader.readLine()) != null) {
-                String[] values = JtlParserCore.splitCsvLine(line);
+                // H2: extract only the 4 needed columns; stop scanning at pass1MaxIdx
+                String[] values = JtlParserCore.extractPass1Fields(line, pass1MaxIdx);
 
                 String label    = (labelIdx    != null && labelIdx    < values.length) ? values[labelIdx].trim()    : "";
                 String ts       = (tsIdx       != null && tsIdx       < values.length) ? values[tsIdx].trim()       : "";
@@ -116,6 +152,7 @@ public class JTLParser {
                     try {
                         long tsLong = Long.parseLong(ts);
                         if (tsLong > 0 && tsLong < minTimestamp) minTimestamp = tsLong;
+                        if (tsLong > maxTimestamp)               maxTimestamp = tsLong;
                     } catch (NumberFormatException e) {
                         if (log.isDebugEnabled()) {
                             log.debug("parse: non-numeric timeStamp skipped. value={}", ts);
@@ -148,10 +185,18 @@ public class JTLParser {
         }
 
         // ── Pass 2: aggregate ────────────────────────────────────
-        // Resolve the chart bucket size: user setting > default 30s
+        // Resolve the chart bucket size:
+        //   - User-configured value (chartIntervalSeconds > 0) is used as-is.
+        //   - Auto (chartIntervalSeconds == 0): compute from actual JTL duration
+        //     (maxTimestamp − minTimestamp from Pass 1) so the chart always targets
+        //     ~AUTO_BUCKET_TARGET data points, then snap up to the nearest clean
+        //     interval (10s … 3600s) so x-axis labels land on round clock times.
+        //     Using JTL timestamps — not System.currentTimeMillis() — is essential
+        //     for historical JTL files where wall-clock distance would be years.
+        final long p1MaxTimestamp = (maxTimestamp == Long.MIN_VALUE) ? 0 : maxTimestamp;
         final long bucketSizeMs = (options.chartIntervalSeconds > 0)
                 ? options.chartIntervalSeconds * 1_000L
-                : BUCKET_SIZE_MS;
+                : computeAutoBucketSizeMs(options.minTimestamp, p1MaxTimestamp);
 
         Map<String, SamplingStatCalculator> results = new LinkedHashMap<>();
         SamplingStatCalculator totalCalc = new SamplingStatCalculator(TOTAL_LABEL);
@@ -159,32 +204,41 @@ public class JTLParser {
         long testEndMs   = Long.MIN_VALUE;
         TreeMap<Long, long[]> bucketMap = new TreeMap<>();
         // Error-type accumulator: "responseCode | responseMessage" → count
-        Map<String, Long> errorTypeCount = new LinkedHashMap<>();
+        Map<String, Long> errorTypeCount = new HashMap<>(); // insertion order unused — sorted by frequency in buildErrorTypeSummary()
         // Latency / Connect accumulators for Advanced Web Diagnostics
         long totalLatencyMs    = 0L;
         long totalConnectMs    = 0L;
         int  latencySampleCount = 0;
 
         try (BufferedReader reader = new BufferedReader(
-                new InputStreamReader(new FileInputStream(filePath), StandardCharsets.UTF_8))) {
-            String headerLine = reader.readLine();
-            if (headerLine == null) throw new IOException("JTL file is empty: " + filePath);
+                new InputStreamReader(new FileInputStream(filePath), StandardCharsets.UTF_8), 65_536)) {
+            reader.readLine(); // M1: skip header — colMap already built in Pass 1
 
-            Map<String, Integer> colMap = JtlParserCore.buildColumnMap(headerLine.split(","));
+            // M2: pre-compute filter flags once — invariant for the entire parse.
+            // Avoids recomputing isBlank() and int comparisons on every row in the
+            // hot loop, which is significant for JTL files with 200K+ samples.
+            final boolean hasInclude = !options.includeLabels.isBlank();
+            final boolean hasExclude = !options.excludeLabels.isBlank();
+            final boolean hasOffset  = options.startOffset > 0 || options.endOffset > 0;
+
             String line;
 
             while ((line = reader.readLine()) != null) {
-                SampleResult sr = JtlParserCore.parseLine(line, colMap);
+                // H1: tokenise once — tokens shared by parseLine and parseElapsed,
+                // eliminating the second splitCsvLine call that parseElapsed previously
+                // made on the same line.
+                String[] tokens = JtlParserCore.splitCsvLine(line);
+                SampleResult sr = JtlParserCore.parseLineTokens(tokens, colMap);
                 if (sr == null
                         || subResultLabels.contains(sr.getSampleLabel())
-                        || !JtlParserCore.shouldInclude(sr, options)) {
+                        || !JtlParserCore.shouldInclude(sr, options, hasInclude, hasExclude, hasOffset)) {
                     continue;
                 }
 
                 // Compute elapsed; optionally subtract IdleTime (timers / pre-post
                 // processors) before calling setStampAndTime — which must be called
                 // exactly once on a SampleResult.
-                long rawElapsed = JtlParserCore.parseElapsed(line, colMap);
+                long rawElapsed = JtlParserCore.parseElapsedTokens(tokens, colMap);
                 long adjusted   = (!options.includeTimerDuration && sr.getIdleTime() > 0)
                         ? Math.max(0L, rawElapsed - sr.getIdleTime())
                         : rawElapsed;
@@ -213,7 +267,13 @@ public class JTLParser {
                 if (sampleStart < testStartMs) testStartMs = sampleStart;
                 if (sampleEnd   > testEndMs)   testEndMs   = sampleEnd;
 
-                long bucketKey = (sampleStart / bucketSizeMs) * bucketSizeMs;
+                // Test-aligned bucket key: anchor to options.minTimestamp so the
+                // first bucket always starts exactly at test start, not at the
+                // nearest epoch boundary. Epoch-aligned keys (sampleStart / bktMs * bktMs)
+                // cause a partial first bucket when test start is not on a clean boundary,
+                // which cascades to also drop the last bucket via the coverage filter.
+                long bucketKey = ((sampleStart - options.minTimestamp) / bucketSizeMs)
+                        * bucketSizeMs + options.minTimestamp;
                 long[] acc = bucketMap.computeIfAbsent(bucketKey, k -> new long[4]);
                 acc[0] += sr.getTime();
                 acc[1] += 1;
@@ -237,11 +297,64 @@ public class JTLParser {
                 ? totalConnectMs / totalSampleCount : 0L;
         final boolean latencyPresent = latencySampleCount > 0;
 
-        List<TimeBucket> timeBuckets = JtlParserCore.buildTimeBuckets(bucketMap, bucketSizeMs);
+        List<TimeBucket> timeBuckets = JtlParserCore.buildTimeBuckets(
+                bucketMap, bucketSizeMs, testStartMs, testEndMs);
         log.info("parse: completed. labels={}, samples={}, buckets={}, latencyPresent={}",
                 results.size(), totalCalc.getCount(), timeBuckets.size(), latencyPresent);
         return new ParseResult(results, testStartMs, testEndMs, timeBuckets, errorTypeCount,
                 avgLatencyMs, avgConnectMs, latencyPresent);
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // Auto bucket-size computation
+    // ─────────────────────────────────────────────────────────────
+
+    /**
+     * Computes the chart bucket size in milliseconds for auto mode
+     * ({@code chartIntervalSeconds == 0}).
+     *
+     * <p>Algorithm:
+     * <ol>
+     *   <li>Compute actual JTL duration: {@code maxTimestamp - minTimestamp}.
+     *       Both values come from Pass 1 — this correctly handles historical
+     *       JTL files where wall-clock distance from the JTL start would be
+     *       months or years, producing wildly inflated bucket sizes.</li>
+     *   <li>Compute raw interval: {@code durationMs / AUTO_BUCKET_TARGET}.</li>
+     *   <li>Snap up to the nearest value in {@link #SNAP_INTERVALS_MS} so that
+     *       x-axis labels land on round clock times (e.g. :00, :30, :00).
+     *       If the raw interval exceeds all snap values, use the largest.</li>
+     * </ol>
+     *
+     * @param minTimestamp epoch-ms of the first JTL sample from Pass 1; 0 means unknown
+     * @param maxTimestamp epoch-ms of the last JTL sample from Pass 1; 0 means unknown
+     * @return bucket size in milliseconds, always &ge; {@code SNAP_INTERVALS_MS[0]}
+     */
+    static long computeAutoBucketSizeMs(long minTimestamp, long maxTimestamp) {
+        long durationMs = (minTimestamp > 0 && maxTimestamp > minTimestamp)
+                ? maxTimestamp - minTimestamp
+                : 0L;
+
+        // Guard: if duration is too short or unknown, fall back to smallest snap interval
+        if (durationMs <= 0) {
+            return SNAP_INTERVALS_MS[0];
+        }
+
+        long rawIntervalMs = durationMs / AUTO_BUCKET_TARGET;
+
+        // Snap up to the nearest clean interval
+        for (long snap : SNAP_INTERVALS_MS) {
+            if (snap >= rawIntervalMs) {
+                log.debug("computeAutoBucketSizeMs: durationMs={} rawInterval={}ms snapped={}ms",
+                        durationMs, rawIntervalMs, snap);
+                return snap;
+            }
+        }
+
+        // Duration exceeds all snap values — use the largest (1 hour buckets)
+        long largest = SNAP_INTERVALS_MS[SNAP_INTERVALS_MS.length - 1];
+        log.debug("computeAutoBucketSizeMs: durationMs={} exceeds all snaps — using {}ms",
+                durationMs, largest);
+        return largest;
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -289,6 +402,51 @@ public class JTLParser {
         private static final int MAX_ERROR_TYPES = 5;
 
         /**
+         * Shared display format — matches the format used in the GUI table and CLI output.
+         * Single source of truth: avoids the duplicated {@code DateTimeFormatter} constants
+         * that previously lived in {@code AggregateReportPanel} and {@code CliReportPipeline}.
+         */
+        private static final DateTimeFormatter DISPLAY_TIME_FORMAT =
+                DateTimeFormatter.ofPattern("MM/dd/yy HH:mm:ss");
+
+        /**
+         * Returns the test start time as a formatted display string, or an empty string
+         * if {@link #startTimeMs} is zero.
+         *
+         * @return formatted start time, e.g. {@code "03/11/26 14:30:00"}, or {@code ""}
+         */
+        public String formattedStartTime() {
+            return startTimeMs > 0 ? formatEpochMs(startTimeMs) : "";
+        }
+
+        /**
+         * Returns the test end time as a formatted display string, or an empty string
+         * if {@link #endTimeMs} is zero.
+         *
+         * @return formatted end time, e.g. {@code "03/11/26 15:00:00"}, or {@code ""}
+         */
+        public String formattedEndTime() {
+            return endTimeMs > 0 ? formatEpochMs(endTimeMs) : "";
+        }
+
+        /**
+         * Returns the test duration as a formatted display string, or an empty string
+         * if {@link #durationMs} is zero.
+         *
+         * @return formatted duration, e.g. {@code "0h 30m 0s"}, or {@code ""}
+         */
+        public String formattedDuration() {
+            if (durationMs <= 0) return "";
+            long s = durationMs / 1000;
+            return String.format("%dh %dm %ds", s / 3600, (s % 3600) / 60, s % 60);
+        }
+
+        private static String formatEpochMs(long epochMs) {
+            return LocalDateTime.ofInstant(Instant.ofEpochMilli(epochMs), ZoneId.systemDefault())
+                    .format(DISPLAY_TIME_FORMAT);
+        }
+
+        /**
          * Constructs a parse result.
          *
          * @param results        per-label aggregated statistics
@@ -332,7 +490,7 @@ public class JTLParser {
                         m.put("count",           e.getValue());
                         return m;
                     })
-                    .collect(java.util.stream.Collectors.toList());
+                    .toList();
         }
     }
 
@@ -387,7 +545,7 @@ public class JTLParser {
         /** Percentile to calculate (1–99). */
         public int     percentile    = 90;
         /** Set internally during parse — tracks the test start timestamp. */
-        public long    minTimestamp  = 0;
+        long    minTimestamp  = 0;
 
         /**
          * Mirrors JMeter's Transaction Controller "Generate Parent Sample" checkbox.
@@ -415,8 +573,12 @@ public class JTLParser {
         public boolean includeTimerDuration = true;
 
         /**
-         * Chart time-bucket interval in seconds. {@code 0} (default) means auto-calculate
-         * using the built-in 30-second bucket size.
+         * Chart time-bucket interval in seconds. {@code 0} (default) means auto-calculate.
+         *
+         * <p>Auto mode targets {@value JTLParser#AUTO_BUCKET_TARGET} data points by
+         * deriving the raw interval from the test duration, then snapping up to the nearest
+         * clean value (10 s, 30 s, 60 s, 120 s, 300 s, 600 s, 1800 s, 3600 s) so that
+         * x-axis labels always land on round clock times.</p>
          *
          * <p>When the user sets a positive value via the "Chart Interval" field, the
          * parser uses that value (converted to milliseconds) as the bucket width for

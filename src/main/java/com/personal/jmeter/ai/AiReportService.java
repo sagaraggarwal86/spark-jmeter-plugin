@@ -12,48 +12,35 @@ import java.net.URI;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 
 /**
  * Calls an OpenAI-compatible AI API and returns the generated report in Markdown format.
  *
  * <p>The provider, model, endpoint URL, and request parameters are supplied via
- * {@link AiProviderConfig}, enabling any provider registered in
- * {@code ai-reporter.properties} to be used without code changes.</p>
+ * {@link AiProviderConfig}. Each instance is bound to one provider.</p>
  *
- * <p>The {@link SharedHttpClient} provides a shared singleton — it manages a connection pool
- * internally and must not be recreated per request.  The per-request
- * {@link HttpRequest} timeout is taken from {@link AiProviderConfig#timeoutSeconds};
- * the client-level {@code connectTimeout} is a fixed generous value.</p>
- *
- * <p>Retry behaviour: HTTP 429 and HTTP 5xx responses trigger up to
- * {@value #MAX_ATTEMPTS} total attempts with a {@value #RETRY_DELAY_MS} ms
- * minimum delay between retries. Non-retryable 4xx errors are thrown immediately.</p>
+ * <p>Retry behaviour: up to {@value #MAX_ATTEMPTS} attempts with a
+ * {@value #RETRY_DELAY_MS} ms delay between attempts. Only HTTP 429 and 5xx
+ * responses are retried; 4xx errors other than 429 are terminal.</p>
  */
 public class AiReportService {
 
     private static final Logger log = LoggerFactory.getLogger(AiReportService.class);
 
-    /** Total number of attempts (1 initial + 2 retries). */
-    private static final int MAX_ATTEMPTS = 3;
-
-    /**
-     * Minimum delay in milliseconds between retry attempts. */
+    private static final int MAX_ATTEMPTS    = 3;
     private static final long RETRY_DELAY_MS = 2_000L;
 
-    private final AiProviderConfig config;
+    final AiProviderConfig config;
 
-    /**
-     * Constructs the service for the given provider configuration.
-     *
-     * @param config fully resolved provider config; must not be null
-     */
     public AiReportService(AiProviderConfig config) {
         this.config = Objects.requireNonNull(config, "config must not be null");
     }
 
     // ─────────────────────────────────────────────────────────────
-    // Report generation
+    // Public API
     // ─────────────────────────────────────────────────────────────
 
     /**
@@ -72,7 +59,11 @@ public class AiReportService {
         log.info("generateReport: provider={} model={} systemLength={} userLength={}",
                 config.providerKey, config.model,
                 promptContent.systemPrompt().length(), promptContent.userMessage().length());
-        return callProvider(promptContent);
+        long start = System.currentTimeMillis();
+        String result = callProvider(promptContent);
+        log.info("generateReport: completed. provider={} elapsed={}ms responseChars={}",
+                config.providerKey, System.currentTimeMillis() - start, result.length());
+        return result;
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -92,8 +83,17 @@ public class AiReportService {
             }
 
             boolean retryable = (status == 429 || (status >= 500 && status < 600));
+            String statusHint = switch (status) {
+                case 400 -> " Check the model ID and request format.";
+                case 401 -> " API key is invalid or missing — check ai-reporter.properties.";
+                case 403 -> " Access denied — check API quota, billing status, or model permissions.";
+                case 404 -> " Model not found — check ai.reporter." + config.providerKey + ".model in ai-reporter.properties.";
+                case 429 -> " Rate limit exceeded — reduce request frequency or upgrade your plan.";
+                default  -> status >= 500 ? " Provider server error — retry or check provider status page." : "";
+            };
             lastEx = new AiServiceException(String.format(
-                    "%s API returned HTTP %d. Body: %s", config.displayName, status, response.body()));
+                    "%s API returned HTTP %d.%s Body: %s",
+                    config.displayName, status, statusHint, response.body()));
 
             if (!retryable || attempt == MAX_ATTEMPTS) {
                 throw lastEx;
@@ -121,7 +121,9 @@ public class AiReportService {
             Thread.currentThread().interrupt();
             log.error("sendRequest: request interrupted. provider={} reason={}",
                     config.providerKey, e.getMessage(), e);
-            throw new AiServiceException(config.displayName + " API request was interrupted", e);
+            throw new AiServiceException(
+                    config.displayName + " API request was interrupted before a response was received. "
+                            + "This may indicate a network issue or the request was cancelled. Please try again.", e);
         }
     }
 
@@ -133,6 +135,76 @@ public class AiReportService {
             throw new AiServiceException(config.displayName + " API retry sleep interrupted", e);
         }
     }
+
+    /**
+     * Assistant prefill — seeds the first section heading so the model always
+     * begins with {@code ## Executive Summary} and continues writing all
+     * remaining sections and headings naturally.
+     *
+     * <p>Only the first heading is prefilled. Prefilling all 7 headings does
+     * not cause the model to interleave content between them — it continues
+     * from the end of the prefill and rewrites the headings itself. Prefilling
+     * only the first heading eliminates the per-provider omission of
+     * {@code ## Executive Summary} (observed consistently on Cerebras) without
+     * interfering with how the model structures the rest of the report.</p>
+     *
+     * <p>Mistral requires {@code "prefix": true} on the assistant message;
+     * Cerebras and Gemini ignore this field.</p>
+     */
+    /** Package-private to allow test access for assertion construction. */
+    static final String SECTION_SKELETON = "## Executive Summary\n\n";
+
+    /**
+     * The seven expected section headings in report order.
+     * Used to detect missing sections after generation.
+     */
+    private static final String[] EXPECTED_SECTION_HEADINGS = {
+            "## Executive Summary",
+            "## Bottleneck Analysis",
+            "## Error Analysis",
+            "## Advanced Web Diagnostics",
+            "## Root Cause Hypotheses",
+            "## Recommendations",
+            "## Verdict",
+    };
+
+    /**
+     * Notice used when truncation caused one or more sections to be missing entirely.
+     * Consolidates truncation + missing-sections into one graceful message that names
+     * what was completed, what was cut, and recommends a provider switch rather than
+     * repeating unhelpful max_tokens advice for fixed-limit free tiers.
+     */
+    private static final String TRUNCATION_WITH_MISSING_NOTICE_TEMPLATE =
+            "\n\n> **⚠ Partial report — %s reached its output limit**\n"
+                    + ">\n"
+                    + "> **Sections completed:** %s\n"
+                    + ">\n"
+                    + "> **Sections not reached:** %s\n"
+                    + ">\n"
+                    + "> The SLA verdict and transaction metrics above are accurate regardless of the missing sections. "
+                    + "For a complete report, regenerate using **Cerebras** or **Mistral** — "
+                    + "both providers handle this dataset within their output limits.";
+
+    /**
+     * Notice used when truncated but all section headings are present
+     * (partial content in last section only — not a full section missing).
+     */
+    private static final String TRUNCATION_NOTICE_TEMPLATE =
+            "\n\n> **⚠ Report truncated** — The %s response was cut off before completing "
+                    + "the last section. All section headings are present but the final section "
+                    + "may be incomplete. To get a fully complete report, try regenerating or "
+                    + "switch to **Cerebras** or **Mistral**.";
+
+    /**
+     * Notice used when sections are missing but the response was NOT flagged as
+     * truncated — the model silently skipped a section.
+     */
+    private static final String MISSING_SECTIONS_NOTICE_TEMPLATE =
+            "\n\n> **⚠ Missing sections detected** — The following section(s) were not "
+                    + "generated by %s: **%s**. "
+                    + "This may indicate the model skipped a section. "
+                    + "**Recommended actions:** (1) Regenerate the report. "
+                    + "(2) If the issue persists, try a different provider.";
 
     private String buildRequestBody(PromptContent content) {
         JsonObject systemMsg = new JsonObject();
@@ -147,6 +219,27 @@ public class AiReportService {
         messages.add(systemMsg);
         messages.add(userMsg);
 
+        // Assistant prefill: inject ## Executive Summary as an already-started
+        // assistant turn so the model continues from it rather than deciding
+        // whether to write the heading.
+        //
+        // Provider behaviour:
+        //   Mistral  — requires "prefix": true; benefits from prefill (echoes heading)
+        //   Gemini   — accepts prefill; writes heading in its continuation
+        //   Cerebras — SKIP prefill. Observed that Cerebras (qwen-3-235b) treats the
+        //              prefilled heading as a structural signal to produce a comprehensive
+        //              Executive Summary and terminate — producing only 1 section on
+        //              FAIL scenarios where RT SLA is also configured. Without the
+        //              prefill Cerebras writes all 7 sections correctly. The conditional
+        //              prepend in extractAndValidateContent handles the heading if absent.
+        if (!"cerebras".equals(config.providerKey)) {
+            JsonObject prefillMsg = new JsonObject();
+            prefillMsg.addProperty("role",    "assistant");
+            prefillMsg.addProperty("content", SECTION_SKELETON);
+            prefillMsg.addProperty("prefix",  true);
+            messages.add(prefillMsg);
+        }
+
         JsonObject body = new JsonObject();
         body.addProperty("model", config.model);
         body.addProperty("temperature", config.temperature);
@@ -156,16 +249,34 @@ public class AiReportService {
         return body.toString();
     }
 
-    private String extractAndValidateContent(String responseBody) throws AiServiceException {
+    // Package-private to allow direct unit testing without HTTP mocking infrastructure.
+    String extractAndValidateContent(String responseBody) throws AiServiceException {
+        final JsonObject root;
+        final JsonObject choice;
         final String aiText;
         try {
-            aiText = JsonParser.parseString(responseBody)
-                    .getAsJsonObject()
-                    .getAsJsonArray("choices")
-                    .get(0).getAsJsonObject()
-                    .getAsJsonObject("message")
-                    .get("content").getAsString();
-        } catch (JsonParseException | IllegalStateException | IndexOutOfBoundsException e) {
+            root = JsonParser.parseString(responseBody).getAsJsonObject();
+
+            if (!root.has("choices") || root.get("choices").isJsonNull()) {
+                log.warn("extractAndValidateContent: choices field missing. provider={}",
+                        config.providerKey);
+                throw new AiServiceException("Failed to parse " + config.displayName
+                        + " API response: choices field missing.");
+            }
+
+            JsonArray choicesArr = root.getAsJsonArray("choices");
+            if (choicesArr.isEmpty()) {
+                log.warn("extractAndValidateContent: choices array is empty. provider={}",
+                        config.providerKey);
+                throw new AiServiceException("Failed to parse " + config.displayName
+                        + " API response: choices array is empty.");
+            }
+
+            choice = choicesArr.get(0).getAsJsonObject();
+            aiText = choice.getAsJsonObject("message").get("content").getAsString();
+        } catch (AiServiceException e) {
+            throw e;
+        } catch (JsonParseException | IllegalStateException | IndexOutOfBoundsException | NullPointerException e) {
             log.error("extractAndValidateContent: failed to parse response. provider={} reason={}",
                     config.providerKey, e.getMessage(), e);
             throw new AiServiceException("Failed to parse " + config.displayName
@@ -179,6 +290,81 @@ public class AiReportService {
                             + "No file was written.");
         }
 
-        return aiText;
+        // Prepend the skeleton heading if not already present in the response.
+        // Cerebras does not receive the prefill (skipped in buildRequestBody to prevent
+        // early-stop behaviour on FAIL scenarios) so its response never starts with the
+        // heading — prepend always fires for Cerebras. Mistral and Gemini receive the
+        // prefill and echo the heading back, so the startsWith check prevents duplication.
+        String fullMarkdown = aiText.startsWith(SECTION_SKELETON.trim())
+                ? aiText
+                : SECTION_SKELETON + aiText;
+
+        // ── Classify present / missing sections ───────────────────────────────
+        List<String> presentSections = new ArrayList<>();
+        List<String> missingSections = new ArrayList<>();
+        for (String heading : EXPECTED_SECTION_HEADINGS) {
+            String name = heading.replace("## ", "");
+            if (fullMarkdown.contains("\n" + heading) || fullMarkdown.startsWith(heading)) {
+                presentSections.add(name);
+            } else {
+                missingSections.add(name);
+            }
+        }
+
+        // ── Truncation detection ──────────────────────────────────────────────
+        boolean truncated = false;
+        if (choice.has("finish_reason")) {
+            truncated = "length".equals(choice.get("finish_reason").getAsString());
+        }
+        if (!truncated && root.has("usage")) {
+            try {
+                int completionTokens = root.getAsJsonObject("usage")
+                        .get("completion_tokens").getAsInt();
+                if (completionTokens >= config.maxTokens) {
+                    truncated = true;
+                    log.warn("extractAndValidateContent: usage-based truncation detected. "
+                                    + "provider={} completion_tokens={} max_tokens={}",
+                            config.providerKey, completionTokens, config.maxTokens);
+                }
+            } catch (IllegalStateException | NullPointerException e) {
+                log.debug("extractAndValidateContent: could not read usage.completion_tokens "
+                        + "for provider={} — {}", config.providerKey, e.getMessage());
+            }
+        }
+
+        // ── Compose notice ────────────────────────────────────────────────────
+        if (truncated && !missingSections.isEmpty()) {
+            // Truncation caused missing sections — single consolidated graceful notice.
+            // Does NOT mention max_tokens — for fixed free-tier limits that advice is
+            // irrelevant. Recommends switching provider instead.
+            String present = String.join(", ", presentSections);
+            String missing = String.join(", ", missingSections);
+            log.warn("extractAndValidateContent: truncation caused missing sections. "
+                            + "provider={} present=[{}] missing=[{}]",
+                    config.providerKey, present, missing);
+            return fullMarkdown + String.format(TRUNCATION_WITH_MISSING_NOTICE_TEMPLATE,
+                    config.displayName, present, missing);
+        }
+
+        if (truncated) {
+            // Truncated but all headings present — partial content in last section only.
+            log.warn("extractAndValidateContent: response truncated at token limit. "
+                            + "provider={} model={} max_tokens={}",
+                    config.providerKey, config.model, config.maxTokens);
+            return fullMarkdown + String.format(TRUNCATION_NOTICE_TEMPLATE,
+                    config.displayName, config.providerKey);
+        }
+
+        if (!missingSections.isEmpty()) {
+            // Not truncated but sections absent — model silently skipped them.
+            String missingList = String.join(", ", missingSections);
+            log.warn("extractAndValidateContent: missing section(s) detected (not truncated). "
+                            + "provider={} missing=[{}]",
+                    config.providerKey, missingList);
+            return fullMarkdown + String.format(MISSING_SECTIONS_NOTICE_TEMPLATE,
+                    config.displayName, missingList);
+        }
+
+        return fullMarkdown;
     }
 }
