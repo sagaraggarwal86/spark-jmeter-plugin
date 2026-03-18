@@ -14,10 +14,6 @@ import java.awt.*;
 import java.awt.event.FocusAdapter;
 import java.awt.event.FocusEvent;
 import java.io.IOException;
-import java.time.Instant;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
@@ -25,7 +21,7 @@ import java.util.concurrent.Executors;
 import java.util.function.Supplier;
 
 /**
- * Reusable Swing panel for the Configurable Aggregate Report.
+ * Reusable Swing panel for the JAAR.
  *
  * // DESIGN: extends JPanel — required by Swing API; composition not possible
  * for a reusable embedded panel used by both ListenerGUI and UIPreview.
@@ -70,11 +66,7 @@ public class AggregateReportPanel extends JPanel {
     static final int    ERROR_RATE_COL_INDEX  = 9;
     /** Model index of Transaction Name — used by SlaRowRenderer. */
     static final int    NAME_COL_INDEX        = 0;
-    static final String TOTAL_LABEL           = "TOTAL";
-
     private static final Logger log = LoggerFactory.getLogger(AggregateReportPanel.class);
-    private static final DateTimeFormatter DISPLAY_TIME_FORMAT =
-            DateTimeFormatter.ofPattern("MM/dd/yy HH:mm:ss");
 
     // ── Filter fields ────────────────────────────────────────────
     final JTextField startOffsetField       = new JTextField("", 10);
@@ -185,6 +177,33 @@ public class AggregateReportPanel extends JPanel {
     // ─────────────────────────────────────────────────────────────
 
     /**
+     * Parses and displays the given JTL file without resetting SLA fields.
+     * Used exclusively by {@link com.personal.jmeter.listener.ListenerGUI#configure}
+     * during state restoration — SLA and chart interval fields are already restored
+     * from the TestElement before this is called, so they must not be wiped.
+     *
+     * @param filePath path to the JTL file
+     */
+    void loadJtlFileForRestore(String filePath) {
+        lastLoadedFilePath = filePath;
+        try {
+            JTLParser.FilterOptions opts = buildFilterOptions();
+            JTLParser.ParseResult result = new JTLParser().parse(filePath, opts);
+            cachedResults          = result.results;
+            cachedBuckets          = result.timeBuckets;
+            cachedErrorTypeSummary = result.errorTypeSummary;
+            cachedAvgLatencyMs     = result.avgLatencyMs;
+            cachedAvgConnectMs     = result.avgConnectMs;
+            cachedLatencyPresent   = result.latencyPresent;
+            repopulate(opts.percentile);
+            updateTimeInfo(result);
+        } catch (IOException e) {
+            log.error("loadJtlFileForRestore: parse failed. filePath={}, reason={}",
+                    filePath, e.getMessage(), e);
+        }
+    }
+
+    /**
      * Parses and displays the given JTL file. Shows an error dialog on failure.
      * Resets all SLA fields and highlighting before loading new data.
      *
@@ -253,6 +272,7 @@ public class AggregateReportPanel extends JPanel {
         percentileField.setText("90");
         transactionSearchField.setText("");
         regexCheckBox.setSelected(false);
+        chartIntervalField.setText("0"); // filter setting — reset only on full Clear, not on Load
         startTimeField.setText("");
         endTimeField.setText("");
         durationField.setText("");
@@ -260,14 +280,30 @@ public class AggregateReportPanel extends JPanel {
     }
 
     /**
-     * Resets SLA threshold inputs and chart interval to defaults, then clears
-     * any breach highlighting. Called on every Load and on Clear.
+     * Releases the background AI executor when this panel is detached from the
+     * Swing hierarchy (JMeter shutdown or listener removal).
+     * Interrupts any in-progress AI call — the worker thread is a daemon so the
+     * JVM will not block on exit regardless, but explicit shutdown is cleaner.
+     */
+    @Override
+    public void removeNotify() {
+        super.removeNotify();
+        aiExecutor.shutdownNow();
+        log.debug("removeNotify: aiExecutor shut down.");
+    }
+
+    /**
+     * Resets SLA threshold inputs to defaults and clears any breach highlighting.
+     * Called on every Load and on Clear.
+     *
+     * <p>Does <em>not</em> reset {@code chartIntervalField} — that is a filter
+     * setting (it affects JTL parsing) and must survive a JTL reload so that the
+     * user's configured interval is applied to the newly loaded file.</p>
      */
     private void resetSlaFields() {
         errorPctSlaField.setText("");
         rtThresholdSlaField.setText("");
         rtMetricCombo.setSelectedIndex(1); // default: P90 (ms)
-        chartIntervalField.setText("0");
         resultsTable.repaint();
     }
 
@@ -299,6 +335,74 @@ public class AggregateReportPanel extends JPanel {
     public String getPercentileText()     { return percentileField.getText().trim(); }
     /** @param v value; null or blank resets to "90" */
     public void   setPercentile(String v) { percentileField.setText((v == null || v.isBlank()) ? "90" : v); }
+
+    /** @return error % SLA field text */
+    public String getErrorPctSla()        { return errorPctSlaField.getText().trim(); }
+    /** @param v value; null treated as empty string */
+    public void   setErrorPctSla(String v){ errorPctSlaField.setText(Objects.requireNonNullElse(v, "")); }
+
+    /** @return RT threshold SLA field text */
+    public String getRtThresholdSla()        { return rtThresholdSlaField.getText().trim(); }
+    /** @param v value; null treated as empty string */
+    public void   setRtThresholdSla(String v){ rtThresholdSlaField.setText(Objects.requireNonNullElse(v, "")); }
+
+    /** @return RT metric combo selected index (0 = Avg, 1 = Pnn) */
+    public int  getRtMetricIndex()       { return rtMetricCombo.getSelectedIndex(); }
+    /** @param i index to select; out-of-range defaults to 1 */
+    public void setRtMetricIndex(int i)  { rtMetricCombo.setSelectedIndex((i == 0) ? 0 : 1); }
+
+    /** @return chart interval field text */
+    public String getChartInterval()        { return chartIntervalField.getText().trim(); }
+    /** @param v value; null treated as "0" */
+    public void   setChartInterval(String v){ chartIntervalField.setText((v == null || v.isBlank()) ? "0" : v); }
+
+    /** @return transaction search field text */
+    public String getSearch()        { return transactionSearchField.getText().trim(); }
+    /** @param v value; null treated as empty string */
+    public void   setSearch(String v){ transactionSearchField.setText(Objects.requireNonNullElse(v, "")); }
+
+    /** @return regex checkbox state */
+    public boolean isRegex()           { return regexCheckBox.isSelected(); }
+    /** @param v state to set */
+    public void    setRegex(boolean v) { regexCheckBox.setSelected(v); }
+
+    /** @return the last loaded JTL file path, or {@code null} if none loaded */
+    public String getLastLoadedFilePath() { return lastLoadedFilePath; }
+
+    /**
+     * Returns the column visibility state as a comma-separated boolean string.
+     * One value per column in {@link #ALL_COLUMNS} order,
+     * e.g. {@code "true,true,false,true,true,true,false,true,true,true,true"}.
+     *
+     * @return comma-separated visibility string; never null
+     */
+    public String getColumnVisibility() {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < columnMenuItems.length; i++) {
+            if (i > 0) sb.append(',');
+            sb.append(columnMenuItems[i].isSelected());
+        }
+        return sb.toString();
+    }
+
+    /**
+     * Restores column visibility from a comma-separated boolean string.
+     * Silently ignores malformed or mismatched strings.
+     *
+     * @param v comma-separated visibility string; null or blank = no-op
+     */
+    public void setColumnVisibility(String v) {
+        if (v == null || v.isBlank()) return;
+        String[] parts = v.split(",", -1);
+        if (parts.length != columnMenuItems.length) return;
+        for (int i = 1; i < parts.length; i++) { // col 0 is always visible — skip
+            boolean visible = Boolean.parseBoolean(parts[i].trim());
+            if (columnMenuItems[i].isSelected() != visible) {
+                columnMenuItems[i].setSelected(visible);
+                tablePopulator.toggleColumnVisibility(i, visible);
+            }
+        }
+    }
 
     // ─────────────────────────────────────────────────────────────
     // Package-private API (used by collaborators and tests)
@@ -385,7 +489,7 @@ public class AggregateReportPanel extends JPanel {
         aiBtn.setFont(FONT_REGULAR);
         aiBtn.setToolTipText(
                 "Analyse the loaded JTL data with AI and generate an HTML performance report");
-        aiBtn.addActionListener(e -> aiReportLauncher.launch(aiBtn));
+        aiBtn.addActionListener(e -> { refreshProviderCombo(); aiReportLauncher.launch(aiBtn); });
 
         // Vertical divider between AI button and chart interval
         JSeparator divider = new JSeparator(SwingConstants.VERTICAL);
@@ -454,11 +558,16 @@ public class AggregateReportPanel extends JPanel {
     // ─────────────────────────────────────────────────────────────
 
     private void setupFieldListeners() {
-        // ── Percentile: update column header + debounced reload + update combo label ──
+        // ── Percentile: update column header + repopulate from cache + update combo label ──
+        // Percentile only selects which pre-computed value to read from the already-cached
+        // SamplingStatCalculator — no file I/O is needed. repopulate() reads cachedResults
+        // in memory, identical to how transactionSearchField works.
+        // startOffset, endOffset, and chartInterval stay on the debounce→reload path because
+        // they change which rows are included, which genuinely requires re-parsing the file.
         percentileField.getDocument().addDocumentListener((SimpleDocListener) () -> {
             updatePercentileColumnHeader();
             updateRtMetricComboLabel();
-            reloadDebounceTimer.restart();
+            if (!cachedResults.isEmpty()) repopulate(readPercentile());
         });
 
         // ── Offset fields: debounced reload on change ──
@@ -623,19 +732,9 @@ public class AggregateReportPanel extends JPanel {
     // ─────────────────────────────────────────────────────────────
 
     private void updateTimeInfo(JTLParser.ParseResult result) {
-        startTimeField.setText(result.startTimeMs > 0 ? formatMs(result.startTimeMs) : "");
-        endTimeField.setText(result.endTimeMs     > 0 ? formatMs(result.endTimeMs)   : "");
-        durationField.setText(result.durationMs   > 0 ? formatDuration(result.durationMs) : "");
-    }
-
-    private static String formatMs(long epochMs) {
-        return LocalDateTime.ofInstant(Instant.ofEpochMilli(epochMs), ZoneId.systemDefault())
-                .format(DISPLAY_TIME_FORMAT);
-    }
-
-    private static String formatDuration(long ms) {
-        long s = ms / 1000;
-        return String.format("%dh %dm %ds", s / 3600, (s % 3600) / 60, s % 60);
+        startTimeField.setText(result.formattedStartTime());
+        endTimeField.setText(result.formattedEndTime());
+        durationField.setText(result.formattedDuration());
     }
 
     private static int parseIntField(JTextField field, int fallback) {

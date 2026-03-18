@@ -1,6 +1,6 @@
 ---
 name: Bug report
-about: Report a problem with the Configurable Aggregate Report plugin
+about: Report a problem with the JAAR plugin
 title: ''
 labels: bug
 assignees: ''
@@ -8,7 +8,7 @@ assignees: ''
 ---
 
 **Plugin version**
-e.g. 2.7.0
+e.g. 4.2.1
 
 **Environment**
 - OS: [e.g. Windows 11, macOS 14, Ubuntu 22.04]

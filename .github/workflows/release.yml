@@ -11,7 +11,7 @@ jobs:
   release:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: actions/setup-java@v4
         with:
           java-version: '17'
@@ -21,9 +21,9 @@ jobs:
       - uses: softprops/action-gh-release@v2
         with:
           files: |
-            target/Configurable_Aggregate_Report-*.jar
-            src/main/scripts/car-cli-report.bat
-            src/main/scripts/car-cli-report.sh
+            target/jaar-jmeter-plugin-*.jar
+            src/main/scripts/jaar-cli-report.bat
+            src/main/scripts/jaar-cli-report.sh
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
