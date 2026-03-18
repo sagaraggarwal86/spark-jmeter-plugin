@@ -22,7 +22,7 @@ jobs:
           distribution: 'temurin'
           cache: maven
       - run: mvn clean verify
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: matrix.os == 'windows-latest'
         with:
           name: jaar-jmeter-plugin
@@ -30,7 +30,7 @@ jobs:
             target/jaar-jmeter-plugin-*.jar
             src/main/scripts/jaar-cli-report.bat
             src/main/scripts/jaar-cli-report.sh
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: matrix.os == 'ubuntu-latest'
         with:
           name: coverage-report
