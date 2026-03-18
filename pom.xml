@@ -5,12 +5,12 @@
              http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <groupId>io.github.sagaraggarwal86</groupId>
-    <artifactId>Configurable_Aggregate_Report</artifactId>
-    <version>2.7.0</version>
+    <artifactId>jaar-jmeter-plugin</artifactId>
+    <version>4.2.1</version>
     <packaging>jar</packaging>
-    <name>Configurable Aggregate Report Plugin</name>
-    <description>A listener plugin to prepare report for configurable parameters for Apache JMeter</description>
-    <url>https://github.com/sagaraggarwal86/Configurable_Aggregate_Report</url>
+    <name>JAAR — JTL AI Analysis &amp; Reporting</name>
+    <description>JAAR is an AI-powered JMeter listener plugin that analyses load test results and generates intelligent performance reports with PASS/FAIL verdicts.</description>
+    <url>https://github.com/sagaraggarwal86/jaar-jmeter-plugin</url>
 
     <licenses>
         <license>
@@ -29,10 +29,10 @@
     </developers>
 
     <scm>
-        <connection>scm:git:git://github.com/sagaraggarwal86/Configurable_Aggregate_Report.git</connection>
-        <developerConnection>scm:git:ssh://github.com:sagaraggarwal86/Configurable_Aggregate_Report.git
+        <connection>scm:git:git://github.com/sagaraggarwal86/jaar-jmeter-plugin.git</connection>
+        <developerConnection>scm:git:ssh://github.com:sagaraggarwal86/jaar-jmeter-plugin.git
         </developerConnection>
-        <url>https://github.com/sagaraggarwal86/Configurable_Aggregate_Report/tree/main</url>
+        <url>https://github.com/sagaraggarwal86/jaar-jmeter-plugin/tree/main</url>
     </scm>
 
     <properties>
@@ -41,8 +41,6 @@
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <!-- Override in settings.xml or with -Dgpg.executable=gpg for CI/CD -->
-        <gpg.executable>C:\Program Files\GnuPG\bin\gpg.exe</gpg.executable>
     </properties>
 
     <dependencyManagement>
@@ -182,7 +180,7 @@
         <dependency>
             <groupId>com.google.code.gson</groupId>
             <artifactId>gson</artifactId>
-            <version>2.10.1</version>
+            <version>2.11.0</version>
         </dependency>
 
         <!-- AI Report: Markdown to HTML rendering -->
@@ -195,14 +193,14 @@
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>
-            <version>5.10.0</version>
+            <version>5.13.2</version>
             <scope>test</scope>
         </dependency>
 
         <dependency>
             <groupId>org.mockito</groupId>
             <artifactId>mockito-core</artifactId>
-            <version>5.5.0</version>
+            <version>5.14.2</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
@@ -227,6 +225,77 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>3.5.5</version>
+                <configuration>
+                    <!-- Fail the build if no tests are found — prevents a broken
+                         test suite from producing a silently green CI build.    -->
+                    <failIfNoTests>true</failIfNoTests>
+                </configuration>
+            </plugin>
+
+            <!-- JaCoCo: enforce 65% line coverage minimum on every CI build.
+                 Swing GUI classes (listener package) are excluded because they
+                 require a running display — raising this threshold requires a
+                 dedicated GUI-test strategy first.                              -->
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <version>0.8.12</version>
+                <executions>
+                    <execution>
+                        <id>jacoco-prepare</id>
+                        <goals><goal>prepare-agent</goal></goals>
+                    </execution>
+                    <execution>
+                        <id>jacoco-check</id>
+                        <phase>verify</phase>
+                        <goals><goal>check</goal></goals>
+                        <configuration>
+                            <rules>
+                                <rule>
+                                    <element>BUNDLE</element>
+                                    <limits>
+                                        <limit>
+                                            <counter>LINE</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>0.65</minimum>
+                                        </limit>
+                                    </limits>
+                                </rule>
+                            </rules>
+                            <excludes>
+                                <!-- Swing GUI classes require a display — excluded
+                                     until a headless GUI-test strategy is in place -->
+                                <exclude>com/personal/jmeter/listener/AggregateReportPanel.class</exclude>
+                                <exclude>com/personal/jmeter/listener/AggregateReportPanel$*.class</exclude>
+                                <exclude>com/personal/jmeter/listener/ListenerGUI.class</exclude>
+                                <exclude>com/personal/jmeter/listener/ListenerGUI$*.class</exclude>
+                                <exclude>com/personal/jmeter/listener/ReportPanelBuilder.class</exclude>
+                                <exclude>com/personal/jmeter/listener/ReportPanelBuilder$*.class</exclude>
+                                <exclude>com/personal/jmeter/listener/FilePanelCustomizer.class</exclude>
+                                <exclude>com/personal/jmeter/listener/SlaRowRenderer.class</exclude>
+                                <exclude>com/personal/jmeter/listener/AiReportLauncher.class</exclude>
+                                <exclude>com/personal/jmeter/listener/AiReportLauncher$*.class</exclude>
+                                <exclude>com/personal/jmeter/ai/AiReportCoordinator.class</exclude>
+                                <exclude>com/personal/jmeter/ai/AiReportCoordinator$*.class</exclude>
+                                <exclude>com/personal/jmeter/ai/HtmlPageBuilder.class</exclude>
+                                <!-- Live-network classes — require real AI provider endpoints -->
+                                <exclude>com/personal/jmeter/ai/AiReportService.class</exclude>
+                                <exclude>com/personal/jmeter/ai/AiProviderRegistry.class</exclude>
+                                <exclude>com/personal/jmeter/ai/SharedHttpClient.class</exclude>
+                                <!-- CLI pipeline — requires live API + full JMeter runtime -->
+                                <exclude>com/personal/jmeter/cli/CliReportPipeline.class</exclude>
+                                <exclude>com/personal/jmeter/cli/CliReportPipeline$*.class</exclude>
+                                <!-- Entry point — System.exit calls prevent unit testing -->
+                                <exclude>com/personal/jmeter/cli/Main.class</exclude>
+                            </excludes>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>jacoco-report</id>
+                        <phase>verify</phase>
+                        <goals><goal>report</goal></goals>
+                    </execution>
+                </executions>
             </plugin>
 
             <!-- Fat JAR: bundle Gson + Commonmark into the plugin JAR.
@@ -285,8 +354,8 @@
                         <configuration>
                             <target>
                                 <replaceregexp file="${project.basedir}/README.md"
-                                               match="Configurable_Aggregate_Report-[0-9]+\.[0-9]+\.[0-9]+\.jar"
-                                               replace="Configurable_Aggregate_Report-${project.version}.jar"
+                                               match="jaar-jmeter-plugin-[0-9]+\.[0-9]+\.[0-9]+\.jar"
+                                               replace="jaar-jmeter-plugin-${project.version}.jar"
                                                flags="g"
                                                byline="false"
                                                encoding="UTF-8"/>
@@ -389,7 +458,6 @@
                                 <arg>--pinentry-mode</arg>
                                 <arg>loopback</arg>
                             </gpgArguments>
-                            <executable>${gpg.executable}</executable>
                         </configuration>
                     </plugin>
                 </plugins>

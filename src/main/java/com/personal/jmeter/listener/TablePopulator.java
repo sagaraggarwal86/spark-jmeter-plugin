@@ -1,5 +1,6 @@
 package com.personal.jmeter.listener;
 
+import com.personal.jmeter.parser.JTLParser;
 import org.apache.jmeter.visualizers.SamplingStatCalculator;
 
 import javax.swing.*;
@@ -11,15 +12,13 @@ import java.util.*;
 
 /**
  * Handles table population, sorting, and column visibility for the
- * Configurable Aggregate Report results table.
+ * JAAR results table.
  *
  * <p>Extracted from {@link AggregateReportPanel} to satisfy the 300-line class
  * design limit (Standard 3 SRP). Responsibility: data rendering only — no I/O,
  * no network, no file access.</p>
  */
-final class TablePopulator {
-
-    private static final String TOTAL_LABEL = "TOTAL";
+public final class TablePopulator {
 
     /** DecimalFormat for integer-rounded values (response times). */
     private static final DecimalFormat FORMAT_INTEGER = new DecimalFormat("#");
@@ -77,7 +76,7 @@ final class TablePopulator {
         for (SamplingStatCalculator calc : results.values()) {
             if (calc.getCount() == 0) continue;
             String label = calc.getLabel();
-            boolean isTotal = TOTAL_LABEL.equals(label);
+            boolean isTotal = JTLParser.TOTAL_LABEL.equals(label);
             if (!isTotal && !TransactionFilter.matches(label, searchPat, useRegex)) continue;
 
             Object[] row = buildRow(calc, pFraction);
@@ -94,16 +93,38 @@ final class TablePopulator {
     }
 
     private Object[] buildRow(SamplingStatCalculator calc, double pFraction) {
-        long total  = calc.getCount();
-        long failed = Math.round(calc.getErrorPercentage() * total);
+        String[] s = buildRowAsStrings(calc, pFraction);
         return new Object[]{
+                s[0],
+                Long.parseLong(s[1]),   // Count  — kept numeric for table sorting
+                Long.parseLong(s[2]),   // Passed
+                Long.parseLong(s[3]),   // Failed
+                s[4], s[5], s[6], s[7], s[8], s[9], s[10]
+        };
+    }
+
+    /**
+     * Builds a single data row as formatted strings.
+     *
+     * <p>Single source of truth for row formatting — used by both
+     * {@link #buildRow} (GUI table) and
+     * {@link com.personal.jmeter.cli.CliReportPipeline} (CLI HTML report).</p>
+     *
+     * @param calc      aggregated statistics for one label
+     * @param pFraction percentile as a fraction (e.g. 0.90 for P90)
+     * @return 11-element string array matching {@link AggregateReportPanel#ALL_COLUMNS}
+     */
+    public static String[] buildRowAsStrings(SamplingStatCalculator calc, double pFraction) {
+        long total  = calc.getCount();
+        long failed = Math.min(Math.round(calc.getErrorPercentage() * total), total);
+        return new String[]{
                 calc.getLabel(),
-                total,
-                total - failed,
-                failed,
+                String.valueOf(total),
+                String.valueOf(total - failed),
+                String.valueOf(failed),
                 FORMAT_INTEGER.format(calc.getMean()),
-                calc.getMin().intValue(),
-                calc.getMax().intValue(),
+                String.valueOf(calc.getMin().intValue()),
+                String.valueOf(calc.getMax().intValue()),
                 FORMAT_INTEGER.format(calc.getPercentPoint(pFraction).doubleValue()),
                 FORMAT_ONE_DP.format(calc.getStandardDeviation()),
                 FORMAT_TWO_DP.format(calc.getErrorPercentage() * 100.0) + "%",
@@ -218,7 +239,7 @@ final class TablePopulator {
         List<String[]> rows = new ArrayList<>(tableModel.getRowCount());
         for (int r = 0; r < tableModel.getRowCount(); r++) {
             Object nameCell = tableModel.getValueAt(r, 0);
-            if (TOTAL_LABEL.equals(nameCell != null ? nameCell.toString() : "")) continue;
+            if (JTLParser.TOTAL_LABEL.equals(nameCell != null ? nameCell.toString() : "")) continue;
             String[] cells = new String[AggregateReportPanel.ALL_COLUMNS.length];
             for (int c = 0; c < AggregateReportPanel.ALL_COLUMNS.length; c++) {
                 Object v = tableModel.getValueAt(r, c);
