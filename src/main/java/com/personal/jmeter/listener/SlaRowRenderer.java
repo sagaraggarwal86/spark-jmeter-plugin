@@ -1,5 +1,6 @@
 package com.personal.jmeter.listener;
 
+import com.personal.jmeter.parser.JTLParser;
 import javax.swing.*;
 import javax.swing.table.DefaultTableCellRenderer;
 import java.awt.*;
@@ -70,7 +71,7 @@ final class SlaRowRenderer extends DefaultTableCellRenderer {
         if (isSelected) return c;
 
         Object nameCell = table.getModel().getValueAt(row, nameColIdx);
-        if (AggregateReportPanel.TOTAL_LABEL.equals(
+        if (JTLParser.TOTAL_LABEL.equals(
                 nameCell != null ? nameCell.toString() : "")) {
             return c;
         }

@@ -21,9 +21,9 @@ jobs:
       - uses: softprops/action-gh-release@v2
         with:
           files: |
-            target/Configurable_Aggregate_Report-*.jar
-            src/main/scripts/car-cli-report.bat
-            src/main/scripts/car-cli-report.sh
+            target/jaar-jmeter-plugin-*.jar
+            src/main/scripts/jaar-cli-report.bat
+            src/main/scripts/jaar-cli-report.sh
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
