@@ -266,7 +266,7 @@ class PromptBuilderTest {
             String msg = new PromptBuilder()
                     .build(minimalResults(), 90, PromptRequest.empty(), java.util.Collections.emptyList(), present)
                     .userMessage();
-            assertTrue(msg.contains("\"latencyPresent\": true"),
+            assertTrue(msg.contains("\"latencyPresent\":true"),
                     "userMessage JSON must contain latencyPresent: true");
         }
 
@@ -276,7 +276,7 @@ class PromptBuilderTest {
             String msg = new PromptBuilder()
                     .build(minimalResults(), 90, PromptRequest.empty(), java.util.Collections.emptyList(), PromptBuilder.LatencyContext.ABSENT)
                     .userMessage();
-            assertTrue(msg.contains("\"latencyPresent\": false"),
+            assertTrue(msg.contains("\"latencyPresent\":false"),
                     "userMessage JSON must contain latencyPresent: false when ABSENT");
         }
 
@@ -287,9 +287,9 @@ class PromptBuilderTest {
             String msg = new PromptBuilder()
                     .build(minimalResults(), 90, PromptRequest.empty(), java.util.Collections.emptyList(), ctx)
                     .userMessage();
-            assertTrue(msg.contains("\"avgLatencyMs\": 225"),
+            assertTrue(msg.contains("\"avgLatencyMs\":225"),
                     "userMessage JSON must contain the exact avgLatencyMs value");
-            assertTrue(msg.contains("\"avgConnectMs\": 75"),
+            assertTrue(msg.contains("\"avgConnectMs\":75"),
                     "userMessage JSON must contain the exact avgConnectMs value");
         }
     }

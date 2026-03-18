@@ -397,4 +397,148 @@ class JTLParserTest {
         assertEquals(0L, result.avgConnectMs,
                 "avgConnectMs must be 0 when latencyPresent is false");
     }
+
+    // ─────────────────────────────────────────────────────────────
+    // endOffset filtering
+    // ─────────────────────────────────────────────────────────────
+
+    @Test
+    @DisplayName("endOffset excludes samples whose relative time exceeds the offset")
+    void endOffsetExcludesSamples() throws IOException {
+        long baseTs = System.currentTimeMillis();
+        // sample at t=0s (relativeSec=0, within endOffset=30) — included
+        // sample at t=40s (relativeSec=40, beyond endOffset=30) — excluded
+        Path file = writeCsv(
+                baseTs + ",100,EarlyTx,200,OK,t-1,text,true,512,128,90,0,20",
+                (baseTs + 40_000L) + ",100,LateTx,200,OK,t-1,text,true,512,128,90,0,20");
+
+        JTLParser.FilterOptions opts = new JTLParser.FilterOptions();
+        opts.endOffset = 30; // exclude samples more than 30s after first sample
+
+        JTLParser.ParseResult result = new JTLParser().parse(file.toString(), opts);
+
+        assertTrue(result.results.containsKey("EarlyTx"),  "EarlyTx should be included");
+        assertFalse(result.results.containsKey("LateTx"),  "LateTx should be filtered out");
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // errorTypeSummary
+    // ─────────────────────────────────────────────────────────────
+
+    @Test
+    @DisplayName("errorTypeSummary is populated with response codes from failed samples")
+    void errorTypeSummaryPopulated() throws IOException {
+        long ts = System.currentTimeMillis();
+        Path file = writeCsv(
+                ts + ",300,Login,500,Internal Server Error,t-1,text,false,100,50,280,0,20",
+                (ts + 1000) + ",200,Login,500,Internal Server Error,t-1,text,false,100,50,180,0,20",
+                (ts + 2000) + ",150,Checkout,404,Not Found,t-1,text,false,100,50,130,0,20");
+
+        JTLParser.ParseResult result = new JTLParser().parse(
+                file.toString(), new JTLParser.FilterOptions());
+
+        assertNotNull(result.errorTypeSummary, "errorTypeSummary must not be null");
+        assertFalse(result.errorTypeSummary.isEmpty(), "errorTypeSummary must not be empty");
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // computeAutoBucketSizeMs
+    // ─────────────────────────────────────────────────────────────
+
+    @Nested
+    @DisplayName("computeAutoBucketSizeMs")
+    class ComputeAutoBucketSizeMsTests {
+
+        @Test
+        @DisplayName("zero minTimestamp returns smallest snap interval")
+        void zeroMinTimestampReturnsSmallestSnap() {
+            long result = JTLParser.computeAutoBucketSizeMs(0L, 0L);
+            assertEquals(10_000L, result, "zero minTimestamp should return 10s snap");
+        }
+
+        @Test
+        @DisplayName("10-minute test snaps to 10s interval")
+        void tenMinuteTestSnapsTo10s() {
+            long minTs = System.currentTimeMillis() - 10 * 60 * 1000L;
+            long result = JTLParser.computeAutoBucketSizeMs(minTs, System.currentTimeMillis());
+            // raw = 600_000 / 120 = 5000ms → snaps up to 10_000ms
+            assertEquals(10_000L, result, "10-min test should snap to 10s bucket");
+        }
+
+        @Test
+        @DisplayName("1-hour test snaps to 30s interval")
+        void oneHourTestSnapsTo30s() {
+            long minTs = System.currentTimeMillis() - 60 * 60 * 1000L;
+            long result = JTLParser.computeAutoBucketSizeMs(minTs, System.currentTimeMillis());
+            // raw = 3_600_000 / 120 = 30_000ms → snaps to exactly 30_000ms
+            assertEquals(30_000L, result, "1-hour test should snap to 30s bucket");
+        }
+
+        @Test
+        @DisplayName("3-hour test snaps to 120s interval")
+        void threeHourTestSnapsTo120s() {
+            long minTs = System.currentTimeMillis() - 3 * 60 * 60 * 1000L;
+            long result = JTLParser.computeAutoBucketSizeMs(minTs, System.currentTimeMillis());
+            // raw = 10_800_000 / 120 = 90_000ms → snaps up to 120_000ms
+            assertEquals(120_000L, result, "3-hour test should snap to 120s bucket");
+        }
+
+        @Test
+        @DisplayName("12-hour test snaps to 300s interval")
+        void twelveHourTestSnapsTo300s() {
+            long minTs = System.currentTimeMillis() - 12 * 60 * 60 * 1000L;
+            long result = JTLParser.computeAutoBucketSizeMs(minTs, System.currentTimeMillis());
+            // raw = 43_200_000 / 120 = 360_000ms → snaps up to 3_600_00ms (600s)
+            assertEquals(600_000L, result, "12-hour test should snap to 600s bucket");
+        }
+
+        @Test
+        @DisplayName("result is always one of the defined snap intervals")
+        void resultIsAlwaysASnapInterval() {
+            long[] snapIntervals = {10_000L, 30_000L, 60_000L, 120_000L,
+                    300_000L, 600_000L, 1_800_000L, 3_600_000L};
+            long[] testDurations = {
+                    5 * 60 * 1000L,       // 5 min
+                    30 * 60 * 1000L,      // 30 min
+                    2 * 60 * 60 * 1000L,  // 2 hours
+                    8 * 60 * 60 * 1000L,  // 8 hours
+                    24 * 60 * 60 * 1000L  // 24 hours
+            };
+            for (long dur : testDurations) {
+                long minTs = System.currentTimeMillis() - dur;
+                long result = JTLParser.computeAutoBucketSizeMs(minTs, System.currentTimeMillis());
+                boolean found = false;
+                for (long snap : snapIntervals) {
+                    if (snap == result) { found = true; break; }
+                }
+                assertTrue(found, "result " + result + "ms for duration " + dur
+                        + "ms must be one of the defined snap intervals");
+            }
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // Multiple distinct labels
+    // ─────────────────────────────────────────────────────────────
+
+    @Test
+    @DisplayName("multiple distinct transaction labels are each aggregated independently")
+    void multipleDistinctLabels() throws IOException {
+        long ts = System.currentTimeMillis();
+        Path file = writeCsv(
+                ts + ",100,Login,200,OK,t-1,text,true,512,128,90,0,20",
+                (ts + 1000) + ",200,Checkout,200,OK,t-1,text,true,512,128,180,0,20",
+                (ts + 2000) + ",150,Search,200,OK,t-1,text,true,512,128,130,0,20");
+
+        JTLParser.ParseResult result = new JTLParser().parse(
+                file.toString(), new JTLParser.FilterOptions());
+
+        assertTrue(result.results.containsKey("Login"),    "Login must be present");
+        assertTrue(result.results.containsKey("Checkout"), "Checkout must be present");
+        assertTrue(result.results.containsKey("Search"),   "Search must be present");
+        assertTrue(result.results.containsKey("TOTAL"),    "TOTAL must be present");
+        assertEquals(1, result.results.get("Login").getCount(),    "Login count must be 1");
+        assertEquals(1, result.results.get("Checkout").getCount(), "Checkout count must be 1");
+        assertEquals(3, result.results.get("TOTAL").getCount(),    "TOTAL count must be 3");
+    }
 }
