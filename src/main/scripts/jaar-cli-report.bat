@@ -1,12 +1,12 @@
 @echo off
 REM ──────────────────────────────────────────────────────────────────
-REM  Configurable Aggregate Report — CLI Wrapper (Windows)
+REM  JAAR — JTL AI Analysis & Reporting  (Windows)
 REM
-REM  Place this script in $JMETER_HOME/bin/ alongside jmeter.bat.
-REM  The plugin JAR must be in $JMETER_HOME/lib/ext/.
+REM  Place this script in %JMETER_HOME%\bin\ alongside jmeter.bat.
+REM  The plugin JAR must be in %JMETER_HOME%\lib\ext\.
 REM
 REM  Usage:
-REM    car-cli-report.bat -i results.jtl --ai --provider groq --config ai-reporter.properties
+REM    jaar-cli-report.bat -i results.jtl --provider groq --config ai-reporter.properties
 REM ──────────────────────────────────────────────────────────────────
 
 setlocal

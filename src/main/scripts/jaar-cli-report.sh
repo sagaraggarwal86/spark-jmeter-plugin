@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # ──────────────────────────────────────────────────────────────────
-#  Configurable Aggregate Report — CLI Wrapper (macOS / Linux)
+#  JAAR — JTL AI Analysis & Reporting  (macOS / Linux)
 #
 #  Place this script in $JMETER_HOME/bin/ alongside jmeter.sh.
 #  The plugin JAR must be in $JMETER_HOME/lib/ext/.
 #
 #  Usage:
-#    ./car-cli-report.sh -i results.jtl --ai --provider groq --config ai-reporter.properties
+#    ./jaar-cli-report.sh -i results.jtl --provider groq --config ai-reporter.properties
 # ──────────────────────────────────────────────────────────────────
 
 set -euo pipefail
