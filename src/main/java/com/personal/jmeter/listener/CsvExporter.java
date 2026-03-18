@@ -11,7 +11,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 /**
- * Handles CSV export of the results table for the Configurable Aggregate Report.
+ * Handles CSV export of the results table for the JAAR.
  *
  * <p>Extracted from {@link AggregateReportPanel} to satisfy the 300-line class
  * design limit (Standard 3 SRP). Responsibility: CSV file writing only.</p>
