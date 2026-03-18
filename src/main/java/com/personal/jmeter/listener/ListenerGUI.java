@@ -20,7 +20,7 @@ import java.net.URI;
 import java.util.Enumeration;
 
 /**
- * JMeter listener plugin — Configurable Aggregate Report.
+ * JMeter listener plugin — JAAR (JTL AI Analysis &amp; Reporting).
  *
  * <p>This class handles JMeter-specific integration only:
  * lifecycle callbacks ({@code configure}, {@code modifyTestElement}, {@code clearGui}),
@@ -33,6 +33,20 @@ public class ListenerGUI extends AbstractVisualizer {
     private static final Logger log = LoggerFactory.getLogger(ListenerGUI.class);
 
     private final AggregateReportPanel reportPanel = new AggregateReportPanel();
+
+    /**
+     * Set to {@code true} inside {@link #modifyTestElement} so that the
+     * subsequent {@link #clearGui()} call triggered by JMeter tree navigation
+     * can be distinguished from a user-initiated Clear All action.
+     */
+    private boolean isTreeNavigation = false;
+
+    /**
+     * Tracks file paths for which a "file not found" warning has already been
+     * shown in this JMeter session. Prevents repeated dialogs on every tree click.
+     * Entry is removed when the user successfully reloads the file via Browse.
+     */
+    private final java.util.Set<String> missingFileWarned = new java.util.HashSet<>();
 
     // ─────────────────────────────────────────────────────────────
     // Constructor
@@ -67,8 +81,7 @@ public class ListenerGUI extends AbstractVisualizer {
             @Override
             public void mouseClicked(MouseEvent e) {
                 try {
-                    Desktop.getDesktop().browse(new URI(
-                            "https://github.com/sagaraggarwal86/Configurable_Aggregate_Report"));
+                    Desktop.getDesktop().browse(new URI(ListenerCollector.HELP_URL));
                 } catch (Exception ex) {
                     log.warn("helpLink: could not open browser. reason={}", ex.getMessage());
                 }
@@ -81,7 +94,7 @@ public class ListenerGUI extends AbstractVisualizer {
         // file's directory, then immediately loads the selected file.
         FilePanelCustomizer.hideFilePanelExtras(titlePanel);
         FilePanelCustomizer.overrideBrowseButton(
-                titlePanel, getFile(), this::setFile, this, this::checkAndLoadFile);
+                titlePanel, this::getFile, this::setFile, this, this::checkAndLoadFile);
 
         add(reportPanel, BorderLayout.CENTER);
     }
@@ -93,7 +106,9 @@ public class ListenerGUI extends AbstractVisualizer {
     /**
      * Called immediately after the user selects a file via Browse.
      * Shows an error dialog if the selected file no longer exists on disk.
-     * On success, delegates to {@link AggregateReportPanel#loadJtlFile(String)}.
+     * On success, removes the path from {@link #missingFileWarned} so that
+     * a future missing-file warning can fire again if needed, then delegates
+     * to {@link AggregateReportPanel#loadJtlFile(String)}.
      */
     private void checkAndLoadFile() {
         String filename = getFile();
@@ -107,17 +122,18 @@ public class ListenerGUI extends AbstractVisualizer {
                     "File Not Found", JOptionPane.ERROR_MESSAGE);
             return;
         }
+        missingFileWarned.remove(filename.trim()); // allow re-warn if file goes missing again
         reportPanel.loadJtlFile(filename.trim());
     }
 
     @Override
     public String getLabelResource() {
-        return "configurable_aggregate_report";
+        return "jaar_ai_performance_reporter";
     }
 
     @Override
     public String getStaticLabel() {
-        return "Configurable Aggregate Report";
+        return ListenerCollector.PLUGIN_NAME;
     }
 
     @Override
@@ -129,30 +145,97 @@ public class ListenerGUI extends AbstractVisualizer {
 
     @Override
     public void modifyTestElement(TestElement el) {
+        // Set flag BEFORE super.modifyTestElement() — JMeter calls clearGui()
+        // immediately after this method during tree navigation. The flag allows
+        // clearGui() to distinguish navigation from a user-initiated Clear All.
+        isTreeNavigation = true;
         super.modifyTestElement(el);
-        el.setProperty(ListenerCollector.PROP_START_OFFSET, reportPanel.getStartOffset());
-        el.setProperty(ListenerCollector.PROP_END_OFFSET,   reportPanel.getEndOffset());
-        el.setProperty(ListenerCollector.PROP_PERCENTILE,   reportPanel.getPercentileText());
+        // ── Filter fields ────────────────────────────────────────
+        el.setProperty(ListenerCollector.PROP_START_OFFSET,   reportPanel.getStartOffset());
+        el.setProperty(ListenerCollector.PROP_END_OFFSET,     reportPanel.getEndOffset());
+        el.setProperty(ListenerCollector.PROP_PERCENTILE,     reportPanel.getPercentileText());
+        // ── SLA fields ───────────────────────────────────────────
+        el.setProperty(ListenerCollector.PROP_ERROR_PCT_SLA,    reportPanel.getErrorPctSla());
+        el.setProperty(ListenerCollector.PROP_RT_THRESHOLD_SLA, reportPanel.getRtThresholdSla());
+        el.setProperty(ListenerCollector.PROP_RT_METRIC,        reportPanel.getRtMetricIndex());
+        // ── Chart / search fields ────────────────────────────────
+        el.setProperty(ListenerCollector.PROP_CHART_INTERVAL, reportPanel.getChartInterval());
+        el.setProperty(ListenerCollector.PROP_SEARCH,         reportPanel.getSearch());
+        el.setProperty(ListenerCollector.PROP_REGEX,          reportPanel.isRegex());
+        // ── File and column state ────────────────────────────────
+        String lastFile = reportPanel.getLastLoadedFilePath();
+        if (lastFile != null) el.setProperty(ListenerCollector.PROP_LAST_FILE, lastFile);
+        el.setProperty(ListenerCollector.PROP_COL_VISIBILITY, reportPanel.getColumnVisibility());
     }
 
     @Override
     public void configure(TestElement el) {
+        // BUG 2 FIX: reset flag defensively — guards against createTestElement()
+        // calling modifyTestElement() and leaving the flag true before configure().
+        isTreeNavigation = false;
+
         reportPanel.setSuppressReload(true);
         try {
             super.configure(el);
+            // ── Filter fields ────────────────────────────────────
             reportPanel.setStartOffset(
                     el.getPropertyAsString(ListenerCollector.PROP_START_OFFSET, ""));
             reportPanel.setEndOffset(
                     el.getPropertyAsString(ListenerCollector.PROP_END_OFFSET, ""));
             reportPanel.setPercentile(
                     el.getPropertyAsString(ListenerCollector.PROP_PERCENTILE, "90"));
+            // ── SLA fields ───────────────────────────────────────
+            reportPanel.setErrorPctSla(
+                    el.getPropertyAsString(ListenerCollector.PROP_ERROR_PCT_SLA, ""));
+            reportPanel.setRtThresholdSla(
+                    el.getPropertyAsString(ListenerCollector.PROP_RT_THRESHOLD_SLA, ""));
+            reportPanel.setRtMetricIndex(
+                    el.getPropertyAsInt(ListenerCollector.PROP_RT_METRIC, 1));
+            // ── Chart / search fields ────────────────────────────
+            reportPanel.setChartInterval(
+                    el.getPropertyAsString(ListenerCollector.PROP_CHART_INTERVAL, "0"));
+            reportPanel.setSearch(
+                    el.getPropertyAsString(ListenerCollector.PROP_SEARCH, ""));
+            reportPanel.setRegex(
+                    el.getPropertyAsBoolean(ListenerCollector.PROP_REGEX, false));
+            // ── Column visibility ────────────────────────────────
+            reportPanel.setColumnVisibility(
+                    el.getPropertyAsString(ListenerCollector.PROP_COL_VISIBILITY, ""));
         } finally {
             reportPanel.setSuppressReload(false);
+        }
+
+        // ── Silent re-parse ──────────────────────────────────────
+        // BUG 1 FIX: use loadJtlFileForRestore() instead of loadJtlFile() —
+        // loadJtlFile() calls resetSlaFields() which would wipe the SLA and
+        // chart interval fields just restored above.
+        String lastFile = el.getPropertyAsString(ListenerCollector.PROP_LAST_FILE, "");
+        if (!lastFile.isBlank()) {
+            if (!new File(lastFile).exists()) {
+                if (!missingFileWarned.contains(lastFile)) {
+                    missingFileWarned.add(lastFile);
+                    JOptionPane.showMessageDialog(this,
+                            "Previously loaded file not found:\n" + lastFile
+                                    + "\n\nPlease browse for the file again.",
+                            "File Not Found", JOptionPane.WARNING_MESSAGE);
+                }
+                // Silent skip — leave table empty
+            } else {
+                reportPanel.loadJtlFileForRestore(lastFile);
+            }
         }
     }
 
     @Override
     public void clearGui() {
+        // Guard: if this call is part of JMeter tree navigation (modifyTestElement
+        // was called just before), do NOT wipe the panel — state will be restored
+        // by the subsequent configure() call. Only wipe on Clear All button press.
+        if (isTreeNavigation) {
+            isTreeNavigation = false;
+            super.clearGui();  // resets JMeter title/name field only
+            return;
+        }
         super.clearGui();
         reportPanel.clearAll();
     }

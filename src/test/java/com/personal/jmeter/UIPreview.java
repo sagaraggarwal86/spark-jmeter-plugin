@@ -11,7 +11,7 @@ import java.io.File;
 import java.net.URL;
 
 /**
- * Standalone preview of the Configurable Aggregate Report UI.
+ * Standalone preview of the JAAR UI.
  *
  * <p>Run {@link #main(String[])} directly — no JMeter runtime needed.
  * All shared UI and logic is in {@link AggregateReportPanel}; this class
@@ -57,7 +57,7 @@ public class UIPreview {
             } catch (ReflectiveOperationException | UnsupportedLookAndFeelException e) {
                 log.warn("main: Could not set system look-and-feel. reason={}", e.getMessage());
             }
-            JFrame frame = new JFrame("Configurable Aggregate Report");
+            JFrame frame = new JFrame("JAAR");
             frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
             frame.setContentPane(new UIPreview().buildUI());
             frame.pack();
@@ -101,12 +101,12 @@ public class UIPreview {
 
     private JPanel buildTitleBar() {
         JPanel panel = new JPanel(new BorderLayout());
-        JLabel title = new JLabel("Configurable Aggregate Report");
+        JLabel title = new JLabel("JAAR");
         title.setFont(AggregateReportPanel.FONT_HEADER.deriveFont(Font.BOLD));
         panel.add(title, BorderLayout.WEST);
         JPanel nameRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 2));
         nameRow.add(makeLabel("Name:"));
-        nameRow.add(makeTextField("Configurable Aggregate Report", 28));
+        nameRow.add(makeTextField("JAAR", 28));
         nameRow.add(makeLabel("Comments:"));
         nameRow.add(makeTextField("", 28));
         panel.add(nameRow, BorderLayout.SOUTH);
