@@ -36,8 +36,8 @@ class TablePopulatorTest {
     // ─────────────────────────────────────────────────────────────
 
     private static SamplingStatCalculator calcWithSamples(String label,
-                                                           long[] elapsedMs,
-                                                           boolean[] success) {
+                                                          long[] elapsedMs,
+                                                          boolean[] success) {
         SamplingStatCalculator calc = new SamplingStatCalculator(label);
         long ts = System.currentTimeMillis();
         for (int i = 0; i < elapsedMs.length; i++) {
@@ -64,11 +64,11 @@ class TablePopulatorTest {
     class RowStructureTests {
 
         @Test
-        @DisplayName("returns exactly 11 elements")
-        void returns11Elements() {
+        @DisplayName("returns exactly 13 elements")
+        void returns13Elements() {
             String[] row = TablePopulator.buildRowAsStrings(
                     allPassed("Login", 300L), 0.90);
-            assertEquals(11, row.length);
+            assertEquals(13, row.length);
         }
 
         @Test

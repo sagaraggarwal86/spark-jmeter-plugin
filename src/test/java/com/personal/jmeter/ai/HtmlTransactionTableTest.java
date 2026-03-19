@@ -185,7 +185,7 @@ class HtmlTransactionTableTest {
         @Test
         @DisplayName("short row (fewer cells than headers) renders without exception")
         void shortRowNoException() {
-            String[] shortRow = {"ShortRow", "50"}; // only 2 of 11 cells supplied
+            String[] shortRow = {"ShortRow", "50"}; // only 2 of 13 cells supplied
             assertDoesNotThrow(() ->
                     renderer.buildTransactionMetricsSection(rows(shortRow)));
         }

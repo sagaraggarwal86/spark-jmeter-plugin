@@ -162,6 +162,7 @@ public class ListenerGUI extends AbstractVisualizer {
         el.setProperty(ListenerCollector.PROP_CHART_INTERVAL, reportPanel.getChartInterval());
         el.setProperty(ListenerCollector.PROP_SEARCH,         reportPanel.getSearch());
         el.setProperty(ListenerCollector.PROP_REGEX,          reportPanel.isRegex());
+        el.setProperty(ListenerCollector.PROP_FILTER_MODE,    reportPanel.getFilterModeIndex());
         // ── File and column state ────────────────────────────────
         String lastFile = reportPanel.getLastLoadedFilePath();
         if (lastFile != null) el.setProperty(ListenerCollector.PROP_LAST_FILE, lastFile);
@@ -198,6 +199,8 @@ public class ListenerGUI extends AbstractVisualizer {
                     el.getPropertyAsString(ListenerCollector.PROP_SEARCH, ""));
             reportPanel.setRegex(
                     el.getPropertyAsBoolean(ListenerCollector.PROP_REGEX, false));
+            reportPanel.setFilterModeIndex(
+                    el.getPropertyAsInt(ListenerCollector.PROP_FILTER_MODE, 0));
             // ── Column visibility ────────────────────────────────
             reportPanel.setColumnVisibility(
                     el.getPropertyAsString(ListenerCollector.PROP_COL_VISIBILITY, ""));

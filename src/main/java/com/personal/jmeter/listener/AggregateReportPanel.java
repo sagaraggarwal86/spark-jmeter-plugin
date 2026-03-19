@@ -2,6 +2,7 @@ package com.personal.jmeter.listener;
 
 import com.personal.jmeter.ai.AiProviderConfig;
 import com.personal.jmeter.ai.AiProviderRegistry;
+import com.personal.jmeter.parser.DelimiterResolver;
 import com.personal.jmeter.parser.JTLParser;
 import org.apache.jmeter.visualizers.SamplingStatCalculator;
 import org.slf4j.Logger;
@@ -56,7 +57,8 @@ public class AggregateReportPanel extends JPanel {
     static final String[] ALL_COLUMNS = {
             "Transaction Name", "Count", "Passed",
             "Failed", "Avg (ms)", "Min (ms)",
-            "Max (ms)", "P90 (ms)", "Std. Dev.", "Error Rate", "TPS"
+            "Max (ms)", "P90 (ms)", "Std. Dev.", "Error Rate", "TPS",
+            "KB/Sec", "Avg Bytes"
     };
     /** Model index of the configurable percentile column. */
     static final int    PERCENTILE_COL_INDEX  = 7;
@@ -74,6 +76,7 @@ public class AggregateReportPanel extends JPanel {
     final JTextField percentileField        = new JTextField("90", 10);
     final JTextField transactionSearchField = new JTextField("", 15);
     final JCheckBox  regexCheckBox          = new JCheckBox("RegEx");
+    final JComboBox<String> filterModeCombo = new JComboBox<>(new String[]{"Include", "Exclude"});
 
     // ── Time-info fields ─────────────────────────────────────────
     final JTextField startTimeField = new JTextField("", 20);
@@ -147,12 +150,12 @@ public class AggregateReportPanel extends JPanel {
         tablePopulator   = new TablePopulator(tableModel, resultsTable,
                 allTableColumns, columnMenuItems);
         csvExporter      = new CsvExporter(this, tableModel, allTableColumns,
-                columnMenuItems);
+                columnMenuItems, this::buildSlaConfig);
         aiReportLauncher = new AiReportLauncher(this, aiExecutor, new PanelDataProvider());
 
         ReportPanelBuilder builder = new ReportPanelBuilder(
                 startOffsetField, endOffsetField, percentileField,
-                transactionSearchField, regexCheckBox,
+                transactionSearchField, regexCheckBox, filterModeCombo,
                 startTimeField, endTimeField, durationField,
                 errorPctSlaField, rtMetricCombo, rtThresholdSlaField,
                 resultsTable, columnMenuItems, allTableColumns,
@@ -272,6 +275,7 @@ public class AggregateReportPanel extends JPanel {
         percentileField.setText("90");
         transactionSearchField.setText("");
         regexCheckBox.setSelected(false);
+        filterModeCombo.setSelectedIndex(0); // reset to "Include"
         chartIntervalField.setText("0"); // filter setting — reset only on full Clear, not on Load
         startTimeField.setText("");
         endTimeField.setText("");
@@ -366,6 +370,11 @@ public class AggregateReportPanel extends JPanel {
     /** @param v state to set */
     public void    setRegex(boolean v) { regexCheckBox.setSelected(v); }
 
+    /** @return filter mode combo selected index (0 = Include, 1 = Exclude) */
+    public int  getFilterModeIndex()       { return filterModeCombo.getSelectedIndex(); }
+    /** @param i index to select; out-of-range defaults to 0 (Include) */
+    public void setFilterModeIndex(int i)  { filterModeCombo.setSelectedIndex((i == 1) ? 1 : 0); }
+
     /** @return the last loaded JTL file path, or {@code null} if none loaded */
     public String getLastLoadedFilePath() { return lastLoadedFilePath; }
 
@@ -414,6 +423,8 @@ public class AggregateReportPanel extends JPanel {
         opts.endOffset           = parseIntField(endOffsetField,   0);
         opts.percentile          = readPercentile();
         opts.chartIntervalSeconds = parseIntField(chartIntervalField, 0);
+        opts.delimiter           = DelimiterResolver.resolve(
+                AiReportLauncher.resolveJmeterHomeStatic());
         return opts;
     }
 
@@ -485,6 +496,11 @@ public class AggregateReportPanel extends JPanel {
         });
         refreshProviderCombo(); // initial load
 
+        JButton refreshBtn = new JButton("Reload List");
+        refreshBtn.setFont(FONT_REGULAR);
+        refreshBtn.setToolTipText("Reload provider list from ai-reporter.properties");
+        refreshBtn.addActionListener(e -> refreshProviderCombo());
+
         JButton aiBtn = new JButton("Generate AI Report");
         aiBtn.setFont(FONT_REGULAR);
         aiBtn.setToolTipText(
@@ -503,6 +519,7 @@ public class AggregateReportPanel extends JPanel {
         JPanel panel = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 4));
         panel.add(saveBtn);
         panel.add(providerCombo);
+        panel.add(refreshBtn);
         panel.add(aiBtn);
         panel.add(Box.createHorizontalStrut(8));
         panel.add(divider);
@@ -583,6 +600,7 @@ public class AggregateReportPanel extends JPanel {
         transactionSearchField.getDocument().addDocumentListener(
                 (SimpleDocListener) () -> { if (!cachedResults.isEmpty()) repopulate(readPercentile()); });
         regexCheckBox.addActionListener(e -> { if (!cachedResults.isEmpty()) repopulate(readPercentile()); });
+        filterModeCombo.addActionListener(e -> { if (!cachedResults.isEmpty()) repopulate(readPercentile()); });
 
         // ── SLA fields: live repaint on change ──
         SimpleDocListener slaRepaintListener = () -> resultsTable.repaint();
@@ -724,7 +742,8 @@ public class AggregateReportPanel extends JPanel {
 
     private void repopulate(int percentile) {
         tablePopulator.populate(cachedResults, percentile,
-                transactionSearchField.getText().trim(), regexCheckBox.isSelected());
+                transactionSearchField.getText().trim(), regexCheckBox.isSelected(),
+                filterModeCombo.getSelectedIndex() == 1);
     }
 
     // ─────────────────────────────────────────────────────────────

@@ -15,6 +15,7 @@ runtime overhead.
 - [Table Columns](#table-columns)
 - [Filter Settings](#filter-settings)
 - [SLA Thresholds](#sla-thresholds)
+- [Delimiter Detection](#delimiter-detection)
 - [AI Performance Report](#ai-performance-report)
 - [Local LLM Support](#local-llm-support)
 - [CLI Mode](#cli-mode)
@@ -33,15 +34,17 @@ runtime overhead.
 | 📂 **JTL File Processing**     | Browse and load JTL files — the metrics table populates instantly                                 |
 | ⏱️ **Start / End Offset**      | Exclude ramp-up and ramp-down periods by entering a time window in seconds                        |
 | 📈 **Configurable Percentile** | Set any percentile value: 50th, 90th, 95th, 99th, or custom                                      |
-| 🔍 **Transaction Search**      | Filter the table by transaction name using plain text or regular expressions                      |
+| 🔍 **Transaction Filter**      | Filter by transaction name with Include/Exclude mode, plain text or regex                         |
 | 👁️ **Column Visibility**       | Show or hide any column via a dropdown multi-select control                                       |
 | ✅ **Pass / Fail Counts**       | Dedicated columns for transactions passed and transactions failed                                 |
 | 🕐 **Test Time Info**          | Start Date/Time, End Date/Time, and total Duration shown automatically                            |
 | 🔀 **Sortable Columns**        | Click any column header to sort ascending; click again for descending                             |
 | 🚨 **SLA Thresholds**          | Set Error % and Response Time thresholds — breaching cells are highlighted in red                 |
-| 💾 **CSV Export**              | Save all visible columns to a CSV file with one click                                             |
+| 💾 **CSV Export**              | Save all visible columns to a CSV file; SLA status columns (PASS/FAIL) included when configured   |
 | 🤖 **AI Performance Report**   | Generate a styled HTML report with deep-dive analysis, powered by any OpenAI-compatible provider  |
 | 📊 **Chart Interval**          | Configure the time-bucket interval for performance charts (default: auto, or set custom)          |
+| 🔄 **Provider Reload**         | Reload the AI provider list from `ai-reporter.properties` without restarting JMeter               |
+| 📐 **Delimiter Detection**     | Automatically reads the JTL delimiter from JMeter's properties files (`;`, `|`, `\t`, etc.)       |
 | 🚫 **No Live Metrics**         | Designed for post-test JTL analysis — no runtime overhead                                        |
 
 ---
@@ -132,6 +135,8 @@ cp target/jaar-jmeter-plugin-*.jar $JMETER_HOME/lib/ext/
 | **Std. Dev.**        | Standard deviation of response times           |
 | **Error Rate**       | Percentage of failed samples                   |
 | **TPS**              | Transactions per second (throughput)           |
+| **KB/Sec**           | Received bandwidth in kilobytes per second     |
+| **Avg Bytes**        | Average response size in bytes per sample      |
 
 All columns are **sortable** — click the header to sort ascending, click again for descending, click a third time to reset.
 
@@ -164,14 +169,21 @@ End Offset   = 25  →  skip samples after 25s from test start
 
 > **Tip:** Changing offset values re-parses the JTL file automatically after a brief pause — no need to re-browse.
 
-### Transaction Search
+### Transaction Names
 
-Filter the results table by typing in the **Search** field. Only matching transactions are shown.
+Filter the results table by typing in the **Transaction Names** field. A dropdown next to the RegEx checkbox controls the filter mode.
 
 | Mode                     | Behaviour                        | Example                          |
 |--------------------------|----------------------------------|----------------------------------|
 | **Plain text** (default) | Case-insensitive substring match | `login` matches `Login Flow`     |
 | **RegEx** (checkbox on)  | Java regex pattern match         | `Login\|Checkout` matches either |
+
+| Filter Mode              | Behaviour                                                                    |
+|--------------------------|------------------------------------------------------------------------------|
+| **Include** (default)    | Show only transactions matching the pattern (existing behaviour)             |
+| **Exclude**              | Hide transactions matching the pattern — all non-matching rows are shown     |
+
+When the field is blank, all transactions are shown regardless of the selected mode.
 
 > Invalid regex patterns are silently ignored — the table shows no matches rather than throwing an error.
 
@@ -209,11 +221,48 @@ Set live SLA thresholds in the **SLA Thresholds** panel. Breaching cells are hig
 
 ---
 
+## Delimiter Detection
+
+The plugin automatically reads the JTL field delimiter from JMeter's properties files. This
+allows parsing of JTL files generated with non-default delimiters (`;`, `|`, `\t`, etc.).
+
+### Resolution Order (highest priority first)
+
+| Priority | Source                                          |
+|----------|-------------------------------------------------|
+| 1        | `<JMETER_HOME>/bin/user.properties`             |
+| 2        | `<JMETER_HOME>/bin/jmeter.properties`           |
+| 3        | Default: `,` (standard CSV)                     |
+
+The plugin looks for the standard JMeter property:
+
+```properties
+jmeter.save.saveservice.default_delimiter=;
+```
+
+- Commented-out lines (`#jmeter.save.saveservice.default_delimiter=;`) are ignored.
+- If the property appears in both files, `user.properties` takes priority.
+- Tab-delimited JTLs are supported via `\t` as the property value.
+- If neither file contains an active value, the default comma delimiter is used.
+
+> **Note:** The delimiter setting must match the format of the JTL file being loaded. Loading a comma-delimited JTL with a semicolon delimiter configured will produce incorrect results.
+
+---
+
 ## CSV Export
 
 1. Click **Save Table Data** at the bottom of the panel.
 2. Choose a save location — the default filename is `aggregate_report.csv`.
 3. Only **currently visible columns** are exported (header row is always included).
+
+When SLA thresholds are configured, two additional columns are appended to the CSV:
+
+| Column         | Values                                                        |
+|----------------|---------------------------------------------------------------|
+| **Error% SLA** | `PASS` (within threshold), `FAIL` (breach), or `-` (disabled / TOTAL row) |
+| **RT SLA**     | `PASS` (within threshold), `FAIL` (breach), or `-` (disabled / TOTAL row) |
+
+If no SLA thresholds are set, the CSV contains only the visible data columns — no extra columns are added.
 
 ---
 
@@ -295,7 +344,7 @@ ai.reporter.openai.api.key=sk-your-key-here
 ai.reporter.claude.api.key=sk-ant-your-key-here
 ```
 
-Select the provider from the dropdown next to the **Generate AI Report** button.
+Select the provider from the dropdown next to the **Generate AI Report** button. Click **Reload** to refresh the provider list after editing `ai-reporter.properties` — no restart needed.
 
 > **Tip:** The dropdown order and free/paid labels are configurable via `ai.reporter.order` and `ai.reporter.<key>.tier` in `ai-reporter.properties` — no rebuild required.
 
@@ -386,8 +435,9 @@ Filter Options:
   --end-offset INT            seconds to trim from end
   --percentile INT            percentile 1-99 (default: 90)
   --chart-interval INT        seconds per chart bucket, 0=auto (default: 0)
-  --search STRING             label filter text
+  --search STRING             label filter text (include mode by default)
   --regex                     treat --search as regex
+  --exclude                   exclude matching transactions (default: include)
 
 Report Metadata:
   --scenario-name STRING      scenario name for report header
@@ -435,6 +485,17 @@ VERDICT=$(echo "$OUTPUT" | tail -1)
 --search "Login|Checkout" --regex
 ```
 
+**`--exclude` requires `--search`.** Passing `--exclude` without `--search` is a validation error
+(exit code `3`). Use `--exclude` to hide matching transactions from the report:
+
+```bash
+# Exclude all Login transactions
+--search "Login" --exclude
+
+# Exclude by regex pattern
+--search "^GET.*" --regex --exclude
+```
+
 **SLA thresholds influence AI analysis.** The `--error-sla` and `--rt-sla` values are passed
 directly into the AI analysis prompt. The AI evaluates whether those thresholds were met or
 breached and factors them into its PASS/FAIL verdict. If no SLA args are provided, the AI
@@ -459,6 +520,14 @@ elif [ $EXIT_CODE -eq 2 ]; then
 fi
 ```
 
+To exclude specific transactions from the report:
+
+```bash
+./jaar-cli-report.sh \
+  -i results.jtl --provider mistral --config ai-reporter.properties \
+  --search "HealthCheck|Warmup" --regex --exclude
+```
+
 On success, two lines are printed to stdout:
 
 ```
@@ -475,6 +544,10 @@ The verdict line is always one of `VERDICT:PASS`, `VERDICT:FAIL`, or `VERDICT:UN
 ---
 
 ## Running Tests
+
+The test suite contains **450+ unit tests** across 23 test classes covering parsing, prompt
+building, markdown processing, SLA evaluation, HTML rendering, CSV export, CLI argument parsing,
+delimiter resolution, and UI breach highlighting.
 
 ```bash
 # Build and run all tests
@@ -525,9 +598,15 @@ The report requires internet access to load the Chart.js library from a CDN. Ope
 Chrome or Firefox on a machine with internet access.
 
 **The table shows no rows after loading a JTL file.**
-Check that Start Offset and End Offset are not together excluding all samples. If the fields
+Check that Start Offset and End Offset are not together excluding all samples. Verify the
+filter mode is set to **Include** (not Exclude with a broad pattern). If the fields
 are blank and the table is still empty, verify the JTL file is a valid CSV and was not
 truncated during the test run.
+
+**The table shows one "unknown" row with all zeros after loading a JTL file.**
+The configured delimiter does not match the JTL file's actual format. Check the value of
+`jmeter.save.saveservice.default_delimiter` in `<JMETER_HOME>/bin/jmeter.properties` and
+`user.properties`. If the JTL file uses commas, either remove the property or set it to `,`.
 
 **The AI report times out.**
 Increase `timeout.seconds` for the provider in `ai-reporter.properties`. The default is

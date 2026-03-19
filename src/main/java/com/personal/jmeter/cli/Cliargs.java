@@ -28,6 +28,7 @@ final class CliArgs {
     private int    chartInterval  = 0;
     private String search         = "";
     private boolean regex         = false;
+    private boolean exclude       = false;
 
     // ── Report Metadata ───────────────────────────────────────────
     private String scenarioName   = "";
@@ -78,6 +79,7 @@ final class CliArgs {
     int     chartInterval() { return chartInterval; }
     String  search()        { return search; }
     boolean regex()         { return regex; }
+    boolean exclude()       { return exclude; }
     String  scenarioName()  { return scenarioName; }
     String  description()   { return description; }
     int     virtualUsers()  { return virtualUsers; }
@@ -108,6 +110,7 @@ final class CliArgs {
                 case "--chart-interval"       -> chartInterval = nextInt(args, i++, arg);
                 case "--search"               -> search        = nextValue(args, i++, arg);
                 case "--regex"                -> regex         = true;
+                case "--exclude"              -> exclude       = true;
                 case "--scenario-name"        -> scenarioName  = nextValue(args, i++, arg);
                 case "--description"          -> description   = nextValue(args, i++, arg);
                 case "--virtual-users"        -> virtualUsers  = nextInt(args, i++, arg);
@@ -206,6 +209,10 @@ final class CliArgs {
         if (regex && (search == null || search.isBlank()))
             errors.add("--regex requires --search");
 
+        // Exclude without search
+        if (exclude && (search == null || search.isBlank()))
+            errors.add("--exclude requires --search");
+
         // Normalise provider to lowercase
         if (provider != null)
             provider = provider.toLowerCase();
@@ -240,8 +247,9 @@ final class CliArgs {
                   --end-offset INT            seconds to trim from end
                   --percentile INT            percentile 1-99 (default: 90)
                   --chart-interval INT        seconds per chart bucket, 0=auto (default: 0)
-                  --search STRING             label filter text
+                  --search STRING             label filter text (include mode by default)
                   --regex                     treat --search as regex
+                  --exclude                   exclude matching transactions (default: include)
 
                 Report Metadata:
                   --scenario-name STRING      scenario name for report header

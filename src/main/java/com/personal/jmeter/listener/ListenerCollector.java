@@ -48,6 +48,11 @@ public class ListenerCollector extends ResultCollector {
     public static final String PROP_SEARCH           = "search";
     /** JMeter property key for the regex checkbox state (boolean). */
     public static final String PROP_REGEX            = "regex";
+    /**
+     * JMeter property key for the filter mode combo selection index.
+     * Stored as an integer: 0 = Include, 1 = Exclude.
+     */
+    public static final String PROP_FILTER_MODE      = "filterMode";
 
     // ── File and column state ────────────────────────────────────
     /** JMeter property key for the last loaded JTL file path. */

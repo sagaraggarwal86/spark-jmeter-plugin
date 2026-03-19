@@ -3,6 +3,7 @@ package com.personal.jmeter.cli;
 import com.personal.jmeter.ai.*;
 import com.personal.jmeter.listener.TransactionFilter;
 import com.personal.jmeter.listener.TablePopulator;
+import com.personal.jmeter.parser.DelimiterResolver;
 import com.personal.jmeter.parser.JTLParser;
 import org.apache.jmeter.visualizers.SamplingStatCalculator;
 
@@ -138,7 +139,33 @@ final class CliReportPipeline {
         opts.endOffset           = args.endOffset();
         opts.percentile          = args.percentile();
         opts.chartIntervalSeconds = args.chartInterval();
+        opts.delimiter           = DelimiterResolver.resolve(resolveJmeterHome());
         return opts;
+    }
+
+    /**
+     * Resolves JMETER_HOME for delimiter detection.
+     * Derives from the config file's parent directory structure:
+     * {@code --config /path/to/jmeter/bin/ai-reporter.properties} → {@code /path/to/jmeter}.
+     * Falls back to the {@code JMETER_HOME} environment variable.
+     *
+     * @return JMeter home directory, or {@code null} if not determinable
+     */
+    private java.io.File resolveJmeterHome() {
+        // Derive from config file path: config is expected at $JMETER_HOME/bin/ai-reporter.properties
+        java.io.File configFile = new java.io.File(args.configFile());
+        java.io.File binDir = configFile.getAbsoluteFile().getParentFile();
+        if (binDir != null && "bin".equalsIgnoreCase(binDir.getName())) {
+            java.io.File home = binDir.getParentFile();
+            if (home != null && home.isDirectory()) return home;
+        }
+        // Fallback: environment variable
+        String env = System.getenv("JMETER_HOME");
+        if (env != null && !env.isBlank()) {
+            java.io.File f = new java.io.File(env);
+            if (f.isDirectory()) return f;
+        }
+        return null;
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -155,9 +182,10 @@ final class CliReportPipeline {
             if (JTLParser.TOTAL_LABEL.equals(label)) continue;
 
             // Apply search filter if specified
-            if (!args.search().isBlank()
-                    && !TransactionFilter.matches(label, args.search(), args.regex())) {
-                continue;
+            if (!args.search().isBlank()) {
+                boolean matches = TransactionFilter.matches(label, args.search(), args.regex());
+                // Include mode: skip non-matching. Exclude mode: skip matching.
+                if (args.exclude() ? matches : !matches) continue;
             }
 
             rows.add(TablePopulator.buildRowAsStrings(calc, pFraction));

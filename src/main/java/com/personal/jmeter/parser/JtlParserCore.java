@@ -125,21 +125,46 @@ final class JtlParserCore {
     }
 
     /**
-     * Lightweight Pass-1 field extractor — tokenises only up to column
-     * {@code maxIdx} (inclusive) and returns early, avoiding allocation of
-     * {@link String} tokens for the remaining columns.
+     * Builds a column-name-to-index map from the raw JTL header line,
+     * splitting on the specified delimiter.
      *
-     * <p>Uses the same quote-aware, trim-on-emit logic as {@link #splitCsvLine}
-     * so {@code label} fields that contain commas are handled correctly.</p>
-     *
-     * <p>If the line has fewer columns than {@code maxIdx + 1}, the missing
-     * positions in the returned array are returned as {@code ""}.</p>
+     * @param headerLine raw header line (unsplit)
+     * @param delimiter  field delimiter character
+     * @return map from trimmed column name to its zero-based index
+     */
+    static Map<String, Integer> buildColumnMap(String headerLine, char delimiter) {
+        return buildColumnMap(splitCsvLine(headerLine, delimiter));
+    }
+
+    /**
+     * Lightweight Pass-1 field extractor using the default comma delimiter.
+     * Backward-compatible overload for callers without a delimiter reference.
      *
      * @param line   raw CSV data line (not the header); must not be null
      * @param maxIdx stop tokenising after this column index (zero-based, inclusive)
      * @return array of length {@code maxIdx + 1} with trimmed, unquoted field values
      */
     static String[] extractPass1Fields(String line, int maxIdx) {
+        return extractPass1Fields(line, maxIdx, ',');
+    }
+
+    /**
+     * Lightweight Pass-1 field extractor — tokenises only up to column
+     * {@code maxIdx} (inclusive) and returns early, avoiding allocation of
+     * {@link String} tokens for the remaining columns.
+     *
+     * <p>Uses the same quote-aware, trim-on-emit logic as {@link #splitCsvLine}
+     * so {@code label} fields that contain the delimiter are handled correctly.</p>
+     *
+     * <p>If the line has fewer columns than {@code maxIdx + 1}, the missing
+     * positions in the returned array are returned as {@code ""}.</p>
+     *
+     * @param line      raw CSV data line (not the header); must not be null
+     * @param maxIdx    stop tokenising after this column index (zero-based, inclusive)
+     * @param delimiter field delimiter character
+     * @return array of length {@code maxIdx + 1} with trimmed, unquoted field values
+     */
+    static String[] extractPass1Fields(String line, int maxIdx, char delimiter) {
         String[] result = new String[maxIdx + 1];
         Arrays.fill(result, "");
         int     fieldIdx = 0;
@@ -155,7 +180,7 @@ final class JtlParserCore {
                 } else {
                     inQuotes = !inQuotes;
                 }
-            } else if (c == ',' && !inQuotes) {
+            } else if (c == delimiter && !inQuotes) {
                 result[fieldIdx] = current.toString().trim();
                 if (fieldIdx == maxIdx) return result;  // early exit — all needed fields collected
                 current.setLength(0);
@@ -164,7 +189,7 @@ final class JtlParserCore {
                 current.append(c);
             }
         }
-        // Store the last field (no trailing comma on the final column)
+        // Store the last field (no trailing delimiter on the final column)
         if (fieldIdx <= maxIdx) {
             result[fieldIdx] = current.toString().trim();
         }
@@ -187,6 +212,19 @@ final class JtlParserCore {
     static SampleResult parseLine(String line, Map<String, Integer> colMap) {
         if (line == null || line.isBlank()) return null;
         return parseLineTokens(splitCsvLine(line), colMap);
+    }
+
+    /**
+     * Parses one CSV line into a {@link SampleResult} using the specified delimiter.
+     *
+     * @param line      one CSV data line (not the header)
+     * @param colMap    column-name-to-index map built by {@link #buildColumnMap}
+     * @param delimiter field delimiter character
+     * @return populated {@link SampleResult}, or {@code null} if the line is invalid
+     */
+    static SampleResult parseLine(String line, Map<String, Integer> colMap, char delimiter) {
+        if (line == null || line.isBlank()) return null;
+        return parseLineTokens(splitCsvLine(line, delimiter), colMap);
     }
 
     /**
@@ -249,6 +287,19 @@ final class JtlParserCore {
     }
 
     /**
+     * Extracts the raw {@code elapsed} value using the specified delimiter.
+     *
+     * @param line      one CSV data line (not the header)
+     * @param colMap    column-name-to-index map built by {@link #buildColumnMap}
+     * @param delimiter field delimiter character
+     * @return elapsed in milliseconds, or {@code 0} if absent/malformed
+     */
+    static long parseElapsed(String line, Map<String, Integer> colMap, char delimiter) {
+        if (line == null || line.isBlank()) return 0;
+        return parseElapsedTokens(splitCsvLine(line, delimiter), colMap);
+    }
+
+    /**
      * Extracts the raw {@code elapsed} value from a pre-tokenised CSV row.
      *
      * <p>Preferred over {@link #parseElapsed(String, Map)} in the Pass 2 hot
@@ -264,11 +315,24 @@ final class JtlParserCore {
     }
 
     /**
+     * Splits a CSV line using the default comma delimiter.
+     * Backward-compatible overload for callers without a delimiter reference.
      *
      * @param line raw CSV line
      * @return array of unquoted, trimmed field values
      */
     static String[] splitCsvLine(String line) {
+        return splitCsvLine(line, ',');
+    }
+
+    /**
+     * Splits a CSV line using the specified delimiter.
+     *
+     * @param line      raw CSV line
+     * @param delimiter field delimiter character
+     * @return array of unquoted, trimmed field values
+     */
+    static String[] splitCsvLine(String line, char delimiter) {
         List<String> fields = new ArrayList<>(18);      // 17-col JTL + 1 headroom → zero resizes
         StringBuilder current = new StringBuilder(32);  // covers most field values without resize
         boolean inQuotes = false;
@@ -282,7 +346,7 @@ final class JtlParserCore {
                 } else {
                     inQuotes = !inQuotes;
                 }
-            } else if (c == ',' && !inQuotes) {
+            } else if (c == delimiter && !inQuotes) {
                 fields.add(current.toString().trim());
                 current.setLength(0);
             } else {

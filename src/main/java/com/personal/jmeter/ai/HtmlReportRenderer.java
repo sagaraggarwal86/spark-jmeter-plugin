@@ -44,7 +44,7 @@ public class HtmlReportRenderer {
     static final String[] TABLE_HEADERS = {
             "Transaction", "Count", "Passed", "Failed",
             "Avg RT (ms)", "Min RT (ms)", "Max RT (ms)", "90th Pct (ms)",
-            "Std Dev", "Error Rate", "TPS"
+            "Std Dev", "Error Rate", "TPS", "KB/Sec", "Avg Bytes"
     };
 
     private static final Logger log = LoggerFactory.getLogger(HtmlReportRenderer.class);
@@ -185,7 +185,7 @@ public class HtmlReportRenderer {
         // Column indices in buildRowAsStrings output:
         //   0=label, 1=count, 2=passed, 3=failed,
         //   4=avg(ms), 5=min(ms), 6=max(ms), 7=Nth pct(ms),
-        //   8=stdDev, 9=errorRate%, 10=TPS
+        //   8=stdDev, 9=errorRate%, 10=TPS, 11=KB/Sec, 12=avgBytes
         final int ERROR_RATE_COL = 9;
         final int AVG_RT_COL     = 4;
         final int PNN_RT_COL     = 7;

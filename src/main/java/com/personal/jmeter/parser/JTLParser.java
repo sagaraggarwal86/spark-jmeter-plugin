@@ -88,13 +88,14 @@ public class JTLParser {
         // Pass 2 can reference them without rebuilding from the header line again.
         final Map<String, Integer> colMap;
         final Integer tsIdx, labelIdx, elapsedIdx, dataTypeIdx;
+        final char delimiter = options.delimiter;
 
         try (BufferedReader reader = new BufferedReader(
                 new InputStreamReader(new FileInputStream(filePath), StandardCharsets.UTF_8), 65_536)) {
             String headerLine = reader.readLine();
             if (headerLine == null) throw new JtlParseException("JTL file is empty: " + filePath);
 
-            colMap      = JtlParserCore.buildColumnMap(headerLine.split(","));
+            colMap      = JtlParserCore.buildColumnMap(headerLine, delimiter);
             tsIdx       = colMap.get("timeStamp");
             labelIdx    = colMap.get("label");
             elapsedIdx  = colMap.get("elapsed");
@@ -118,7 +119,7 @@ public class JTLParser {
             String line;
             while ((line = reader.readLine()) != null) {
                 // H2: extract only the 4 needed columns; stop scanning at pass1MaxIdx
-                String[] values = JtlParserCore.extractPass1Fields(line, pass1MaxIdx);
+                String[] values = JtlParserCore.extractPass1Fields(line, pass1MaxIdx, delimiter);
 
                 String label    = (labelIdx    != null && labelIdx    < values.length) ? values[labelIdx].trim()    : "";
                 String ts       = (tsIdx       != null && tsIdx       < values.length) ? values[tsIdx].trim()       : "";
@@ -227,7 +228,7 @@ public class JTLParser {
                 // H1: tokenise once — tokens shared by parseLine and parseElapsed,
                 // eliminating the second splitCsvLine call that parseElapsed previously
                 // made on the same line.
-                String[] tokens = JtlParserCore.splitCsvLine(line);
+                String[] tokens = JtlParserCore.splitCsvLine(line, delimiter);
                 SampleResult sr = JtlParserCore.parseLineTokens(tokens, colMap);
                 if (sr == null
                         || subResultLabels.contains(sr.getSampleLabel())
@@ -546,6 +547,18 @@ public class JTLParser {
         public int     percentile    = 90;
         /** Set internally during parse — tracks the test start timestamp. */
         long    minTimestamp  = 0;
+
+        /**
+         * JTL field delimiter resolved from JMeter's properties files.
+         *
+         * <p>Default: {@code ','} (standard CSV). Resolved at parse-call time by
+         * {@link DelimiterResolver#resolve(java.io.File)} — callers set this field
+         * before passing the options to {@link JTLParser#parse}.</p>
+         *
+         * <p>Supported values: any single character (e.g. {@code ','}, {@code ';'},
+         * {@code '|'}, {@code '\t'}). Multi-character delimiters are not supported.</p>
+         */
+        public char delimiter = ',';
 
         /**
          * Mirrors JMeter's Transaction Controller "Generate Parent Sample" checkbox.

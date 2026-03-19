@@ -64,9 +64,12 @@ public final class TablePopulator {
      * @param percentile percentile fraction to display (1–99)
      * @param searchPat  transaction name filter pattern (blank = show all)
      * @param useRegex   {@code true} to treat {@code searchPat} as regex
+     * @param exclude    {@code true} to exclude matching transactions (invert filter);
+     *                   {@code false} to include only matching transactions (default)
      */
     void populate(Map<String, SamplingStatCalculator> results,
-                  int percentile, String searchPat, boolean useRegex) {
+                  int percentile, String searchPat, boolean useRegex,
+                  boolean exclude) {
         tableModel.setRowCount(0);
         double pFraction = percentile / 100.0;
 
@@ -77,7 +80,11 @@ public final class TablePopulator {
             if (calc.getCount() == 0) continue;
             String label = calc.getLabel();
             boolean isTotal = JTLParser.TOTAL_LABEL.equals(label);
-            if (!isTotal && !TransactionFilter.matches(label, searchPat, useRegex)) continue;
+            if (!isTotal) {
+                boolean matches = TransactionFilter.matches(label, searchPat, useRegex);
+                // Include mode: skip non-matching. Exclude mode: skip matching.
+                if (exclude ? matches : !matches) continue;
+            }
 
             Object[] row = buildRow(calc, pFraction);
             if (isTotal) {
@@ -99,7 +106,7 @@ public final class TablePopulator {
                 Long.parseLong(s[1]),   // Count  — kept numeric for table sorting
                 Long.parseLong(s[2]),   // Passed
                 Long.parseLong(s[3]),   // Failed
-                s[4], s[5], s[6], s[7], s[8], s[9], s[10]
+                s[4], s[5], s[6], s[7], s[8], s[9], s[10], s[11], s[12]
         };
     }
 
@@ -112,7 +119,7 @@ public final class TablePopulator {
      *
      * @param calc      aggregated statistics for one label
      * @param pFraction percentile as a fraction (e.g. 0.90 for P90)
-     * @return 11-element string array matching {@link AggregateReportPanel#ALL_COLUMNS}
+     * @return 13-element string array matching {@link AggregateReportPanel#ALL_COLUMNS}
      */
     public static String[] buildRowAsStrings(SamplingStatCalculator calc, double pFraction) {
         long total  = calc.getCount();
@@ -128,7 +135,9 @@ public final class TablePopulator {
                 FORMAT_INTEGER.format(calc.getPercentPoint(pFraction).doubleValue()),
                 FORMAT_ONE_DP.format(calc.getStandardDeviation()),
                 FORMAT_TWO_DP.format(calc.getErrorPercentage() * 100.0) + "%",
-                String.format("%.1f/sec", calc.getRate())
+                String.format("%.1f/sec", calc.getRate()),
+                FORMAT_TWO_DP.format(calc.getKBPerSecond()),
+                FORMAT_ONE_DP.format(calc.getAvgPageBytes())
         };
     }
 

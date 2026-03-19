@@ -31,6 +31,7 @@ final class ReportPanelBuilder {
     private final JTextField percentileField;
     private final JTextField transactionSearchField;
     private final JCheckBox  regexCheckBox;
+    private final JComboBox<String> filterModeCombo;
     private final JTextField startTimeField;
     private final JTextField endTimeField;
     private final JTextField durationField;
@@ -75,6 +76,7 @@ final class ReportPanelBuilder {
                        JTextField percentileField,
                        JTextField transactionSearchField,
                        JCheckBox  regexCheckBox,
+                       JComboBox<String> filterModeCombo,
                        JTextField startTimeField,
                        JTextField endTimeField,
                        JTextField durationField,
@@ -91,6 +93,7 @@ final class ReportPanelBuilder {
         this.percentileField        = percentileField;
         this.transactionSearchField = transactionSearchField;
         this.regexCheckBox          = regexCheckBox;
+        this.filterModeCombo        = filterModeCombo;
         this.startTimeField         = startTimeField;
         this.endTimeField           = endTimeField;
         this.durationField          = durationField;
@@ -143,7 +146,7 @@ final class ReportPanelBuilder {
         panel.add(buildColumnDropdown());
 
         panel.add(Box.createHorizontalStrut(6));
-        panel.add(compactLabel("Search:"));
+        panel.add(compactLabel("Transaction Names:"));
         transactionSearchField.setFont(FONT_REGULAR);
         transactionSearchField.setColumns(20);
         transactionSearchField.setToolTipText(
@@ -153,6 +156,11 @@ final class ReportPanelBuilder {
         regexCheckBox.setFont(FONT_REGULAR);
         regexCheckBox.setToolTipText("Treat search text as a regular expression");
         panel.add(regexCheckBox);
+
+        filterModeCombo.setFont(FONT_REGULAR);
+        filterModeCombo.setToolTipText(
+                "Include: show only matching transactions. Exclude: hide matching transactions.");
+        panel.add(filterModeCombo);
 
         return panel;
     }
