@@ -11,6 +11,8 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Assembles the complete HTML report page from its constituent parts.
@@ -19,12 +21,34 @@ import java.util.Locale;
  * design limit (Standard 3 SRP). Responsibility: pure HTML/JS string generation —
  * no file I/O, no network access.</p>
  *
+ * <p>The report is rendered as a single self-contained HTML file with:</p>
+ * <ul>
+ *   <li>Up to 9 clickable tabs — 7 AI analysis sections, Transaction Metrics,
+ *       Performance Charts (metrics tab omitted when empty)</li>
+ *   <li>Export buttons — "Export Excel" (SheetJS, one sheet per tab) and
+ *       "Export PDF" (browser print dialog)</li>
+ *   <li>Chart.js initialisation outside the Charts tab panel to avoid the
+ *       0×0 canvas rendering that occurs when a canvas is inside a hidden element</li>
+ * </ul>
+ *
  * <p>All methods are package-private statics; callers do not need an instance.</p>
  */
 final class HtmlPageBuilder {
 
     private static final DateTimeFormatter CHART_TIME_FMT =
             DateTimeFormatter.ofPattern("HH:mm:ss");
+
+    /**
+     * Pattern for extracting the text content of an {@code <h2>} tag.
+     * Used by {@link #splitAtH2(String)} to derive tab titles from section headings.
+     * {@code DOTALL} handles multi-line content; inner HTML tags are stripped
+     * separately via {@link #HTML_TAG_PATTERN}.
+     */
+    private static final Pattern H2_TITLE_PATTERN =
+            Pattern.compile("<h2[^>]*>(.*?)</h2>", Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
+
+    /** Strips all HTML tags to produce a clean plain-text tab label. */
+    private static final Pattern HTML_TAG_PATTERN = Pattern.compile("<[^>]+>");
 
     private HtmlPageBuilder() { /* static utility — not instantiable */ }
 
@@ -33,7 +57,22 @@ final class HtmlPageBuilder {
     // ─────────────────────────────────────────────────────────────
 
     /**
-     * Assembles the full standalone HTML page.
+     * Assembles the full standalone HTML page with tabbed section navigation
+     * and Excel / PDF export buttons.
+     *
+     * <p>Page structure (top to bottom):</p>
+     * <ol>
+     *   <li>Report header — title and scenario metadata (always visible)</li>
+     *   <li>Tab bar — one button per section (sticky, always visible)</li>
+     *   <li>Export bar — "Export Excel" and "Export PDF" buttons</li>
+     *   <li>Content area — tab panels; only the active panel is displayed</li>
+     *   <li>Footer — attribution (always visible)</li>
+     * </ol>
+     *
+     * <p>The Chart.js initialisation {@code <script>} block is placed
+     * <em>outside</em> its tab panel so Chart.js instances are created on page
+     * load even when the Charts tab is hidden. On Charts-tab activation a resize
+     * call corrects the 0×0 canvas dimensions.</p>
      *
      * @param htmlBody     the AI-generated analysis converted from Markdown
      * @param metricsTable the Transaction Metrics HTML section (may be empty)
@@ -43,6 +82,8 @@ final class HtmlPageBuilder {
      */
     static String buildPage(String htmlBody, String metricsTable,
                             String chartsBlock, HtmlReportRenderer.RenderConfig config) {
+
+        // ── Metadata header ──────────────────────────────────────────────────
         String runDateTime = buildRunDateTime(config.startTime, config.endTime);
         StringBuilder meta = new StringBuilder("<table class=\"meta-table\">\n");
         appendMetaRow(meta, "Scenario Name", config.scenarioName);
@@ -52,28 +93,169 @@ final class HtmlPageBuilder {
         appendMetaRow(meta, "Duration", config.duration);
         meta.append("</table>\n");
 
-        return new StringBuilder(8192)
+        // ── Section list ─────────────────────────────────────────────────────
+        // 1–7: AI analysis sections split from htmlBody at <h2> boundaries
+        List<String[]> sections = splitAtH2(htmlBody != null ? htmlBody : "");
+
+        // 8: Transaction Metrics — only when non-blank
+        String safeMetrics = metricsTable != null ? metricsTable : "";
+        if (!safeMetrics.isBlank()) {
+            sections.add(new String[]{"Transaction Metrics", safeMetrics});
+        }
+
+        // 9: Performance Charts — always added.
+        // Split the Chart.js <script> block out of the panel so instances are
+        // created on page load regardless of which tab is initially visible.
+        String[] chartsParts = splitChartsBlock(chartsBlock != null ? chartsBlock : "");
+        String chartsContent = chartsParts[0]; // <div class="charts-section">…canvases…</div>
+        String chartsScript  = chartsParts[1]; // <script>(function(){…})();</script>
+        int chartsTabIndex   = sections.size();
+        sections.add(new String[]{"Performance Charts", chartsContent});
+
+        // ── Tab bar ──────────────────────────────────────────────────────────
+        StringBuilder tabBar = new StringBuilder("<nav class=\"tab-bar\" role=\"tablist\">\n");
+        for (int i = 0; i < sections.size(); i++) {
+            String title = sections.get(i)[0];
+            tabBar.append("  <button class=\"tab-btn")
+                    .append(i == 0 ? " active" : "")
+                    .append("\" role=\"tab\" data-tab=\"").append(i).append("\"")
+                    .append(i == chartsTabIndex ? " data-charts=\"true\"" : "")
+                    .append(">").append(HtmlReportRenderer.escapeHtml(title))
+                    .append("</button>\n");
+        }
+        tabBar.append("</nav>\n");
+
+        // ── Export bar ───────────────────────────────────────────────────────
+        String exportBar = "<div class=\"export-bar\">\n"
+                + "  <button onclick=\"exportExcel()\">&#x1F4E5; Export Excel</button>\n"
+                + "  <button onclick=\"window.print()\">&#x1F4C4; Export PDF</button>\n"
+                + "</div>\n";
+
+        // ── Tab panels ───────────────────────────────────────────────────────
+        StringBuilder panels = new StringBuilder();
+        for (int i = 0; i < sections.size(); i++) {
+            String title   = sections.get(i)[0];
+            String content = sections.get(i)[1];
+            panels.append("<div class=\"tab-panel")
+                    .append(i == 0 ? " active" : "")
+                    .append("\" id=\"tab-").append(i).append("\"")
+                    .append(" data-title=\"").append(HtmlReportRenderer.escapeHtml(title)).append("\">\n")
+                    .append(content)
+                    .append("\n</div>\n");
+        }
+
+        // ── Footer ───────────────────────────────────────────────────────────
+        String footer = "  <div class=\"footer\">Generated by JAAR Plugin using "
+                + HtmlReportRenderer.escapeHtml(
+                config.providerDisplayName.isBlank() ? "AI" : config.providerDisplayName)
+                + ". AI analysis may contain errors &mdash; validate results before use."
+                + " The author assumes no liability for decisions based on this report.</div>\n";
+
+        return new StringBuilder(12288)
                 .append("<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n")
                 .append("  <meta charset=\"UTF-8\">\n")
                 .append("  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n")
                 .append("  <title>AI Performance Report</title>\n")
                 .append("  <script src=\"https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js\"></script>\n")
+                .append("  <script src=\"https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.mini.min.js\"></script>\n")
                 .append(buildCss())
+                .append(buildMetaScript(config, runDateTime)) // window.jaarMeta for Test Info sheet
                 .append("</head>\n<body>\n")
                 .append("<div class=\"report-header\">\n")
                 .append("  <h1>JMeter AI Performance Report</h1>\n")
                 .append("  ").append(meta)
-                .append("</div>\n<div class=\"content\">\n")
-                .append(htmlBody).append("\n")
-                .append(metricsTable)
-                .append(chartsBlock)
-                .append("  <div class=\"footer\">Generated by JAAR Plugin using ")
-                .append(HtmlReportRenderer.escapeHtml(
-                        config.providerDisplayName.isBlank() ? "AI" : config.providerDisplayName))
-                .append(". AI analysis may contain errors &mdash; validate results before use.")
-                .append(" The author assumes no liability for decisions based on this report.</div>\n")
-                .append("</div>\n</body>\n</html>\n")
+                .append("</div>\n")
+                .append(tabBar)
+                .append(exportBar)
+                .append("<div class=\"content\">\n")
+                .append(panels)
+                .append(footer)
+                .append("</div>\n")
+                .append(chartsScript)   // Chart.js init OUTSIDE panels — avoids 0x0 canvas bug
+                .append(buildTabJs())   // tab switching + Excel export
+                .append("</body>\n</html>\n")
                 .toString();
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // Section splitting
+    // ─────────────────────────────────────────────────────────────
+
+    /**
+     * Splits a rendered HTML body into titled sections at {@code <h2>} boundaries.
+     *
+     * <p>The split uses a lookahead so each fragment retains its opening {@code <h2>}
+     * tag — the heading remains inside the tab panel as the visible section title.
+     * Any content before the first {@code <h2>} (preamble) is prepended to the
+     * first section so no content is silently discarded.</p>
+     *
+     * <p>If the body contains no {@code <h2>} tags (e.g. a severely truncated AI
+     * response), the entire body is returned as a single section titled
+     * {@code "Analysis"}.</p>
+     *
+     * @param htmlBody rendered HTML from {@link #markdownToHtml(String)}; may be null
+     * @return mutable list of {@code [title, content]} pairs; never null;
+     *         empty only when {@code htmlBody} is null or blank
+     */
+    static List<String[]> splitAtH2(String htmlBody) {
+        List<String[]> sections = new ArrayList<>();
+        if (htmlBody == null || htmlBody.isBlank()) return sections;
+
+        // Split on <h2> lookahead — each fragment starts with <h2> except possibly
+        // the first when there is preamble text before the first heading.
+        String[] fragments = htmlBody.split("(?=<h2[^>]*>)", -1);
+
+        String preamble = "";
+        for (String fragment : fragments) {
+            if (!fragment.toLowerCase().contains("<h2")) {
+                // Text before the first heading — hold as preamble, prepend to first section
+                preamble = fragment;
+                continue;
+            }
+            Matcher m = H2_TITLE_PATTERN.matcher(fragment);
+            String rawTitle = m.find() ? m.group(1) : "Section";
+            // Strip any inner HTML tags (e.g. <strong>, <em>) to produce a clean tab label
+            String title = HTML_TAG_PATTERN.matcher(rawTitle).replaceAll("").trim();
+            if (title.isEmpty()) title = "Section";
+
+            String content = preamble + fragment;
+            preamble = "";
+            sections.add(new String[]{title, content});
+        }
+
+        // Fallback: no <h2> found — return entire body as one unnamed section
+        if (sections.isEmpty()) {
+            sections.add(new String[]{"Analysis", htmlBody});
+        }
+        return sections;
+    }
+
+    /**
+     * Separates the charts panel HTML from its Chart.js initialisation script.
+     *
+     * <p>The {@code chartsBlock} produced by {@link #buildChartsSection} contains a
+     * {@code <div class="charts-section">} element followed by a {@code <script>}
+     * block. Splitting them allows the panel HTML to sit inside the hidden tab panel
+     * while the script executes on page load — Chart.js instances are created even
+     * before the Charts tab is clicked. On tab activation a {@code .resize()} call
+     * corrects the canvas dimensions.</p>
+     *
+     * <p>When no {@code <script>} tag is present (unavailable-placeholder case), the
+     * entire input is returned as the panel HTML with an empty script string.</p>
+     *
+     * @param chartsBlock full charts section HTML+JS from {@link #buildChartsSection};
+     *                    may be null or empty
+     * @return two-element array {@code [panelHtml, scriptHtml]};
+     *         {@code scriptHtml} is empty when no {@code <script>} tag is found
+     */
+    static String[] splitChartsBlock(String chartsBlock) {
+        if (chartsBlock == null || chartsBlock.isBlank()) return new String[]{"", ""};
+        int scriptIdx = chartsBlock.indexOf("<script>");
+        if (scriptIdx < 0) return new String[]{chartsBlock, ""};
+        return new String[]{
+                chartsBlock.substring(0, scriptIdx),
+                chartsBlock.substring(scriptIdx)
+        };
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -111,7 +293,7 @@ final class HtmlPageBuilder {
         List<String> jAvg = new ArrayList<>();
         List<String> jErr = new ArrayList<>();
         List<String> jTps = new ArrayList<>();
-        List<String> jKb = new ArrayList<>();
+        List<String> jKb  = new ArrayList<>();
 
         for (JTLParser.TimeBucket b : timeBuckets) {
             String label = LocalDateTime.ofInstant(
@@ -120,27 +302,24 @@ final class HtmlPageBuilder {
             jAvg.add(String.format(Locale.US, "%.2f", b.avgResponseMs));
             jErr.add(String.format(Locale.US, "%.2f", b.errorPct));
             jTps.add(String.format(Locale.US, "%.2f", b.tps));
-            jKb.add(String.format(Locale.US, "%.2f", b.kbps));
+            jKb.add(String.format(Locale.US, "%.2f",  b.kbps));
         }
 
         // Append a phantom end-point at (last bucket start + interval) so Chart.js
         // extends the x-axis to the true test end time. The null data values ensure
         // nothing is plotted at this position — it is a label anchor only.
         long intervalMs = timeBuckets.get(1).epochMs - timeBuckets.get(0).epochMs;
-        long phantomMs = timeBuckets.get(timeBuckets.size() - 1).epochMs + intervalMs;
+        long phantomMs  = timeBuckets.get(timeBuckets.size() - 1).epochMs + intervalMs;
         String phantomLabel = LocalDateTime.ofInstant(
                 Instant.ofEpochMilli(phantomMs), ZoneId.systemDefault()).format(CHART_TIME_FMT);
         jLabels.add("\"" + phantomLabel + "\"");
-        jAvg.add("null");
-        jErr.add("null");
-        jTps.add("null");
-        jKb.add("null");
+        jAvg.add("null"); jErr.add("null"); jTps.add("null"); jKb.add("null");
 
         String labels = "[" + String.join(",", jLabels) + "]";
         String avgArr = "[" + String.join(",", jAvg) + "]";
         String errArr = "[" + String.join(",", jErr) + "]";
         String tpsArr = "[" + String.join(",", jTps) + "]";
-        String kbArr = "[" + String.join(",", jKb) + "]";
+        String kbArr  = "[" + String.join(",", jKb)  + "]";
 
         long intervalSeconds = (timeBuckets.get(1).epochMs - timeBuckets.get(0).epochMs) / 1_000L;
 
@@ -148,12 +327,11 @@ final class HtmlPageBuilder {
                 .append("<div class=\"charts-section\">\n")
                 .append("  <h2>Performance Charts Over Time</h2>\n")
                 .append("  <p class=\"charts-note\">Each point represents a ")
-                .append(intervalSeconds)
-                .append("-second interval.</p>\n")
-                .append(chartBox("chartAvgRt", "Average Response Time Over Time (ms)"))
+                .append(intervalSeconds).append("-second interval.</p>\n")
+                .append(chartBox("chartAvgRt",  "Average Response Time Over Time (ms)"))
                 .append(chartBox("chartErrPct", "Error Rate Over Time (%)"))
-                .append(chartBox("chartTps", "Throughput Over Time (req/s)"))
-                .append(chartBox("chartKb", "Received Bandwidth Over Time (KB/s)"))
+                .append(chartBox("chartTps",    "Throughput Over Time (req/s)"))
+                .append(chartBox("chartKb",     "Received Bandwidth Over Time (KB/s)"))
                 .append("</div>\n")
                 .append("<script>\n(function() {\n")
                 .append("  var labels = ").append(labels).append(";\n")
@@ -161,7 +339,7 @@ final class HtmlPageBuilder {
                 .append("  timeChart('chartAvgRt',  ").append(avgArr).append(", 'Avg Response Time', 'ms',    'rgba(49,130,206,1)');\n")
                 .append("  timeChart('chartErrPct', ").append(errArr).append(", 'Error Rate',        '%',     'rgba(229,62,62,1)');\n")
                 .append("  timeChart('chartTps',    ").append(tpsArr).append(", 'Throughput',        'req/s', 'rgba(72,187,120,1)');\n")
-                .append("  timeChart('chartKb',     ").append(kbArr).append(", 'Bandwidth',         'KB/s',  'rgba(159,122,234,1)');\n")
+                .append("  timeChart('chartKb',     ").append(kbArr).append(",  'Bandwidth',         'KB/s',  'rgba(159,122,234,1)');\n")
                 .append("})();\n</script>\n")
                 .toString();
     }
@@ -339,7 +517,7 @@ final class HtmlPageBuilder {
 
     private static String buildRunDateTime(String startTime, String endTime) {
         boolean hasStart = startTime != null && !startTime.isBlank();
-        boolean hasEnd = endTime != null && !endTime.isBlank();
+        boolean hasEnd   = endTime   != null && !endTime.isBlank();
         if (hasStart && hasEnd) return startTime.trim() + " - " + endTime.trim();
         if (hasStart) return startTime.trim();
         return "";
@@ -403,9 +581,180 @@ final class HtmlPageBuilder {
                 .toString();
     }
 
+    /**
+     * Builds the inline JavaScript for tab switching and Excel export.
+     *
+     * <h4>Tab switching</h4>
+     * <p>Each tab button stores its panel index in {@code data-tab}. On click, all
+     * active classes are cleared and reapplied to the clicked button and its panel.
+     * When the Charts tab is activated ({@code data-charts="true"}), all Chart.js
+     * instances are resized to fix the 0×0 canvas dimensions from hidden initialisation.
+     * {@code Chart.instances} is a plain object in Chart.js 4.x — iterated via
+     * {@code Object.values()}.</p>
+     *
+     * <h4>Excel export (SheetJS)</h4>
+     * <p>One worksheet per tab panel, named by the panel's {@code data-title}.
+     * Charts panels receive a placeholder message (canvases are not serialisable).
+     * Table panels use {@code XLSX.utils.table_to_sheet}. Prose-only panels produce
+     * a single wide text column.</p>
+     *
+     * @return self-executing {@code <script>} block string
+     */
+    private static String buildTabJs() {
+        return new StringBuilder(2048)
+                .append("<script>\n(function() {\n")
+                // ── Tab switching ──────────────────────────────────────────────
+                .append("  document.querySelectorAll('.tab-btn').forEach(function(btn) {\n")
+                .append("    btn.addEventListener('click', function() {\n")
+                .append("      document.querySelectorAll('.tab-btn').forEach(function(b) {\n")
+                .append("        b.classList.remove('active');\n")
+                .append("      });\n")
+                .append("      document.querySelectorAll('.tab-panel').forEach(function(p) {\n")
+                .append("        p.classList.remove('active');\n")
+                .append("      });\n")
+                .append("      btn.classList.add('active');\n")
+                .append("      document.getElementById('tab-' + btn.dataset.tab).classList.add('active');\n")
+                .append("      if (btn.dataset.charts === 'true' && typeof Chart !== 'undefined') {\n")
+                .append("        Object.values(Chart.instances).forEach(function(inst) {\n")
+                .append("          inst.resize();\n")
+                .append("        });\n")
+                .append("      }\n")
+                .append("    });\n")
+                .append("  });\n\n")
+                // ── Excel export ───────────────────────────────────────────────
+                .append("  function exportExcel() {\n")
+                .append("    if (typeof XLSX === 'undefined') {\n")
+                .append("      alert('Excel export requires an internet connection to load SheetJS.');\n")
+                .append("      return;\n")
+                .append("    }\n")
+                .append("    var wb = XLSX.utils.book_new();\n")
+                // ── Sheet 1: Test Info — always first ──────────────────────────
+                .append("    var infoRows = [['Field', 'Value']];\n")
+                .append("    if (window.jaarMeta) {\n")
+                .append("      var m = window.jaarMeta;\n")
+                .append("      if (m.scenarioName) infoRows.push(['Scenario Name', m.scenarioName]);\n")
+                .append("      if (m.scenarioDesc) infoRows.push(['Scenario Description', m.scenarioDesc]);\n")
+                .append("      if (m.users)        infoRows.push(['Virtual Users', m.users]);\n")
+                .append("      if (m.runDateTime)  infoRows.push(['Run Date/Time', m.runDateTime]);\n")
+                .append("      if (m.duration)     infoRows.push(['Duration', m.duration]);\n")
+                .append("    }\n")
+                .append("    var wsInfo = XLSX.utils.aoa_to_sheet(infoRows);\n")
+                .append("    wsInfo['!cols'] = [{wch: 25}, {wch: 80}];\n")
+                .append("    XLSX.utils.book_append_sheet(wb, wsInfo, 'Test Info');\n")
+                // ── Sheets 2–N: one per tab panel ──────────────────────────────
+                .append("    document.querySelectorAll('.tab-panel').forEach(function(panel) {\n")
+                .append("      var title = panel.dataset.title || 'Sheet';\n")
+                .append("      var sheetName = title.substring(0, 31);\n")
+                .append("      var ws;\n")
+                // Charts panel: write a referral message — PNG charts require SheetJS Pro
+                .append("      if (panel.querySelector('canvas')) {\n")
+                .append("        ws = XLSX.utils.aoa_to_sheet([\n")
+                .append("          ['Performance charts are not available in Excel export.'],\n")
+                .append("          ['Please refer to the HTML report for interactive charts.']\n")
+                .append("        ]);\n")
+                .append("        ws['!cols'] = [{wch: 65}];\n")
+                .append("      } else if (panel.querySelector('table')) {\n")
+                .append("        ws = XLSX.utils.table_to_sheet(panel.querySelector('table'));\n")
+                .append("      } else {\n")
+                .append("        var text = panel.innerText || '';\n")
+                .append("        var rows = text.split('\\n')\n")
+                .append("          .filter(function(l) { return l.trim().length > 0; })\n")
+                .append("          .map(function(l) { return [l.trim()]; });\n")
+                .append("        ws = XLSX.utils.aoa_to_sheet(rows.length > 0 ? rows : [['(empty)']]);\n")
+                .append("        ws['!cols'] = [{wch: 120}];\n")
+                .append("      }\n")
+                .append("      XLSX.utils.book_append_sheet(wb, ws, sheetName);\n")
+                .append("    });\n")
+                .append("    var provider = (window.jaarMeta && window.jaarMeta.providerName)\n")
+                .append("      ? window.jaarMeta.providerName : 'AI';\n")
+                .append("    var ts = new Date().toISOString().replace(/[^0-9]/g, '').slice(0, 14);\n")
+                .append("    XLSX.writeFile(wb, 'JAAR_' + provider + '_Report_' + ts + '.xlsx');\n")
+                .append("  }\n")
+                .append("  window.exportExcel = exportExcel;\n")
+                .append("})();\n</script>\n")
+                .toString();
+    }
+
+
+    /**
+     * Builds an inline {@code <script>} block that exposes scenario metadata as
+     * {@code window.jaarMeta} so the Excel export function can build the
+     * "Test Info" sheet and derive the dynamic Excel filename without parsing the
+     * visible HTML.
+     *
+     * <p>{@code providerName} is the sanitized, tier-stripped provider segment used
+     * in filenames — e.g. {@code "Groq (Free)"} → {@code "Groq"} — matching the
+     * same stripping logic applied to the HTML report filename in
+     * {@link com.personal.jmeter.ai.AiReportCoordinator}.</p>
+     *
+     * <p>Values are single-quoted JS strings with {@code '}, {@code \},
+     * newline, and carriage-return characters escaped.</p>
+     *
+     * @param config      scenario metadata from the render config
+     * @param runDateTime pre-formatted run date/time string (may be empty)
+     * @return inline {@code <script>} block string
+     */
+    private static String buildMetaScript(HtmlReportRenderer.RenderConfig config,
+                                          String runDateTime) {
+        String providerName = sanitizeProviderName(config.providerDisplayName);
+        return "<script>\n"
+                + "window.jaarMeta = {\n"
+                + "  scenarioName:  " + jsString(config.scenarioName) + ",\n"
+                + "  scenarioDesc:  " + jsString(config.scenarioDesc) + ",\n"
+                + "  users:         " + jsString(config.users)        + ",\n"
+                + "  runDateTime:   " + jsString(runDateTime)         + ",\n"
+                + "  duration:      " + jsString(config.duration)     + ",\n"
+                + "  providerName:  " + jsString(providerName)        + "\n"
+                + "};\n"
+                + "</script>\n";
+    }
+
+    /**
+     * Strips the parenthetical tier suffix from a provider display name and
+     * replaces any filesystem-unsafe characters with underscores, producing a
+     * segment safe for use in filenames.
+     *
+     * <p>Examples:</p>
+     * <ul>
+     *   <li>{@code "Groq (Free)"}   → {@code "Groq"}</li>
+     *   <li>{@code "OpenAI (Paid)"} → {@code "OpenAI"}</li>
+     *   <li>{@code "My Provider"}   → {@code "My_Provider"}</li>
+     *   <li>{@code null / blank}    → {@code "AI"}</li>
+     * </ul>
+     *
+     * @param providerDisplayName raw display name from {@link HtmlReportRenderer.RenderConfig}
+     * @return sanitized filename segment; never null or empty
+     */
+    static String sanitizeProviderName(String providerDisplayName) {
+        if (providerDisplayName == null || providerDisplayName.isBlank()) return "AI";
+        // Strip parenthetical tier suffix: "Groq (Free)" → "Groq"
+        String base = providerDisplayName.replaceAll("\\s*\\(.*\\)\\s*$", "").trim();
+        // Replace filesystem-unsafe characters and whitespace runs with underscore
+        String sanitized = base.replaceAll("[\\\\/:*?\"<>|\\s]+", "_")
+                .replaceAll("_+", "_")
+                .replaceAll("^_|_$", "");
+        return sanitized.isEmpty() ? "AI" : sanitized;
+    }
+
+    /**
+     * Wraps {@code value} in single quotes, escaping characters that would
+     * break a JS string literal: backslash, single quote, CR, and LF.
+     *
+     * @param value raw string (may be null or blank)
+     * @return JS single-quoted string literal, e.g. {@code 'Load Test'}
+     */
+    private static String jsString(String value) {
+        if (value == null || value.isBlank()) return "''";
+        return "'" + value
+                .replace("\\", "\\\\")
+                .replace("'",  "\\'")
+                .replace("\r", "")
+                .replace("\n", "\\n") + "'";
+    }
+
     @SuppressWarnings("java:S5665") // CSS string — not a sensitive data concatenation
     private static String buildCss() {
-        return new StringBuilder(3072)
+        return new StringBuilder(4096)
                 .append("  <style>\n")
                 .append("    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }\n")
                 .append("    body { font-family: 'Segoe UI', system-ui, sans-serif; font-size: 14px;\n")
@@ -421,6 +770,28 @@ final class HtmlPageBuilder {
                 .append("    .report-header .meta-table .meta-label { color: rgba(255,255,255,0.70); font-weight: 600;\n")
                 .append("                                              padding-right: 16px; white-space: nowrap; }\n")
                 .append("    .report-header .meta-table .meta-value { color: white; }\n")
+                // ── Tab bar ──────────────────────────────────────────────────
+                .append("    .tab-bar { display: flex; flex-wrap: wrap; gap: 4px;\n")
+                .append("               padding: 8px 16px; background: #edf2f7;\n")
+                .append("               border-bottom: 2px solid #cbd5e0;\n")
+                .append("               position: sticky; top: 0; z-index: 10; }\n")
+                .append("    .tab-btn { padding: 7px 14px; border: 1px solid #cbd5e0; border-bottom: none;\n")
+                .append("               background: #fff; cursor: pointer; border-radius: 6px 6px 0 0;\n")
+                .append("               font-size: 13px; font-family: inherit; white-space: nowrap; color: #4a5568; }\n")
+                .append("    .tab-btn:hover { background: #e2e8f0; }\n")
+                .append("    .tab-btn.active { background: #2b6cb0; color: #fff;\n")
+                .append("                      font-weight: 600; border-color: #2b6cb0; }\n")
+                // ── Export bar ───────────────────────────────────────────────
+                .append("    .export-bar { display: flex; gap: 8px; padding: 8px 16px;\n")
+                .append("                  background: #f7f8fc; border-bottom: 1px solid #e2e8f0; }\n")
+                .append("    .export-bar button { padding: 6px 14px; border: 1px solid #cbd5e0;\n")
+                .append("                         background: #fff; cursor: pointer; border-radius: 4px;\n")
+                .append("                         font-size: 13px; font-family: inherit; color: #2d3748; }\n")
+                .append("    .export-bar button:hover { background: #e2e8f0; }\n")
+                // ── Tab panels ───────────────────────────────────────────────
+                .append("    .tab-panel { display: none; padding: 16px 0; }\n")
+                .append("    .tab-panel.active { display: block; }\n")
+                // ── Content area ─────────────────────────────────────────────
                 .append("    .content { max-width: 1000px; margin: 32px auto; padding: 0 24px; }\n")
                 .append("    h1 { display: none; }\n")
                 .append("    h2 { font-size: 17px; font-weight: 700; color: #1a365d;\n")
@@ -466,9 +837,18 @@ final class HtmlPageBuilder {
                 .append("    .footer { text-align: center; font-size: 11px; color: #a0aec0;\n")
                 .append("              margin: 48px 0 24px; padding-top: 14px;\n")
                 .append("              border-top: 1px solid #e2e8f0; }\n")
-                .append("    @media print { .report-header { background: #1a365d !important;\n")
-                .append("                   -webkit-print-color-adjust: exact; }\n")
-                .append("                   body { background: white; } }\n")
+                // ── Print / PDF ───────────────────────────────────────────────
+                .append("    @media print {\n")
+                .append("      .tab-bar    { display: none; }\n")
+                .append("      .export-bar { display: none; }\n")
+                .append("      .tab-panel  { display: block !important;\n")
+                .append("                    page-break-inside: avoid; margin-bottom: 24px; }\n")
+                .append("      .tab-panel h2 { page-break-after: avoid; }\n")
+                .append("      canvas { max-width: 100%; height: auto !important; }\n")
+                .append("      .report-header { background: #1a365d !important;\n")
+                .append("                       -webkit-print-color-adjust: exact; }\n")
+                .append("      body { background: white; }\n")
+                .append("    }\n")
                 .append("  </style>\n")
                 .toString();
     }

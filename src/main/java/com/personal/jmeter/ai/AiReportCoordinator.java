@@ -117,14 +117,14 @@ public class AiReportCoordinator {
     /**
      * Builds a suggested filename for the AI report (no directory component).
      *
-     * <p>Format: {@code JAAR_<AIName>_Report_<yyyyMMdd_HHmmss>.html}<br>
-     * Example: {@code JAAR_Groq_Report_20260315_143022.html}</p>
+     * <p>Format: {@code JAAR_<AIName>_Report_<yyyyMMddHHmmss>.html}<br>
+     * Example: {@code JAAR_Groq_Report_20260315143022.html}</p>
      *
      * @param providerDisplayName display name of the AI provider (e.g. "Groq (Free)")
      * @return suggested filename
      */
     private static String deriveSuggestedFileName(String providerDisplayName) {
-        String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
+        String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
         // Strip parenthetical tier suffix — "Groq (Free)" → "Groq", "OpenAI (Paid)" → "OpenAI"
         String baseName = (providerDisplayName != null)
                 ? providerDisplayName.replaceAll("\\s*\\(.*\\)\\s*$", "").trim()

@@ -12,15 +12,17 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Unit tests for {@link HtmlPageBuilder#convertPipeTablesToHtml},
- * {@link HtmlPageBuilder#stripRawHtml}, and {@link HtmlPageBuilder#buildChartsSection}.
+ * Unit tests for {@link HtmlPageBuilder}.
  *
- * <p>No file system, no network, no Swing — pure in-memory verification of
- * the pipe-table pre-processor's branching: separator-row detection, multi-row
- * tables, cell escaping, and non-table lines pass-through.
- * Also verifies that {@code stripRawHtml} removes raw HTML blocks while
- * preserving Markdown content, and that {@code buildChartsSection} always
- * renders a section header regardless of bucket count.</p>
+ * <p>No file system, no network, no Swing — pure in-memory verification of:</p>
+ * <ul>
+ *   <li>{@link HtmlPageBuilder#convertPipeTablesToHtml} — pipe-table conversion</li>
+ *   <li>{@link HtmlPageBuilder#stripRawHtml} — raw-HTML block removal</li>
+ *   <li>{@link HtmlPageBuilder#buildChartsSection} — always renders a header</li>
+ *   <li>{@link HtmlPageBuilder#splitAtH2} — section splitting at h2 boundaries</li>
+ *   <li>{@link HtmlPageBuilder#splitChartsBlock} — chart script extraction</li>
+ *   <li>{@link HtmlPageBuilder#buildPage} — tabbed page structure</li>
+ * </ul>
  */
 @DisplayName("HtmlPageBuilder — convertPipeTablesToHtml")
 class HtmlPageBuilderTest {
@@ -351,6 +353,533 @@ class HtmlPageBuilderTest {
             assertTrue(result.contains("chartErrPct"), "Error rate chart must be present");
             assertTrue(result.contains("chartTps"), "Throughput chart must be present");
             assertTrue(result.contains("chartKb"), "Bandwidth chart must be present");
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // splitAtH2
+    // ─────────────────────────────────────────────────────────────
+
+    @Nested
+    @DisplayName("splitAtH2 — section splitting at h2 boundaries")
+    class SplitAtH2Tests {
+
+        @Test
+        @DisplayName("null input returns empty list")
+        void nullReturnsEmpty() {
+            assertTrue(HtmlPageBuilder.splitAtH2(null).isEmpty());
+        }
+
+        @Test
+        @DisplayName("blank input returns empty list")
+        void blankReturnsEmpty() {
+            assertTrue(HtmlPageBuilder.splitAtH2("   ").isEmpty());
+        }
+
+        @Test
+        @DisplayName("single h2 section returns one entry with correct title")
+        void singleSection() {
+            String html = "<h2>Executive Summary</h2><p>Test passed.</p>";
+            List<String[]> sections = HtmlPageBuilder.splitAtH2(html);
+            assertEquals(1, sections.size());
+            assertEquals("Executive Summary", sections.get(0)[0]);
+            assertTrue(sections.get(0)[1].contains("<h2>Executive Summary</h2>"),
+                    "h2 tag must be retained in panel content");
+            assertTrue(sections.get(0)[1].contains("Test passed."));
+        }
+
+        @Test
+        @DisplayName("seven AI sections are split correctly")
+        void sevenSections() {
+            String html = "<h2>Executive Summary</h2><p>A</p>"
+                    + "<h2>Bottleneck Analysis</h2><p>B</p>"
+                    + "<h2>Error Analysis</h2><p>C</p>"
+                    + "<h2>Advanced Web Diagnostics</h2><p>D</p>"
+                    + "<h2>Root Cause Hypotheses</h2><p>E</p>"
+                    + "<h2>Recommendations</h2><p>F</p>"
+                    + "<h2>Verdict</h2><p>PASS</p>";
+            List<String[]> sections = HtmlPageBuilder.splitAtH2(html);
+            assertEquals(7, sections.size());
+            assertEquals("Executive Summary",        sections.get(0)[0]);
+            assertEquals("Bottleneck Analysis",      sections.get(1)[0]);
+            assertEquals("Error Analysis",            sections.get(2)[0]);
+            assertEquals("Advanced Web Diagnostics", sections.get(3)[0]);
+            assertEquals("Root Cause Hypotheses",    sections.get(4)[0]);
+            assertEquals("Recommendations",          sections.get(5)[0]);
+            assertEquals("Verdict",                  sections.get(6)[0]);
+        }
+
+        @Test
+        @DisplayName("preamble before first h2 is prepended to the first section")
+        void preamblePrependedToFirstSection() {
+            String html = "<p>Preamble text.</p><h2>Section One</h2><p>Content.</p>";
+            List<String[]> sections = HtmlPageBuilder.splitAtH2(html);
+            assertEquals(1, sections.size());
+            assertTrue(sections.get(0)[1].contains("Preamble text."),
+                    "Preamble must be included in the first section content");
+            assertTrue(sections.get(0)[1].contains("<h2>Section One</h2>"));
+        }
+
+        @Test
+        @DisplayName("truncated report with 3 sections produces 3 entries")
+        void truncatedReportThreeSections() {
+            String html = "<h2>Executive Summary</h2><p>A</p>"
+                    + "<h2>Bottleneck Analysis</h2><p>B</p>"
+                    + "<h2>Error Analysis</h2><p>C</p>";
+            List<String[]> sections = HtmlPageBuilder.splitAtH2(html);
+            assertEquals(3, sections.size());
+        }
+
+        @Test
+        @DisplayName("body with no h2 returns single Analysis section")
+        void noH2ReturnsSingleFallbackSection() {
+            String html = "<p>Some prose without any h2 headings.</p>";
+            List<String[]> sections = HtmlPageBuilder.splitAtH2(html);
+            assertEquals(1, sections.size());
+            assertEquals("Analysis", sections.get(0)[0]);
+            assertTrue(sections.get(0)[1].contains("Some prose"));
+        }
+
+        @Test
+        @DisplayName("inner HTML tags in h2 are stripped from title")
+        void innerTagsStrippedFromTitle() {
+            String html = "<h2><strong>Executive Summary</strong></h2><p>Content.</p>";
+            List<String[]> sections = HtmlPageBuilder.splitAtH2(html);
+            assertEquals(1, sections.size());
+            assertEquals("Executive Summary", sections.get(0)[0],
+                    "Inner strong tag must be stripped from tab title");
+        }
+
+        @Test
+        @DisplayName("h2 tag is retained in section content for rendering inside the panel")
+        void h2RetainedInContent() {
+            String html = "<h2>Verdict</h2><p>PASS</p>";
+            List<String[]> sections = HtmlPageBuilder.splitAtH2(html);
+            assertTrue(sections.get(0)[1].contains("<h2>"),
+                    "The h2 opening tag must be kept in panel content");
+        }
+
+        @Test
+        @DisplayName("returned list is mutable — additional entries can be appended")
+        void returnedListIsMutable() {
+            String html = "<h2>Executive Summary</h2><p>Content.</p>";
+            List<String[]> sections = HtmlPageBuilder.splitAtH2(html);
+            assertDoesNotThrow(() -> sections.add(new String[]{"Extra", "<p>extra</p>"}),
+                    "List must be mutable so buildPage() can append Metrics and Charts tabs");
+            assertEquals(2, sections.size());
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // splitChartsBlock
+    // ─────────────────────────────────────────────────────────────
+
+    @Nested
+    @DisplayName("splitChartsBlock — chart HTML / script separation")
+    class SplitChartsBlockTests {
+
+        @Test
+        @DisplayName("null input returns two empty strings")
+        void nullReturnsTwoEmpty() {
+            String[] parts = HtmlPageBuilder.splitChartsBlock(null);
+            assertEquals(2, parts.length);
+            assertEquals("", parts[0]);
+            assertEquals("", parts[1]);
+        }
+
+        @Test
+        @DisplayName("blank input returns two empty strings")
+        void blankReturnsTwoEmpty() {
+            String[] parts = HtmlPageBuilder.splitChartsBlock("   ");
+            assertEquals("", parts[0]);
+            assertEquals("", parts[1]);
+        }
+
+        @Test
+        @DisplayName("block without script tag returns full content in part[0] and empty part[1]")
+        void noScriptTagReturnsFullContentInPart0() {
+            String chartsBlock = "<div class=\"charts-section\"><h2>Charts</h2></div>\n";
+            String[] parts = HtmlPageBuilder.splitChartsBlock(chartsBlock);
+            assertEquals(chartsBlock, parts[0]);
+            assertEquals("", parts[1]);
+        }
+
+        @Test
+        @DisplayName("block with script tag splits correctly at <script> boundary")
+        void scriptTagSplitsCorrectly() {
+            String divPart    = "<div class=\"charts-section\"><canvas></canvas></div>\n";
+            String scriptPart = "<script>\n(function(){})()\n</script>\n";
+            String chartsBlock = divPart + scriptPart;
+            String[] parts = HtmlPageBuilder.splitChartsBlock(chartsBlock);
+            assertEquals(divPart, parts[0], "Panel HTML must end at <script> tag");
+            assertEquals(scriptPart, parts[1], "Script part must start with <script>");
+        }
+
+        @Test
+        @DisplayName("real buildChartsSection output is split into non-empty canvas and script parts")
+        void realChartsSectionIsSplit() {
+            long now = System.currentTimeMillis();
+            List<JTLParser.TimeBucket> buckets = List.of(
+                    new JTLParser.TimeBucket(now, 250.0, 0.0, 10.0, 50.0),
+                    new JTLParser.TimeBucket(now + 30_000, 300.0, 1.0, 12.0, 60.0));
+            String chartsBlock = HtmlPageBuilder.buildChartsSection(buckets);
+            String[] parts = HtmlPageBuilder.splitChartsBlock(chartsBlock);
+            assertTrue(parts[0].contains("<canvas"), "Panel part must contain canvas elements");
+            assertFalse(parts[0].contains("<script>"), "Panel part must NOT contain <script>");
+            assertTrue(parts[1].startsWith("<script>"), "Script part must start with <script>");
+        }
+
+        @Test
+        @DisplayName("unavailable placeholder (no script) returns full block in part[0]")
+        void unavailablePlaceholderNoScript() {
+            String chartsBlock = HtmlPageBuilder.buildChartsSection(null);
+            String[] parts = HtmlPageBuilder.splitChartsBlock(chartsBlock);
+            assertFalse(parts[0].isEmpty(), "Panel part must not be empty for placeholder");
+            assertEquals("", parts[1], "Placeholder has no script block");
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // buildPage — tabbed structure
+    // ─────────────────────────────────────────────────────────────
+
+    @Nested
+    @DisplayName("buildPage — tabbed HTML page structure")
+    class BuildPageTests {
+
+        /** Minimal RenderConfig used across all buildPage tests. */
+        private HtmlReportRenderer.RenderConfig minimalConfig() {
+            return new HtmlReportRenderer.RenderConfig(
+                    "100", "Load Test", "Peak hour test",
+                    "Thread Group 1", "01/01/25 09:00:00", "01/01/25 10:00:00",
+                    "1h 0m 0s", 90, "Groq (Free)", -1, -1, "pnn");
+        }
+
+        private String sevenSectionBody() {
+            return "<h2>Executive Summary</h2><p>A</p>"
+                    + "<h2>Bottleneck Analysis</h2><p>B</p>"
+                    + "<h2>Error Analysis</h2><p>C</p>"
+                    + "<h2>Advanced Web Diagnostics</h2><p>D</p>"
+                    + "<h2>Root Cause Hypotheses</h2><p>E</p>"
+                    + "<h2>Recommendations</h2><p>F</p>"
+                    + "<h2>Verdict</h2><p>PASS</p>";
+        }
+
+        @Test
+        @DisplayName("page contains tab bar with correct number of buttons")
+        void tabBarHasCorrectButtonCount() {
+            String metricsTable = "<div class=\"metrics-section\"><h2>Transaction Metrics</h2><table><tr><td>x</td></tr></table></div>";
+            String chartsBlock = HtmlPageBuilder.buildChartsSection(null); // placeholder
+            String page = HtmlPageBuilder.buildPage(sevenSectionBody(), metricsTable, chartsBlock, minimalConfig());
+
+            // Expect 9 tabs: 7 AI + Metrics + Charts
+            long tabCount = countOccurrences(page, "class=\"tab-btn");
+            assertEquals(9, tabCount, "9 tab buttons expected (7 AI + Metrics + Charts)");
+        }
+
+        @Test
+        @DisplayName("first tab button has active class on page load")
+        void firstTabButtonIsActive() {
+            String page = HtmlPageBuilder.buildPage(sevenSectionBody(), "", "", minimalConfig());
+            // First occurrence of tab-btn must carry the active class
+            int firstBtn = page.indexOf("class=\"tab-btn");
+            assertTrue(page.substring(firstBtn, firstBtn + 30).contains("active"),
+                    "First tab button must have the active class");
+        }
+
+        @Test
+        @DisplayName("first tab panel has active class on page load")
+        void firstTabPanelIsActive() {
+            String page = HtmlPageBuilder.buildPage(sevenSectionBody(), "", "", minimalConfig());
+            int firstPanel = page.indexOf("class=\"tab-panel");
+            assertTrue(page.substring(firstPanel, firstPanel + 30).contains("active"),
+                    "First tab panel must have the active class");
+        }
+
+        @Test
+        @DisplayName("report header is outside all tab panels")
+        void reportHeaderOutsideTabPanels() {
+            String page = HtmlPageBuilder.buildPage(sevenSectionBody(), "", "", minimalConfig());
+            // Use the full HTML element — not just "report-header" which also appears
+            // in the CSS <style> block earlier in the string, causing a false position.
+            int headerStart = page.indexOf("<div class=\"report-header\">");
+            int headerEnd   = page.indexOf("</div>", headerStart);
+            int firstPanel  = page.indexOf("class=\"tab-panel");
+            assertTrue(headerStart >= 0, "report-header div must be present in the page");
+            assertTrue(headerEnd < firstPanel, "Report header must appear before any tab panel");
+        }
+
+        @Test
+        @DisplayName("footer is present in the content area")
+        void footerPresent() {
+            String page = HtmlPageBuilder.buildPage(sevenSectionBody(), "", "", minimalConfig());
+            assertTrue(page.contains("class=\"footer\""), "Footer div must be present");
+            assertTrue(page.contains("Groq (Free)"), "Footer must show the provider display name");
+        }
+
+        @Test
+        @DisplayName("Chart.js CDN script is in the head element")
+        void chartJsCdnInHead() {
+            String page = HtmlPageBuilder.buildPage(sevenSectionBody(), "", "", minimalConfig());
+            int headEnd  = page.indexOf("</head>");
+            int chartJs  = page.indexOf("Chart.js");
+            assertTrue(chartJs < headEnd, "Chart.js CDN must be inside <head>");
+        }
+
+        @Test
+        @DisplayName("SheetJS CDN script is in the head element")
+        void sheetJsCdnInHead() {
+            String page = HtmlPageBuilder.buildPage(sevenSectionBody(), "", "", minimalConfig());
+            int headEnd  = page.indexOf("</head>");
+            int sheetJs  = page.indexOf("xlsx");
+            assertTrue(sheetJs > 0 && sheetJs < headEnd, "SheetJS CDN must be inside <head>");
+        }
+
+        @Test
+        @DisplayName("export bar contains Excel and PDF buttons")
+        void exportBarContainsBothButtons() {
+            String page = HtmlPageBuilder.buildPage(sevenSectionBody(), "", "", minimalConfig());
+            assertTrue(page.contains("export-bar"), "Export bar div must be present");
+            assertTrue(page.contains("exportExcel()"), "Excel export button must be present");
+            assertTrue(page.contains("window.print()"), "PDF export button must be present");
+        }
+
+        @Test
+        @DisplayName("each AI section appears inside its own tab panel")
+        void aiSectionsInOwnPanels() {
+            String page = HtmlPageBuilder.buildPage(sevenSectionBody(), "", "", minimalConfig());
+            // All 7 section h2 tags must be inside tab-panel divs
+            assertTrue(page.contains("Executive Summary"), "Executive Summary section present");
+            assertTrue(page.contains("Verdict"), "Verdict section present");
+            // Each h2 appears inside a tab panel
+            long panelCount = countOccurrences(page, "id=\"tab-");
+            assertTrue(panelCount >= 8, "At least 8 tab panels expected (7 AI + Charts)");
+        }
+
+        @Test
+        @DisplayName("metrics tab is omitted when metricsTable is blank")
+        void metricsTabOmittedWhenBlank() {
+            String page = HtmlPageBuilder.buildPage(sevenSectionBody(), "", "", minimalConfig());
+            // 8 tabs: 7 AI + Charts (no metrics)
+            long tabCount = countOccurrences(page, "class=\"tab-btn");
+            assertEquals(8, tabCount, "Metrics tab must be omitted when metricsTable is blank");
+        }
+
+        @Test
+        @DisplayName("metrics tab present when metricsTable is non-blank")
+        void metricsTabPresentWhenNonBlank() {
+            String metricsTable = "<div class=\"metrics-section\"><h2>Transaction Metrics</h2></div>";
+            String page = HtmlPageBuilder.buildPage(sevenSectionBody(), metricsTable, "", minimalConfig());
+            long tabCount = countOccurrences(page, "class=\"tab-btn");
+            assertEquals(9, tabCount, "9 tabs expected with non-blank metricsTable");
+            assertTrue(page.contains("Transaction Metrics"), "Metrics tab title must be present");
+        }
+
+        @Test
+        @DisplayName("charts tab button carries data-charts=true attribute")
+        void chartsTabButtonHasDataChartsAttribute() {
+            String page = HtmlPageBuilder.buildPage(sevenSectionBody(), "", "", minimalConfig());
+            assertTrue(page.contains("data-charts=\"true\""),
+                    "Charts tab button must have data-charts=true for Chart.js resize trigger");
+        }
+
+        @Test
+        @DisplayName("Chart.js init script is outside all tab panels")
+        void chartInitScriptOutsideTabPanels() {
+            long now = System.currentTimeMillis();
+            List<JTLParser.TimeBucket> buckets = List.of(
+                    new JTLParser.TimeBucket(now, 250.0, 0.0, 10.0, 50.0),
+                    new JTLParser.TimeBucket(now + 30_000, 300.0, 1.0, 12.0, 60.0));
+            String chartsBlock = HtmlPageBuilder.buildChartsSection(buckets);
+            String page = HtmlPageBuilder.buildPage(sevenSectionBody(), "", chartsBlock, minimalConfig());
+
+            int chartScript   = page.indexOf("timeChart(");
+            assertTrue(chartScript > 0, "timeChart call must be present in the page");
+
+            // The chart init script must appear AFTER the last tab panel definition.
+            // data-title= attributes are only on tab-panel divs; the last one belongs
+            // to the charts panel. Verifying chartScript > lastDataTitle confirms the
+            // script is placed outside (after) all panels.
+            int lastDataTitle = page.lastIndexOf("data-title=");
+            assertTrue(chartScript > lastDataTitle,
+                    "Chart.js init must appear after all tab panel definitions");
+        }
+
+        @Test
+        @DisplayName("tab switching JavaScript is present")
+        void tabSwitchingJsPresent() {
+            String page = HtmlPageBuilder.buildPage(sevenSectionBody(), "", "", minimalConfig());
+            assertTrue(page.contains("tab-btn"), "Tab button class referenced in JS");
+            assertTrue(page.contains("classList.remove('active')"), "Tab active-class removal must be present");
+            assertTrue(page.contains("classList.add('active')"), "Tab active-class addition must be present");
+        }
+
+        @Test
+        @DisplayName("page is a valid HTML document with DOCTYPE and closing tags")
+        void validHtmlStructure() {
+            String page = HtmlPageBuilder.buildPage(sevenSectionBody(), "", "", minimalConfig());
+            assertTrue(page.startsWith("<!DOCTYPE html>"), "Must start with DOCTYPE");
+            assertTrue(page.contains("<html lang=\"en\">"), "Must have html element with lang");
+            assertTrue(page.contains("</html>"), "Must have closing html tag");
+            assertTrue(page.contains("</body>"), "Must have closing body tag");
+        }
+
+        @Test
+        @DisplayName("truncated AI response with 3 sections produces 4 tabs (3 AI + Charts)")
+        void truncatedReportProducesCorrectTabCount() {
+            String truncatedBody = "<h2>Executive Summary</h2><p>A</p>"
+                    + "<h2>Bottleneck Analysis</h2><p>B</p>"
+                    + "<h2>Error Analysis</h2><p>C</p>";
+            String page = HtmlPageBuilder.buildPage(truncatedBody, "", "", minimalConfig());
+            long tabCount = countOccurrences(page, "class=\"tab-btn");
+            assertEquals(4, tabCount, "3 AI sections + Charts tab = 4 tabs for truncated report");
+        }
+
+        @Test
+        @DisplayName("@media print CSS ensures all tab panels are visible when printing")
+        void mediaPrintShowsAllPanels() {
+            String page = HtmlPageBuilder.buildPage(sevenSectionBody(), "", "", minimalConfig());
+            assertTrue(page.contains("display: block !important"),
+                    "@media print must force all tab panels visible");
+            assertTrue(page.contains(".tab-bar    { display: none; }"),
+                    "@media print must hide the tab bar");
+            assertTrue(page.contains(".export-bar { display: none; }"),
+                    "@media print must hide the export bar");
+        }
+
+        @Test
+        @DisplayName("window.jaarMeta script is injected with all metadata fields including providerName")
+        void jaarMetaScriptInjected() {
+            String page = HtmlPageBuilder.buildPage(sevenSectionBody(), "", "", minimalConfig());
+            assertTrue(page.contains("window.jaarMeta"), "jaarMeta object must be present");
+            assertTrue(page.contains("scenarioName"), "scenarioName field must be present");
+            assertTrue(page.contains("scenarioDesc"), "scenarioDesc field must be present");
+            assertTrue(page.contains("users"),        "users field must be present");
+            assertTrue(page.contains("duration"),     "duration field must be present");
+            assertTrue(page.contains("providerName"), "providerName field must be present");
+            // Verify actual config values are embedded
+            assertTrue(page.contains("Load Test"),    "scenarioName value must be embedded");
+            assertTrue(page.contains("1h 0m 0s"),     "duration value must be embedded");
+            // Provider "Groq (Free)" → sanitized "Groq"
+            assertTrue(page.contains("'Groq'"),       "providerName must be tier-stripped to 'Groq'");
+        }
+
+        @Test
+        @DisplayName("window.jaarMeta script appears inside the head element")
+        void jaarMetaInHead() {
+            String page = HtmlPageBuilder.buildPage(sevenSectionBody(), "", "", minimalConfig());
+            int headEnd  = page.indexOf("</head>");
+            int metaIdx  = page.indexOf("window.jaarMeta");
+            assertTrue(metaIdx > 0 && metaIdx < headEnd,
+                    "window.jaarMeta must be declared inside <head>");
+        }
+
+        @Test
+        @DisplayName("buildChartsSection placeholder does not embed chart data table")
+        void placeholderHasNoChartDataTable() {
+            String chartsBlock = HtmlPageBuilder.buildChartsSection(null);
+            assertFalse(chartsBlock.contains("jaar-chart-data"),
+                    "Placeholder chart section must not contain a hidden data table");
+        }
+
+        @Test
+        @DisplayName("buildChartsSection with real data does not embed hidden data table")
+        void realChartsSectionHasNoHiddenTable() {
+            long now = System.currentTimeMillis();
+            List<JTLParser.TimeBucket> buckets = List.of(
+                    new JTLParser.TimeBucket(now,          250.0, 1.5, 10.0, 50.0),
+                    new JTLParser.TimeBucket(now + 30_000, 300.0, 0.0, 12.0, 60.0));
+            String chartsBlock = HtmlPageBuilder.buildChartsSection(buckets);
+            assertFalse(chartsBlock.contains("jaar-chart-data"),
+                    "Charts section must not embed a hidden data table");
+        }
+
+        @Test
+        @DisplayName("Excel export JS writes referral message for Performance Charts sheet")
+        void chartsSheetContainsReferralMessage() {
+            String page = HtmlPageBuilder.buildPage(sevenSectionBody(), "", "", minimalConfig());
+            assertTrue(page.contains("Please refer to the HTML report for interactive charts."),
+                    "Excel export JS must write the HTML report referral message for the charts sheet");
+        }
+
+        // ── Helper ───────────────────────────────────────────────────────────
+
+        private long countOccurrences(String text, String token) {
+            int count = 0;
+            int idx = 0;
+            while ((idx = text.indexOf(token, idx)) >= 0) {
+                count++;
+                idx += token.length();
+            }
+            return count;
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // sanitizeProviderName
+    // ─────────────────────────────────────────────────────────────
+
+    @Nested
+    @DisplayName("sanitizeProviderName — provider segment for filenames")
+    class SanitizeProviderNameTests {
+
+        @Test
+        @DisplayName("null returns AI")
+        void nullReturnsAI() {
+            assertEquals("AI", HtmlPageBuilder.sanitizeProviderName(null));
+        }
+
+        @Test
+        @DisplayName("blank returns AI")
+        void blankReturnsAI() {
+            assertEquals("AI", HtmlPageBuilder.sanitizeProviderName("   "));
+        }
+
+        @Test
+        @DisplayName("tier suffix is stripped — Groq (Free) -> Groq")
+        void tierSuffixStripped() {
+            assertEquals("Groq", HtmlPageBuilder.sanitizeProviderName("Groq (Free)"));
+        }
+
+        @Test
+        @DisplayName("paid tier suffix is stripped — OpenAI (Paid) -> OpenAI")
+        void paidTierStripped() {
+            assertEquals("OpenAI", HtmlPageBuilder.sanitizeProviderName("OpenAI (Paid)"));
+        }
+
+        @Test
+        @DisplayName("name without tier is returned as-is when safe")
+        void noTierReturnedAsIs() {
+            assertEquals("Groq", HtmlPageBuilder.sanitizeProviderName("Groq"));
+        }
+
+        @Test
+        @DisplayName("whitespace within name is replaced with underscore")
+        void whitespaceReplacedWithUnderscore() {
+            assertEquals("My_Provider", HtmlPageBuilder.sanitizeProviderName("My Provider"));
+        }
+
+        @Test
+        @DisplayName("filesystem-unsafe characters are replaced with underscore")
+        void unsafeCharsReplaced() {
+            String result = HtmlPageBuilder.sanitizeProviderName("Bad/Name*Here");
+            assertFalse(result.contains("/"), "Slash must be removed");
+            assertFalse(result.contains("*"), "Asterisk must be removed");
+        }
+
+        @Test
+        @DisplayName("multiple consecutive unsafe chars collapse to single underscore")
+        void consecutiveUnsafeCollapse() {
+            String result = HtmlPageBuilder.sanitizeProviderName("A  B");
+            assertFalse(result.contains("__"), "Double underscore must not remain");
+        }
+
+        @Test
+        @DisplayName("leading and trailing underscores are stripped")
+        void leadingTrailingUnderscoresStripped() {
+            String result = HtmlPageBuilder.sanitizeProviderName(" Groq ");
+            assertFalse(result.startsWith("_"), "Must not start with underscore");
+            assertFalse(result.endsWith("_"), "Must not end with underscore");
         }
     }
 }
