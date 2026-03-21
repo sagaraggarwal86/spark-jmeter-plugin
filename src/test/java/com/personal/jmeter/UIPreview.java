@@ -11,7 +11,7 @@ import java.io.File;
 import java.net.URL;
 
 /**
- * Standalone preview of the JAAR UI.
+ * Standalone preview of the  JAAR UI.
  *
  * <p>Run {@link #main(String[])} directly — no JMeter runtime needed.
  * All shared UI and logic is in {@link AggregateReportPanel}; this class
