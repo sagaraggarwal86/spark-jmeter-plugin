@@ -8,7 +8,13 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
+import javax.swing.*;
+import javax.swing.table.DefaultTableModel;
+import javax.swing.table.TableColumn;
 import java.net.URL;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -24,6 +30,7 @@ class TablePopulatorTest {
 
     @BeforeAll
     static void initJMeter() {
+        System.setProperty("java.awt.headless", "true");
         URL propsUrl = TablePopulatorTest.class.getClassLoader().getResource("jmeter.properties");
         if (propsUrl != null) {
             JMeterUtils.loadJMeterProperties(propsUrl.getFile());
@@ -248,6 +255,202 @@ class TablePopulatorTest {
             String[] rowP90 = TablePopulator.buildRowAsStrings(calc, 0.90);
             assertFalse(rowP50[7].isBlank());
             assertFalse(rowP90[7].isBlank());
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // Instance method tests (headless Swing)
+    // ─────────────────────────────────────────────────────────────
+
+    /**
+     * Builds a minimal headless {@link TablePopulator} using a real
+     * {@link DefaultTableModel} and {@link JTable}. Safe to use in a
+     * headless environment — no rendering or display is invoked.
+     */
+    private static TablePopulator buildPopulator(DefaultTableModel model) {
+        JTable table = new JTable(model);
+        int colCount = ColumnIndex.ALL_COLUMNS.length;
+        TableColumn[] allCols = new TableColumn[colCount];
+        JCheckBoxMenuItem[] menuItems = new JCheckBoxMenuItem[colCount];
+        for (int i = 0; i < colCount; i++) {
+            allCols[i] = new TableColumn(i);
+            menuItems[i] = new JCheckBoxMenuItem(ColumnIndex.ALL_COLUMNS[i], true);
+        }
+        return new TablePopulator(model, table, allCols, menuItems);
+    }
+
+    private static DefaultTableModel emptyModel() {
+        return new DefaultTableModel(ColumnIndex.ALL_COLUMNS, 0);
+    }
+
+    private static SamplingStatCalculator calcFor(String label, long elapsed, boolean success) {
+        SamplingStatCalculator c = new SamplingStatCalculator(label);
+        SampleResult sr = new SampleResult();
+        sr.setStampAndTime(System.currentTimeMillis(), elapsed);
+        sr.setSuccessful(success);
+        c.addSample(sr);
+        return c;
+    }
+
+    @Nested
+    @DisplayName("Instance — initial state")
+    class InstanceInitialStateTests {
+
+        @Test
+        @DisplayName("getSortColumn returns -1 (unsorted) on construction")
+        void initialSortColumnIsMinusOne() {
+            TablePopulator pop = buildPopulator(emptyModel());
+            assertEquals(-1, pop.getSortColumn());
+        }
+
+        @Test
+        @DisplayName("isSortAscending returns true (default) on construction")
+        void initialSortDirectionIsAscending() {
+            TablePopulator pop = buildPopulator(emptyModel());
+            assertTrue(pop.isSortAscending());
+        }
+    }
+
+    @Nested
+    @DisplayName("Instance — getVisibleRows")
+    class GetVisibleRowsTests {
+
+        @Test
+        @DisplayName("returns empty list when model has no rows")
+        void emptyModelReturnsEmptyList() {
+            TablePopulator pop = buildPopulator(emptyModel());
+            assertTrue(pop.getVisibleRows().isEmpty());
+        }
+
+        @Test
+        @DisplayName("returns unmodifiable list")
+        void returnsUnmodifiableList() {
+            TablePopulator pop = buildPopulator(emptyModel());
+            List<String[]> rows = pop.getVisibleRows();
+            assertThrows(UnsupportedOperationException.class, () -> rows.add(new String[]{}));
+        }
+
+        @Test
+        @DisplayName("TOTAL row is excluded from visible rows")
+        void totalRowExcluded() {
+            DefaultTableModel model = emptyModel();
+            // Add a TOTAL row manually
+            Object[] totalRow = new Object[ColumnIndex.ALL_COLUMNS.length];
+            totalRow[0] = "TOTAL";
+            model.addRow(totalRow);
+
+            TablePopulator pop = buildPopulator(model);
+            assertTrue(pop.getVisibleRows().isEmpty(),
+                    "TOTAL row must be excluded from getVisibleRows()");
+        }
+
+        @Test
+        @DisplayName("non-TOTAL rows are included in visible rows")
+        void nonTotalRowIncluded() {
+            DefaultTableModel model = emptyModel();
+            Object[] row = new Object[ColumnIndex.ALL_COLUMNS.length];
+            row[0] = "Login";
+            model.addRow(row);
+
+            TablePopulator pop = buildPopulator(model);
+            assertEquals(1, pop.getVisibleRows().size());
+            assertEquals("Login", pop.getVisibleRows().get(0)[0]);
+        }
+    }
+
+    @Nested
+    @DisplayName("Instance — populate")
+    class PopulateTests {
+
+        @Test
+        @DisplayName("populate with no results produces empty table")
+        void populateEmptyResults() {
+            DefaultTableModel model = emptyModel();
+            TablePopulator pop = buildPopulator(model);
+            pop.populate(new LinkedHashMap<>(), 90, "", false, false);
+            assertEquals(0, model.getRowCount());
+        }
+
+        @Test
+        @DisplayName("populate adds non-TOTAL transactions to table")
+        void populateAddsRows() {
+            DefaultTableModel model = emptyModel();
+            TablePopulator pop = buildPopulator(model);
+
+            Map<String, SamplingStatCalculator> results = new LinkedHashMap<>();
+            results.put("Login", calcFor("Login", 300L, true));
+            results.put("Checkout", calcFor("Checkout", 500L, true));
+
+            pop.populate(results, 90, "", false, false);
+            // 2 data rows, no TOTAL
+            assertEquals(2, model.getRowCount());
+        }
+
+        @Test
+        @DisplayName("populate places TOTAL row last")
+        void totalRowLast() {
+            DefaultTableModel model = emptyModel();
+            TablePopulator pop = buildPopulator(model);
+
+            SamplingStatCalculator total = new SamplingStatCalculator("TOTAL");
+            SamplingStatCalculator login = new SamplingStatCalculator("Login");
+            SampleResult sr = new SampleResult();
+            sr.setStampAndTime(System.currentTimeMillis(), 200L);
+            sr.setSuccessful(true);
+            total.addSample(sr);
+            login.addSample(sr);
+
+            Map<String, SamplingStatCalculator> results = new LinkedHashMap<>();
+            results.put("TOTAL", total);
+            results.put("Login", login);
+
+            pop.populate(results, 90, "", false, false);
+            assertEquals(2, model.getRowCount());
+            assertEquals("TOTAL", model.getValueAt(1, 0).toString());
+        }
+
+        @Test
+        @DisplayName("populate with include filter shows only matching rows")
+        void populateWithIncludeFilter() {
+            DefaultTableModel model = emptyModel();
+            TablePopulator pop = buildPopulator(model);
+
+            Map<String, SamplingStatCalculator> results = new LinkedHashMap<>();
+            results.put("Login", calcFor("Login", 300L, true));
+            results.put("Checkout", calcFor("Checkout", 500L, true));
+
+            pop.populate(results, 90, "Login", false, false);
+            assertEquals(1, model.getRowCount());
+            assertEquals("Login", model.getValueAt(0, 0).toString());
+        }
+
+        @Test
+        @DisplayName("populate with exclude filter hides matching rows")
+        void populateWithExcludeFilter() {
+            DefaultTableModel model = emptyModel();
+            TablePopulator pop = buildPopulator(model);
+
+            Map<String, SamplingStatCalculator> results = new LinkedHashMap<>();
+            results.put("Login", calcFor("Login", 300L, true));
+            results.put("Checkout", calcFor("Checkout", 500L, true));
+
+            pop.populate(results, 90, "Login", false, true);
+            assertEquals(1, model.getRowCount());
+            assertEquals("Checkout", model.getValueAt(0, 0).toString());
+        }
+
+        @Test
+        @DisplayName("populate skips zero-count calculators")
+        void populateSkipsZeroCount() {
+            DefaultTableModel model = emptyModel();
+            TablePopulator pop = buildPopulator(model);
+
+            Map<String, SamplingStatCalculator> results = new LinkedHashMap<>();
+            results.put("Empty", new SamplingStatCalculator("Empty")); // no samples
+            results.put("Login", calcFor("Login", 300L, true));
+
+            pop.populate(results, 90, "", false, false);
+            assertEquals(1, model.getRowCount());
         }
     }
 }

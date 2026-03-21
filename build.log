@@ -1,0 +1,463 @@
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] ------------< io.github.sagaraggarwal86:jaar-jmeter-plugin >------------
+[INFO] Building JAAR ù JTL AI Analysis & Reporting 4.6.0
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- clean:3.2.0:clean (default-clean) @ jaar-jmeter-plugin ---
+[INFO] Deleting F:\Projects\JAAR-jmeter-plugin\target
+[INFO] 
+[INFO] --- jacoco:0.8.14:prepare-agent (jacoco-prepare) @ jaar-jmeter-plugin ---
+[INFO] argLine set to -javaagent:C:\\Users\\sagar\\.m2\\repository\\org\\jacoco\\org.jacoco.agent\\0.8.14\\org.jacoco.agent-0.8.14-runtime.jar=destfile=F:\\Projects\\JAAR-jmeter-plugin\\target\\jacoco.exec
+[INFO] 
+[INFO] --- antrun:3.2.0:run (update-readme-version) @ jaar-jmeter-plugin ---
+[INFO] Executing tasks
+[INFO] Executed tasks
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ jaar-jmeter-plugin ---
+[INFO] Copying 2 resources from src\main\resources to target\classes
+[INFO] 
+[INFO] --- compiler:3.13.0:compile (default-compile) @ jaar-jmeter-plugin ---
+[INFO] Recompiling the module because of changed source code.
+[INFO] Compiling 37 source files with javac [debug target 17] to target\classes
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ jaar-jmeter-plugin ---
+[INFO] Copying 2 resources from src\test\resources to target\test-classes
+[INFO] 
+[INFO] --- compiler:3.13.0:testCompile (default-testCompile) @ jaar-jmeter-plugin ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 24 source files with javac [debug target 17] to target\test-classes
+[INFO] 
+[INFO] --- surefire:3.5.5:test (default-test) @ jaar-jmeter-plugin ---
+[INFO] Using auto detected provider org.apache.maven.surefire.junitplatform.JUnitPlatformProvider
+[INFO] 
+[INFO] -------------------------------------------------------
+[INFO]  T E S T S
+[INFO] -------------------------------------------------------
+[INFO] Running PromptBuilder ù static analysis methods
+[INFO] Running buildClassificationSummary
+[INFO] Tests run: 10, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.995 s -- in buildClassificationSummary
+[INFO] Running buildOverallVerdictSummary
+[INFO] Tests run: 10, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.049 s -- in buildOverallVerdictSummary
+[INFO] Tests run: 0, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 2.100 s -- in PromptBuilder ù static analysis methods
+[INFO] Running PromptBuilder ù build
+[INFO] Running LatencyContext integration
+[INFO] Tests run: 5, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.126 s -- in LatencyContext integration
+[INFO] Running parseRtSlaThreshold
+14:07:58.367 WARN  c.p.jmeter.ai.prompt.PromptBuilder - parseRtSlaThreshold: unparseable value 'fast ms' ù treating as not configured.
+[INFO] Tests run: 11, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.597 s -- in parseRtSlaThreshold
+[INFO] Running parseErrorSlaThreshold
+14:07:58.437 WARN  c.p.jmeter.ai.prompt.PromptBuilder - parseErrorSlaThreshold: unparseable value 'abc%' ù treating as not configured.
+[INFO] Tests run: 13, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.034 s -- in parseErrorSlaThreshold
+[INFO] Running Edge cases
+[INFO] Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.024 s -- in Edge cases
+[INFO] Running PromptContent contract
+[INFO] Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.016 s -- in PromptContent contract
+[INFO] Running mandatedHypothesisTargets
+[INFO] Tests run: 6, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.023 s -- in mandatedHypothesisTargets
+[INFO] Running User message content
+[INFO] Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.010 s -- in User message content
+[INFO] Tests run: 0, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.926 s -- in PromptBuilder ù build
+[INFO] Running PromptContent
+[INFO] Running Value storage and accessors
+[INFO] Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.008 s -- in Value storage and accessors
+[INFO] Running Record equality
+[INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.010 s -- in Record equality
+[INFO] Running Null rejection
+[INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.015 s -- in Null rejection
+[INFO] Tests run: 0, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.039 s -- in PromptContent
+[INFO] Running PromptLoader
+[INFO] Running Resource path constants
+[INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.007 s -- in Resource path constants
+[INFO] Running load() ù bundled resource
+[INFO] Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.032 s -- in load() ù bundled resource
+[INFO] Tests run: 0, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.041 s -- in PromptLoader
+[INFO] Running PromptRequest
+[INFO] Running empty() factory
+[INFO] Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.009 s -- in empty() factory
+[INFO] Running Value preservation
+[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.004 s -- in Value preservation
+[INFO] Running Compact constructor null normalisation
+[INFO] Tests run: 11, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.018 s -- in Compact constructor null normalisation
+[INFO] Tests run: 0, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.036 s -- in PromptRequest
+[INFO] Running AiProviderConfig
+[INFO] Running valid construction
+[INFO] Tests run: 6, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.012 s -- in valid construction
+[INFO] Running numeric field rejection
+[INFO] Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.019 s -- in numeric field rejection
+[INFO] Running null/blank string rejection
+[INFO] Tests run: 10, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.044 s -- in null/blank string rejection
+[INFO] Running toString()
+[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.004 s -- in toString()
+[INFO] Running chatCompletionsUrl()
+[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.006 s -- in chatCompletionsUrl()
+[INFO] Tests run: 0, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.090 s -- in AiProviderConfig
+[INFO] Running AiProviderRegistry
+[INFO] Running Ping cache eviction
+[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.014 s -- in Ping cache eviction
+[INFO] Running loadConfiguredProviders(Path) overload
+[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.155 s -- in loadConfiguredProviders(Path) overload
+[INFO] Running loadConfiguredProviders ordering
+14:07:58.909 WARN  c.p.j.ai.provider.AiProviderRegistry - buildConfig: provider 'niche' skipped ù model or base.url not set and no built-in default.
+[INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.036 s -- in loadConfiguredProviders ordering
+[INFO] Running checkKeyFormat
+[INFO] Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.013 s -- in checkKeyFormat
+[INFO] Running loadProperties
+14:07:58.958 WARN  c.p.j.ai.provider.AiProviderRegistry - loadFromResource: /ai-reporter.properties not found in JAR. Returning empty properties.
+[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.021 s -- in loadProperties
+[INFO] Tests run: 0, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.246 s -- in AiProviderRegistry
+[INFO] Running AiReportService ù extractAndValidateContent
+[INFO] Running Truncation detection (finish_reason=length)
+14:07:59.045 WARN  c.p.j.ai.provider.AiReportService - extractAndValidateContent: response truncated at token limit. provider=gemini model=gemini-2.0-flash max_tokens=1500
+14:07:59.065 WARN  c.p.j.ai.provider.AiReportService - extractAndValidateContent: response truncated at token limit. provider=gemini model=gemini-2.0-flash max_tokens=1500
+14:07:59.069 WARN  c.p.j.ai.provider.AiReportService - extractAndValidateContent: usage-based truncation detected. provider=gemini completion_tokens=1502 max_tokens=1500
+14:07:59.069 WARN  c.p.j.ai.provider.AiReportService - extractAndValidateContent: response truncated at token limit. provider=gemini model=gemini-2.0-flash max_tokens=1500
+14:07:59.071 WARN  c.p.j.ai.provider.AiReportService - extractAndValidateContent: truncation caused missing sections. provider=gemini present=[Executive Summary] missing=[Bottleneck Analysis, Error Analysis, Advanced Web Diagnostics, Root Cause Hypotheses, Recommendations, Verdict]
+14:07:59.075 WARN  c.p.j.ai.provider.AiReportService - extractAndValidateContent: truncation caused missing sections. provider=gemini present=[Executive Summary] missing=[Bottleneck Analysis, Error Analysis, Advanced Web Diagnostics, Root Cause Hypotheses, Recommendations, Verdict]
+14:07:59.077 WARN  c.p.j.ai.provider.AiReportService - extractAndValidateContent: usage-based truncation detected. provider=gemini completion_tokens=1500 max_tokens=1500
+14:07:59.077 WARN  c.p.j.ai.provider.AiReportService - extractAndValidateContent: response truncated at token limit. provider=gemini model=gemini-2.0-flash max_tokens=1500
+[INFO] Tests run: 8, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.092 s -- in Truncation detection (finish_reason=length)
+[INFO] Running Normal (non-truncated) responses
+[INFO] Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.011 s -- in Normal (non-truncated) responses
+[INFO] Running Missing sections detection
+14:07:59.094 WARN  c.p.j.ai.provider.AiReportService - extractAndValidateContent: usage-based truncation detected. provider=gemini completion_tokens=1500 max_tokens=1500
+14:07:59.094 WARN  c.p.j.ai.provider.AiReportService - extractAndValidateContent: truncation caused missing sections. provider=gemini present=[Executive Summary, Bottleneck Analysis] missing=[Error Analysis, Advanced Web Diagnostics, Root Cause Hypotheses, Recommendations, Verdict]
+14:07:59.097 WARN  c.p.j.ai.provider.AiReportService - extractAndValidateContent: missing section(s) detected (not truncated). provider=gemini missing=[Bottleneck Analysis, Error Analysis, Advanced Web Diagnostics, Root Cause Hypotheses, Recommendations, Verdict]
+14:07:59.098 WARN  c.p.j.ai.provider.AiReportService - extractAndValidateContent: missing section(s) detected (not truncated). provider=gemini missing=[Bottleneck Analysis, Error Analysis, Advanced Web Diagnostics, Root Cause Hypotheses, Recommendations, Verdict]
+14:07:59.105 WARN  c.p.j.ai.provider.AiReportService - extractAndValidateContent: usage-based truncation detected. provider=gemini completion_tokens=1500 max_tokens=1500
+14:07:59.105 WARN  c.p.j.ai.provider.AiReportService - extractAndValidateContent: response truncated at token limit. provider=gemini model=gemini-2.0-flash max_tokens=1500
+14:07:59.109 WARN  c.p.j.ai.provider.AiReportService - extractAndValidateContent: usage-based truncation detected. provider=gemini completion_tokens=1500 max_tokens=1500
+14:07:59.110 WARN  c.p.j.ai.provider.AiReportService - extractAndValidateContent: truncation caused missing sections. provider=gemini present=[Executive Summary, Bottleneck Analysis, Error Analysis, Advanced Web Diagnostics, Root Cause Hypotheses, Recommendations] missing=[Verdict]
+[INFO] Tests run: 6, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.019 s -- in Missing sections detection
+[INFO] Running Error paths
+14:07:59.116 WARN  c.p.j.ai.provider.AiReportService - extractAndValidateContent: choices array is empty. provider=gemini
+14:07:59.129 ERROR c.p.j.ai.provider.AiReportService - extractAndValidateContent: failed to parse response. provider=gemini reason=com.google.gson.stream.MalformedJsonException: Expected ':' at line 1 column 7 path $.not
+See https://github.com/google/gson/blob/main/Troubleshooting.md#malformed-json
+com.google.gson.JsonSyntaxException: com.google.gson.stream.MalformedJsonException: Expected ':' at line 1 column 7 path $.not
+See https://github.com/google/gson/blob/main/Troubleshooting.md#malformed-json
+	at com.google.gson.internal.Streams.parse(Streams.java:58)
+	at com.google.gson.JsonParser.parseReader(JsonParser.java:144)
+	at com.google.gson.JsonParser.parseReader(JsonParser.java:110)
+	at com.google.gson.JsonParser.parseString(JsonParser.java:92)
+	at com.personal.jmeter.ai.provider.AiReportService.extractAndValidateContent(AiReportService.java:254)
+	at com.personal.jmeter.ai.provider.AiReportServiceTest$ErrorPaths.lambda$malformedJson_throwsException$1(AiReportServiceTest.java:415)
+	at org.junit.jupiter.api.AssertThrows.assertThrows(AssertThrows.java:54)
+	at org.junit.jupiter.api.AssertThrows.assertThrows(AssertThrows.java:40)
+	at org.junit.jupiter.api.Assertions.assertThrows(Assertions.java:3249)
+	at com.personal.jmeter.ai.provider.AiReportServiceTest$ErrorPaths.malformedJson_throwsException(AiReportServiceTest.java:414)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:77)
+	at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:569)
+	at org.junit.platform.commons.util.ReflectionUtils.invokeMethod(ReflectionUtils.java:701)
+	at org.junit.platform.commons.support.ReflectionSupport.invokeMethod(ReflectionSupport.java:502)
+	at org.junit.jupiter.engine.support.MethodReflectionUtils.invoke(MethodReflectionUtils.java:45)
+	at org.junit.jupiter.engine.execution.MethodInvocation.proceed(MethodInvocation.java:61)
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain$ValidatingInvocation.proceed(InvocationInterceptorChain.java:124)
+	at org.junit.jupiter.engine.extension.TimeoutExtension.intercept(TimeoutExtension.java:163)
+	at org.junit.jupiter.engine.extension.TimeoutExtension.interceptTestableMethod(TimeoutExtension.java:148)
+	at org.junit.jupiter.engine.extension.TimeoutExtension.interceptTestMethod(TimeoutExtension.java:86)
+	at org.junit.jupiter.engine.execution.InterceptingExecutableInvoker$ReflectiveInterceptorCall.lambda$ofVoidMethod$0(InterceptingExecutableInvoker.java:123)
+	at org.junit.jupiter.engine.execution.InterceptingExecutableInvoker.lambda$invoke$0(InterceptingExecutableInvoker.java:105)
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain$InterceptedInvocation.proceed(InvocationInterceptorChain.java:99)
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain.proceed(InvocationInterceptorChain.java:66)
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain.chainAndInvoke(InvocationInterceptorChain.java:47)
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain.invoke(InvocationInterceptorChain.java:39)
+	at org.junit.jupiter.engine.execution.InterceptingExecutableInvoker.invoke(InterceptingExecutableInvoker.java:104)
+	at org.junit.jupiter.engine.execution.InterceptingExecutableInvoker.invoke(InterceptingExecutableInvoker.java:98)
+	at org.junit.jupiter.engine.execution.InterceptingExecutableInvoker.invokeVoid(InterceptingExecutableInvoker.java:71)
+	at org.junit.jupiter.engine.descriptor.TestMethodTestDescriptor.lambda$invokeTestMethod$0(TestMethodTestDescriptor.java:219)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:74)
+	at org.junit.jupiter.engine.descriptor.TestMethodTestDescriptor.invokeTestMethod(TestMethodTestDescriptor.java:215)
+	at org.junit.jupiter.engine.descriptor.TestMethodTestDescriptor.execute(TestMethodTestDescriptor.java:157)
+	at org.junit.jupiter.engine.descriptor.TestMethodTestDescriptor.execute(TestMethodTestDescriptor.java:70)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$2(NodeTestTask.java:176)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:74)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$1(NodeTestTask.java:166)
+	at org.junit.platform.engine.support.hierarchical.Node.around(Node.java:138)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$0(NodeTestTask.java:164)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:74)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.executeRecursively(NodeTestTask.java:163)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.execute(NodeTestTask.java:116)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1511)
+	at org.junit.platform.engine.support.hierarchical.SameThreadHierarchicalTestExecutorService.invokeAll(SameThreadHierarchicalTestExecutorService.java:42)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$2(NodeTestTask.java:180)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:74)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$1(NodeTestTask.java:166)
+	at org.junit.platform.engine.support.hierarchical.Node.around(Node.java:138)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$0(NodeTestTask.java:164)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:74)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.executeRecursively(NodeTestTask.java:163)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.execute(NodeTestTask.java:116)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1511)
+	at org.junit.platform.engine.support.hierarchical.SameThreadHierarchicalTestExecutorService.invokeAll(SameThreadHierarchicalTestExecutorService.java:42)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$2(NodeTestTask.java:180)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:74)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$1(NodeTestTask.java:166)
+	at org.junit.platform.engine.support.hierarchical.Node.around(Node.java:138)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$0(NodeTestTask.java:164)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:74)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.executeRecursively(NodeTestTask.java:163)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.execute(NodeTestTask.java:116)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1511)
+	at org.junit.platform.engine.support.hierarchical.SameThreadHierarchicalTestExecutorService.invokeAll(SameThreadHierarchicalTestExecutorService.java:42)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$2(NodeTestTask.java:180)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:74)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$1(NodeTestTask.java:166)
+	at org.junit.platform.engine.support.hierarchical.Node.around(Node.java:138)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$0(NodeTestTask.java:164)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:74)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.executeRecursively(NodeTestTask.java:163)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.execute(NodeTestTask.java:116)
+	at org.junit.platform.engine.support.hierarchical.SameThreadHierarchicalTestExecutorService.submit(SameThreadHierarchicalTestExecutorService.java:36)
+	at org.junit.platform.engine.support.hierarchical.HierarchicalTestExecutor.execute(HierarchicalTestExecutor.java:52)
+	at org.junit.platform.engine.support.hierarchical.HierarchicalTestEngine.execute(HierarchicalTestEngine.java:58)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.executeEngine(EngineExecutionOrchestrator.java:246)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.failOrExecuteEngine(EngineExecutionOrchestrator.java:218)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:179)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:108)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.lambda$execute$0(EngineExecutionOrchestrator.java:66)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.withInterceptedStreams(EngineExecutionOrchestrator.java:157)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:65)
+	at org.junit.platform.launcher.core.DefaultLauncher.execute(DefaultLauncher.java:125)
+	at org.junit.platform.launcher.core.DefaultLauncher.execute(DefaultLauncher.java:114)
+	at org.junit.platform.launcher.core.DelegatingLauncher.execute(DelegatingLauncher.java:58)
+	at org.junit.platform.launcher.core.InterceptingLauncher.lambda$execute$2(InterceptingLauncher.java:57)
+	at org.junit.platform.launcher.core.ClasspathAlignmentCheckingLauncherInterceptor.intercept(ClasspathAlignmentCheckingLauncherInterceptor.java:25)
+	at org.junit.platform.launcher.core.InterceptingLauncher.execute(InterceptingLauncher.java:56)
+	at org.junit.platform.launcher.core.DelegatingLauncher.execute(DelegatingLauncher.java:58)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:77)
+	at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:569)
+	at org.apache.maven.surefire.api.util.ReflectionUtils.invokeMethodWithArray(ReflectionUtils.java:125)
+	at org.apache.maven.surefire.junitplatform.LauncherAdapter.executeWithCancellationToken(LauncherAdapter.java:68)
+	at org.apache.maven.surefire.junitplatform.LauncherAdapter.execute(LauncherAdapter.java:54)
+	at org.apache.maven.surefire.junitplatform.JUnitPlatformProvider.execute(JUnitPlatformProvider.java:203)
+	at org.apache.maven.surefire.junitplatform.JUnitPlatformProvider.invokeAllTests(JUnitPlatformProvider.java:168)
+	at org.apache.maven.surefire.junitplatform.JUnitPlatformProvider.invoke(JUnitPlatformProvider.java:136)
+	at org.apache.maven.surefire.booter.ForkedBooter.runSuitesInProcess(ForkedBooter.java:385)
+	at org.apache.maven.surefire.booter.ForkedBooter.execute(ForkedBooter.java:162)
+	at org.apache.maven.surefire.booter.ForkedBooter.run(ForkedBooter.java:507)
+	at org.apache.maven.surefire.booter.ForkedBooter.main(ForkedBooter.java:495)
+Caused by: com.google.gson.stream.MalformedJsonException: Expected ':' at line 1 column 7 path $.not
+See https://github.com/google/gson/blob/main/Troubleshooting.md#malformed-json
+	at com.google.gson.stream.JsonReader.syntaxError(JsonReader.java:1817)
+	at com.google.gson.stream.JsonReader.doPeek(JsonReader.java:659)
+	at com.google.gson.stream.JsonReader.peek(JsonReader.java:547)
+	at com.google.gson.internal.bind.JsonElementTypeAdapter.read(JsonElementTypeAdapter.java:102)
+	at com.google.gson.internal.bind.JsonElementTypeAdapter.read(JsonElementTypeAdapter.java:35)
+	at com.google.gson.internal.Streams.parse(Streams.java:46)
+	... 104 common frames omitted
+14:07:59.162 WARN  c.p.j.ai.provider.AiReportService - extractAndValidateContent: choices field missing. provider=gemini
+[INFO] Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.052 s -- in Error paths
+[INFO] Tests run: 0, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.180 s -- in AiReportService ù extractAndValidateContent
+[INFO] Running HtmlPageBuilder ù convertPipeTablesToHtml
+[INFO] Running Cell content escaping
+[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.018 s -- in Cell content escaping
+[INFO] Running Table detection and rendering
+[INFO] Tests run: 7, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.016 s -- in Table detection and rendering
+[INFO] Running buildChartsSection ù always renders a section header
+[INFO] Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.008 s -- in buildChartsSection ù always renders a section header
+[INFO] Running Non-table pass-through
+[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.003 s -- in Non-table pass-through
+[INFO] Running Mixed table and non-table content
+[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.006 s -- in Mixed table and non-table content
+[INFO] Running buildPage ù tabbed HTML page structure
+[INFO] Tests run: 22, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.065 s -- in buildPage ù tabbed HTML page structure
+[INFO] Running Empty and null input
+[INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.005 s -- in Empty and null input
+[INFO] Running splitAtH2 ù section splitting at h2 boundaries
+[INFO] Tests run: 10, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.019 s -- in splitAtH2 ù section splitting at h2 boundaries
+[INFO] Running splitChartsBlock ù chart HTML / script separation
+[INFO] Tests run: 6, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.013 s -- in splitChartsBlock ù chart HTML / script separation
+[INFO] Running sanitizeProviderName ù provider segment for filenames
+[INFO] Tests run: 9, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.013 s -- in sanitizeProviderName ù provider segment for filenames
+[INFO] Running stripRawHtml ù raw HTML block removal
+[INFO] Tests run: 8, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.009 s -- in stripRawHtml ù raw HTML block removal
+[INFO] Tests run: 0, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.182 s -- in HtmlPageBuilder ù convertPipeTablesToHtml
+[INFO] Running HtmlReportRenderer ù buildTransactionMetricsSection
+[INFO] Running HTML structure
+[INFO] Tests run: 6, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.018 s -- in HTML structure
+[INFO] Running Data rendering
+[INFO] Tests run: 5, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.010 s -- in Data rendering
+[INFO] Running Empty / null input
+[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.004 s -- in Empty / null input
+[INFO] Running escapeHtml utility
+[INFO] Tests run: 7, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.014 s -- in escapeHtml utility
+[INFO] Tests run: 0, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.052 s -- in HtmlReportRenderer ù buildTransactionMetricsSection
+[INFO] Running MarkdownSectionNormaliser
+[INFO] Running duplicate removal
+[INFO] Tests run: 5, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.014 s -- in duplicate removal
+[INFO] Running no-op cases
+[INFO] Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.011 s -- in no-op cases
+[INFO] Tests run: 0, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.027 s -- in MarkdownSectionNormaliser
+[INFO] Running MarkdownUtils
+[INFO] Running stripVerdictLine
+[INFO] Tests run: 12, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.022 s -- in stripVerdictLine
+[INFO] Running verdictSource
+[INFO] Tests run: 7, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.010 s -- in verdictSource
+[INFO] Running extractVerdict
+[INFO] Tests run: 18, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.017 s -- in extractVerdict
+[INFO] Tests run: 0, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.057 s -- in MarkdownUtils
+[INFO] Running CliArgs
+[INFO] Running Boundary values
+[INFO] Tests run: 8, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.090 s -- in Boundary values
+[INFO] Running Default values
+[INFO] Tests run: 5, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.045 s -- in Default values
+[INFO] Running Help flag
+[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.005 s -- in Help flag
+[INFO] Running Parsing behaviour
+[INFO] Tests run: 12, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.124 s -- in Parsing behaviour
+[INFO] Running Required arguments
+[INFO] Tests run: 6, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.065 s -- in Required arguments
+[INFO] Running Range validation
+[INFO] Tests run: 5, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.057 s -- in Range validation
+[INFO] Tests run: 0, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.390 s -- in CliArgs
+[INFO] Running CsvExporter
+[INFO] Running saveTableToCSV ù SLA columns
+[INFO] Tests run: 12, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.332 s -- in saveTableToCSV ù SLA columns
+[INFO] Running escapeCSV ù plain values
+[INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.005 s -- in escapeCSV ù plain values
+[INFO] Running escapeCSV ù values requiring quoting
+[INFO] Tests run: 5, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.006 s -- in escapeCSV ù values requiring quoting
+[INFO] Running escapeCSV ù null and empty input
+[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.002 s -- in escapeCSV ù null and empty input
+[INFO] Tests run: 0, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.348 s -- in CsvExporter
+[INFO] Running ScenarioMetadata
+[INFO] Running Constructor value preservation
+[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.005 s -- in Constructor value preservation
+[INFO] Running Constructor null normalisation
+[INFO] Tests run: 5, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.005 s -- in Constructor null normalisation
+[INFO] Running empty() factory
+[INFO] Tests run: 6, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.004 s -- in empty() factory
+[INFO] Tests run: 0, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.016 s -- in ScenarioMetadata
+[INFO] Running SlaConfig
+[INFO] Running from() factory ù both thresholds enabled
+[INFO] Tests run: 6, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.006 s -- in from() factory ù both thresholds enabled
+[INFO] Running disabled() factory
+[INFO] Tests run: 6, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.006 s -- in disabled() factory
+[INFO] Running from() factory ù null rtMetric
+[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.001 s -- in from() factory ù null rtMetric
+[INFO] Running from() factory ù AVG metric
+[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.002 s -- in from() factory ù AVG metric
+[INFO] Running from() factory ù blank strings disable thresholds
+[INFO] Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.006 s -- in from() factory ù blank strings disable thresholds
+[INFO] Tests run: 0, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.028 s -- in SlaConfig
+[INFO] Running SlaRowRenderer
+[INFO] Running TOTAL row
+[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.082 s -- in TOTAL row
+[INFO] Running RT SLA ù AVG metric
+[INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.008 s -- in RT SLA ù AVG metric
+[INFO] Running RT SLA ù PNN metric
+[INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.010 s -- in RT SLA ù PNN metric
+[INFO] Running parse robustness
+[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.012 s -- in parse robustness
+[INFO] Running no SLA configured
+[INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.006 s -- in no SLA configured
+[INFO] Running error rate SLA
+[INFO] Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.014 s -- in error rate SLA
+[INFO] Running selected cell
+[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.003 s -- in selected cell
+[INFO] Tests run: 0, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.143 s -- in SlaRowRenderer
+[INFO] Running TablePopulator ù buildRowAsStrings
+[INFO] Running Row structure
+[INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.038 s -- in Row structure
+[INFO] Running Count, passed and failed columns
+[INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.007 s -- in Count, passed and failed columns
+[INFO] Running Error rate and throughput columns
+[INFO] Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.006 s -- in Error rate and throughput columns
+[INFO] Running Percentile fraction variations
+[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.002 s -- in Percentile fraction variations
+[INFO] Running Response time columns
+[INFO] Tests run: 5, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.009 s -- in Response time columns
+[INFO] Tests run: 0, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.068 s -- in TablePopulator ù buildRowAsStrings
+[INFO] Running TransactionFilter
+[INFO] Running Blank pattern (no filter active)
+[INFO] Tests run: 6, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.031 s -- in Blank pattern (no filter active)
+[INFO] Running Plain-text mode (case-insensitive substring)
+[INFO] Tests run: 8, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.009 s -- in Plain-text mode (case-insensitive substring)
+[INFO] Running RegEx mode
+[INFO] Tests run: 11, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.016 s -- in RegEx mode
+[INFO] Tests run: 0, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.058 s -- in TransactionFilter
+[INFO] Running DelimiterResolver
+[INFO] Running resolve()
+[INFO] Tests run: 10, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.090 s -- in resolve()
+[INFO] Running readDelimiterFromFile()
+[INFO] Tests run: 5, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.039 s -- in readDelimiterFromFile()
+[INFO] Running parseLine()
+14:08:00.709 WARN  c.p.jmeter.parser.DelimiterResolver - parseLine: multi-character delimiter value ';;' is not supported ù ignoring.
+[INFO] Tests run: 13, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.059 s -- in parseLine()
+[INFO] Tests run: 0, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.191 s -- in DelimiterResolver
+[INFO] Running JtlParseException
+[INFO] Running Type hierarchy
+[INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.005 s -- in Type hierarchy
+[INFO] Running Message constructor
+[INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.002 s -- in Message constructor
+[INFO] Running Message + cause constructor
+[INFO] Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.004 s -- in Message + cause constructor
+[INFO] Tests run: 0, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.014 s -- in JtlParseException
+[INFO] Running JtlParserCore
+[INFO] Running splitCsvLine
+[INFO] Running buildColumnMap
+[INFO] Tests run: 14, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.002 s -- in buildColumnMap
+[INFO] Running shouldInclude
+[INFO] Tests run: 8, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.014 s -- in shouldInclude
+[INFO] Running parseElapsed
+[INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.012 s -- in parseElapsed
+[INFO] Running buildTimeBuckets
+[INFO] Tests run: 7, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.008 s -- in buildTimeBuckets
+[INFO] Tests run: 0, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.060 s -- in splitCsvLine
+[INFO] Tests run: 0, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.062 s -- in JtlParserCore
+[INFO] Running JTLParser
+[INFO] Running computeAutoBucketSizeMs
+[INFO] Tests run: 28, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.033 s -- in computeAutoBucketSizeMs
+[INFO] Tests run: 0, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.245 s -- in JTLParser
+[INFO] 
+[INFO] Results:
+[INFO] 
+[INFO] Tests run: 545, Failures: 0, Errors: 0, Skipped: 0
+[INFO] 
+[INFO] 
+[INFO] --- jar:3.4.1:jar (default-jar) @ jaar-jmeter-plugin ---
+[INFO] Building jar: F:\Projects\JAAR-jmeter-plugin\target\jaar-jmeter-plugin-4.6.0.jar
+[INFO] 
+[INFO] --- shade:3.6.2:shade (default) @ jaar-jmeter-plugin ---
+[INFO] Dependency-reduced POM written at: F:\Projects\JAAR-jmeter-plugin\dependency-reduced-pom.xml
+[WARNING] Discovered module-info.class. Shading will break its strong encapsulation.
+[WARNING] error_prone_annotations-2.41.0.jar, gson-2.13.2.jar define 1 overlapping classes: 
+[WARNING]   - META-INF.versions.9.module-info
+[WARNING] commonmark-0.27.1.jar, error_prone_annotations-2.41.0.jar, gson-2.13.2.jar, jaar-jmeter-plugin-4.6.0.jar define 1 overlapping resource: 
+[WARNING]   - META-INF/MANIFEST.MF
+[WARNING] maven-shade-plugin has detected that some files are
+[WARNING] present in two or more JARs. When this happens, only one
+[WARNING] single version of the file is copied to the uber jar.
+[WARNING] Usually this is not harmful and you can skip these warnings,
+[WARNING] otherwise try to manually exclude artifacts based on
+[WARNING] mvn dependency:tree -Ddetail=true and the above output.
+[WARNING] See https://maven.apache.org/plugins/maven-shade-plugin/
+[INFO] Replacing original artifact with shaded artifact.
+[INFO] 
+[INFO] --- antrun:3.2.0:run (delete-original-jar) @ jaar-jmeter-plugin ---
+[INFO] Executing tasks
+[INFO]    [delete] Deleting: F:\Projects\JAAR-jmeter-plugin\target\original-jaar-jmeter-plugin-4.6.0.jar
+[INFO] Executed tasks
+[INFO] 
+[INFO] --- jacoco:0.8.14:check (jacoco-check) @ jaar-jmeter-plugin ---
+[INFO] Loading execution data file F:\Projects\JAAR-jmeter-plugin\target\jacoco.exec
+[INFO] Analyzed bundle 'jaar-jmeter-plugin' with 25 classes
+[WARNING] Rule violated for bundle jaar-jmeter-plugin: lines covered ratio is 0.74, but expected minimum is 0.80
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  21.833 s
+[INFO] Finished at: 2026-03-21T14:08:02-05:00
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.jacoco:jacoco-maven-plugin:0.8.14:check (jacoco-check) on project jaar-jmeter-plugin: Coverage checks have not been met. See log for details. -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoExecutionException
