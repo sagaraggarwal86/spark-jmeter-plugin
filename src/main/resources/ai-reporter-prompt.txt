@@ -497,47 +497,26 @@ REPORT SECTIONS — COMPLETENESS RULES (binding, not advisory)
       metric or error code that implicates it, the discriminating
       mechanism that connects them, and the component layer.
 
-  TRANSACTION COVERAGE RULE (mandatory — applies before ranking):
-    errorEndpoints is pre-sorted by errorRatePct descending — the highest
-    error-rate transaction is always first.
+  TRANSACTION COVERAGE RULE (mandatory):
+    The input JSON contains a field mandatedHypothesisTargets — an ordered
+    list of {label, errorRatePct} entries pre-selected by the plugin.
+    Every entry in mandatedHypothesisTargets MUST be named explicitly by
+    its exact label string in at least one hypothesis.
+    If mandatedHypothesisTargets is empty or absent, skip this rule.
 
-    Step 1 — Identify critical transactions: take the top 5 entries from
-    errorEndpoints by errorRatePct. These are the critical-error transactions
-    regardless of what their absolute error rate values are. Every
-    critical-error transaction MUST be named explicitly by its exact label
-    in at least one hypothesis. If errorEndpoints has fewer than 5 entries,
-    cover all of them. If errorEndpoints is empty, skip this rule entirely.
+    GROUPING — entries from mandatedHypothesisTargets may share a single
+    hypothesis ONLY when ALL three conditions hold:
+      (a) identical HTTP method across all grouped entries;
+      (b) errorTypeSummary is Mixed/Indeterminate (no single code > 50%);
+      (c) same probable cause and owning component layer for all entries.
+    When grouping, name every entry explicitly — never write
+    "various endpoints" or "multiple transactions".
 
-    Step 2 — Grouping: critical-error transactions may be grouped into a
-    single hypothesis ONLY when ALL of the following conditions are met:
-      (a) they share the identical HTTP method (e.g. all POST, or all GET);
-      (b) the global errorTypeSummary shows a Mixed/Indeterminate pattern
-          (no single error code exceeds 50% of total failures) — meaning
-          per-transaction error code breakdown is unavailable and all
-          transactions in the group are exposed to the same global error
-          distribution;
-      (c) the probable cause and the owning component layer are the same
-          for every transaction in the group.
-    When grouping, name every transaction in the group explicitly by label —
-    never write "various endpoints" or "multiple transactions".
-    When errorTypeSummary is NOT Mixed (a single code dominates globally),
-    transactions with different error profiles must be in separate hypotheses.
+    SEPARATION — entries with different HTTP methods must never be merged.
 
-    Step 3 — Separation: transactions that differ in HTTP method must never
-    be merged into one hypothesis. Different HTTP methods imply different code
-    paths, different teams, and different remediation paths regardless of
-    how similar their error rates appear.
-
-    Step 4 — Coverage verification (mandatory — execute before writing any
-    hypothesis to the report):
-    List every transaction from Step 1 and mark it covered or uncovered:
-      covered   — its exact label appears in a hypothesis already drafted
-      uncovered — it does not appear in any hypothesis yet
-    For every uncovered transaction, write an additional hypothesis that
-    names it explicitly before proceeding to FORMAT. Do not omit this step
-    because the hypothesis limit is reached — coverage takes precedence
-    over the maximum count. This check runs internally; the list is not
-    printed in the report output.
+    COVERAGE CHECK — before finalising hypotheses, verify every label in
+    mandatedHypothesisTargets appears by name. Add a hypothesis for any
+    that do not. Coverage takes precedence over the maximum count.
 
   FORMAT — numbered list, minimum 1, maximum 6:
     Write only hypotheses supported by actual signals in the input data.

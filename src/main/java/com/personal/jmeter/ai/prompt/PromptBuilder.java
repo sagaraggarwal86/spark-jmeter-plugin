@@ -514,27 +514,29 @@ public class PromptBuilder {
         if (errPct > 2.0) {
             label = "ERROR-BOUND";
             reasoning = String.format(
-                    "globalStats.errorRatePct=%.2f%% exceeds 2.0%% threshold.", errPct);
+                    "Classification: %s. errorRatePct=%.2f%%, latencyRatio=%.2f, plateaued=%s.",
+                    "ERROR-BOUND", errPct, latencyRatio, plateaued);
         } else if (plateaued && latencyRatio > 3.0) {
             label = "CAPACITY-WALL";
             reasoning = String.format(
-                    "TPS plateaued (ratio=%.2f) AND latencyRatio=%.2f > 3.0.", plateauRatio, latencyRatio);
+                    "Classification: %s. plateauRatio=%.2f, latencyRatio=%.2f, errorRatePct=%.2f%%.",
+                    "CAPACITY-WALL", plateauRatio, latencyRatio, errPct);
         } else if (!plateaued && latencyRatio > 3.0 && errPct <= 2.0) {
             label = "LATENCY-BOUND";
             reasoning = String.format(
-                    "latencyRatio=%.2f > 3.0 AND TPS not plateaued AND errorRatePct=%.2f%% <= 2.0%%.",
-                    latencyRatio, errPct);
+                    "Classification: %s. latencyRatio=%.2f, plateaued=%s, errorRatePct=%.2f%%.",
+                    "LATENCY-BOUND", latencyRatio, plateaued, errPct);
         } else if (plateaued && latencyRatio <= 3.0 && errPct <= 2.0) {
             label = "THROUGHPUT-BOUND";
             reasoning = String.format(
-                    "TPS plateaued (ratio=%.2f) AND latencyRatio=%.2f <= 3.0 AND errorRatePct=%.2f%% <= 2.0%%.",
-                    plateauRatio, latencyRatio, errPct);
+                    "Classification: %s. plateauRatio=%.2f, latencyRatio=%.2f, errorRatePct=%.2f%%.",
+                    "THROUGHPUT-BOUND", plateauRatio, latencyRatio, errPct);
         } else {
             // DEFAULT
             label = "THROUGHPUT-BOUND";
             reasoning = String.format(
-                    "No classification threshold fully met (errorRatePct=%.2f%%, latencyRatio=%.2f, plateaued=%s). DEFAULT applied.",
-                    errPct, latencyRatio, plateaued);
+                    "Classification: %s (default). errorRatePct=%.2f%%, latencyRatio=%.2f, plateaued=%s.",
+                    "THROUGHPUT-BOUND", errPct, latencyRatio, plateaued);
         }
 
         result.put("label", label);
@@ -1014,6 +1016,22 @@ public class PromptBuilder {
                 summary.get("rtSlaSummary"),
                 summary.get("classificationSummary"),
                 globalStats));
+        // mandatedHypothesisTargets: top-5 transactions by errorRatePct from errorEndpoints,
+        // pre-extracted by Java so the Root Cause Hypotheses section has an explicit,
+        // ordered list of transactions that must be named in at least one hypothesis.
+        // Eliminates the model's need to self-scan and self-verify errorEndpoints coverage,
+        // which proved unreliable across all providers in testing.
+        // Empty list when no errors recorded — prompt skips the rule entirely.
+        List<Map<String, Object>> mandatedTargets = new ArrayList<>();
+        int mandatedLimit = Math.min(5, cappedErrors.size());
+        for (int i = 0; i < mandatedLimit; i++) {
+            Map<String, Object> src = cappedErrors.get(i);
+            Map<String, Object> t = new LinkedHashMap<>();
+            t.put("label", src.get("label"));
+            t.put("errorRatePct", src.get(KEY_ERROR_RATE_PCT));
+            mandatedTargets.add(t);
+        }
+        summary.put("mandatedHypothesisTargets", mandatedTargets);
         return summary;
     }
 
