@@ -40,6 +40,7 @@ import java.util.regex.Pattern;
  * <p>A successful live-ping result for a given provider key is cached for the
  * lifetime of the JVM.  A failed ping clears the cache entry so it is
  * re-tested on the next attempt.</p>
+ * @since 4.6.0
  */
 public final class AiProviderRegistry {
 
@@ -288,7 +289,7 @@ public final class AiProviderRegistry {
         if (!orderProp.isBlank()) {
             List<String> userOrder = new ArrayList<>();
             for (String part : orderProp.split(",")) {
-                String key = part.trim().toLowerCase();
+                String key = part.trim().toLowerCase(java.util.Locale.ROOT);
                 if (!key.isEmpty() && !userOrder.contains(key)) {
                     userOrder.add(key);
                 }

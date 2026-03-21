@@ -7,6 +7,7 @@ import java.util.Objects;
  *
  * <p>Extracted from {@code AggregateReportPanel} to satisfy the 300-line class
  * design limit (Standard 3 SRP). This is a pure value object with no behaviour.</p>
+ * @since 4.6.0
  */
 public final class ScenarioMetadata {
     /**

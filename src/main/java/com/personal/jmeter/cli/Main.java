@@ -31,6 +31,7 @@ import java.net.URL;
  * java -cp jaar-jmeter-plugin.jar com.personal.jmeter.cli.Main \
  *   -i results.jtl --provider groq --config ai-reporter.properties
  * </pre>
+ * @since 4.6.0
  */
 public final class Main {
 

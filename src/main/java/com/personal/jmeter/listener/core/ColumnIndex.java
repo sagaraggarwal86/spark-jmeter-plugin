@@ -10,6 +10,7 @@ package com.personal.jmeter.listener.core;
  *
  * <p>Single source of truth for column ordering — any change here
  * propagates automatically to the table, CSV export, and AI prompt.</p>
+ * @since 4.6.0
  */
 public final class ColumnIndex {
 

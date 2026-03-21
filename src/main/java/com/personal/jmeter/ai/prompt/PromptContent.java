@@ -14,6 +14,7 @@ import java.util.Objects;
  *
  * @param systemPrompt static analytical framework instructions; must not be null
  * @param userMessage  runtime test data with substituted placeholders; must not be null
+ * @since 4.6.0
  */
 public record PromptContent(String systemPrompt, String userMessage) {
 

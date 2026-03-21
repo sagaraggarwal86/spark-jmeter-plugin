@@ -21,6 +21,7 @@ import java.nio.charset.StandardCharsets;
  * {@code =} sign. Commented-out or missing entries are treated as absent.</p>
  *
  * <p>All methods are static; this class is a stateless utility.</p>
+ * @since 4.6.0
  */
 public final class DelimiterResolver {
 

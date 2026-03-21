@@ -10,6 +10,7 @@ import java.io.IOException;
  * need no signature change. Typed subclass allows {@link com.personal.jmeter.cli.Main}
  * to map parse failures to {@code EXIT_PARSE_ERROR (2)} without string-matching
  * exception messages.</p>
+ * @since 4.6.0
  */
 public class JtlParseException extends IOException {
 

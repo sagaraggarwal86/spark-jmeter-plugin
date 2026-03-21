@@ -27,6 +27,7 @@ import java.util.Objects;
  *
  * <p>{@link #buildTransactionMetricsSection(List)} and {@link #escapeHtml(String)}
  * are package-accessible for unit testing without touching the file system.</p>
+ * @since 4.6.0
  */
 public class HtmlReportRenderer {
 

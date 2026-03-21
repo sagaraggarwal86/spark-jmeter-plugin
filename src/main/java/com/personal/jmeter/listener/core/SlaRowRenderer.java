@@ -20,6 +20,7 @@ import java.util.function.Supplier;
  *
  * <p>Install via {@code table.setDefaultRenderer(Object.class, renderer)}
  * after the table has been constructed.</p>
+ * @since 4.6.0
  */
 public final class SlaRowRenderer extends DefaultTableCellRenderer {
 

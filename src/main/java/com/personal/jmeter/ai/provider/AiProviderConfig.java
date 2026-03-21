@@ -6,6 +6,7 @@ package com.personal.jmeter.ai.provider;
  * <p>Instances are created by {@link AiProviderRegistry} after reading and merging
  * {@code ai-reporter.properties} with built-in provider defaults. All fields are
  * guaranteed non-null and non-blank when produced by the registry.</p>
+ * @since 4.6.0
  */
 public final class AiProviderConfig {
 

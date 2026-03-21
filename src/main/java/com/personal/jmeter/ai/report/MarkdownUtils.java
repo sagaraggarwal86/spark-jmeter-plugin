@@ -27,6 +27,7 @@ package com.personal.jmeter.ai.report;
  * <p>Neither token is ever visible in the rendered HTML report.
  * {@link #stripVerdictLine(String)} removes all lines starting with either
  * {@code VERDICT:} or {@code BRIEF_VERDICT:} before rendering.</p>
+ * @since 4.6.0
  */
 public final class MarkdownUtils {
 
@@ -60,27 +61,10 @@ public final class MarkdownUtils {
     public static String extractVerdict(String markdown) {
         if (markdown == null || markdown.isBlank()) return "UNDECISIVE";
         String[] lines = markdown.split("\n");
-
-        // Pass 1 — canonical: scan from the bottom for VERDICT:
-        // Accepts the token on its own line (equals) OR inline at the end of
-        // the last sentence (endsWith) — some models append it to the paragraph.
-        for (int i = lines.length - 1; i >= 0; i--) {
-            String line = normaliseTokenLine(lines[i]);
-            if (!line.isEmpty()) {
-                if (line.equals("VERDICT:PASS") || line.endsWith("VERDICT:PASS")) return "PASS";
-                if (line.equals("VERDICT:FAIL") || line.endsWith("VERDICT:FAIL")) return "FAIL";
-                break; // last non-blank line has no VERDICT: token — stop
-            }
-        }
-
-        // Pass 2 — resilient fallback: scan from the top for BRIEF_VERDICT:
-        for (String raw : lines) {
-            String line = normaliseTokenLine(raw);
-            if (line.equals("BRIEF_VERDICT:PASS") || line.endsWith("BRIEF_VERDICT:PASS")) return "PASS";
-            if (line.equals("BRIEF_VERDICT:FAIL") || line.endsWith("BRIEF_VERDICT:FAIL")) return "FAIL";
-        }
-
-        return "UNDECISIVE";
+        String canonical = findCanonicalVerdict(lines);
+        if (canonical != null) return canonical;
+        String fallback = findBriefVerdict(lines);
+        return fallback != null ? fallback : "UNDECISIVE";
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -110,26 +94,8 @@ public final class MarkdownUtils {
     public static String verdictSource(String markdown) {
         if (markdown == null || markdown.isBlank()) return "UNDECISIVE";
         String[] lines = markdown.split("\n");
-
-        // Pass 1 — canonical: VERDICT: at end (own line or inline at end of sentence)
-        for (int i = lines.length - 1; i >= 0; i--) {
-            String line = normaliseTokenLine(lines[i]);
-            if (!line.isEmpty()) {
-                if (line.equals("VERDICT:PASS") || line.equals("VERDICT:FAIL")
-                        || line.endsWith("VERDICT:PASS") || line.endsWith("VERDICT:FAIL"))
-                    return "CANONICAL";
-                break;
-            }
-        }
-
-        // Pass 2 — fallback: BRIEF_VERDICT: anywhere
-        for (String raw : lines) {
-            String line = normaliseTokenLine(raw);
-            if (line.equals("BRIEF_VERDICT:PASS") || line.equals("BRIEF_VERDICT:FAIL")
-                    || line.endsWith("BRIEF_VERDICT:PASS") || line.endsWith("BRIEF_VERDICT:FAIL"))
-                return "FALLBACK";
-        }
-
+        if (findCanonicalVerdict(lines) != null) return "CANONICAL";
+        if (findBriefVerdict(lines) != null) return "FALLBACK";
         return "UNDECISIVE";
     }
 
@@ -192,6 +158,41 @@ public final class MarkdownUtils {
     // ─────────────────────────────────────────────────────────────
     // Private helpers
     // ─────────────────────────────────────────────────────────────
+
+    /**
+     * Scans the last non-blank line for a {@code VERDICT:PASS} or {@code VERDICT:FAIL}
+     * token (on its own line or inline at the end of a sentence).
+     *
+     * @param lines pre-split markdown lines
+     * @return {@code "PASS"}, {@code "FAIL"}, or {@code null} if not found
+     */
+    private static String findCanonicalVerdict(String[] lines) {
+        for (int i = lines.length - 1; i >= 0; i--) {
+            String line = normaliseTokenLine(lines[i]);
+            if (!line.isEmpty()) {
+                if (line.equals("VERDICT:PASS") || line.endsWith("VERDICT:PASS")) return "PASS";
+                if (line.equals("VERDICT:FAIL") || line.endsWith("VERDICT:FAIL")) return "FAIL";
+                break; // last non-blank line has no VERDICT: token — stop
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Scans from the top for a {@code BRIEF_VERDICT:PASS} or {@code BRIEF_VERDICT:FAIL}
+     * truncation-anchor token.
+     *
+     * @param lines pre-split markdown lines
+     * @return {@code "PASS"}, {@code "FAIL"}, or {@code null} if not found
+     */
+    private static String findBriefVerdict(String[] lines) {
+        for (String raw : lines) {
+            String line = normaliseTokenLine(raw);
+            if (line.equals("BRIEF_VERDICT:PASS") || line.endsWith("BRIEF_VERDICT:PASS")) return "PASS";
+            if (line.equals("BRIEF_VERDICT:FAIL") || line.endsWith("BRIEF_VERDICT:FAIL")) return "FAIL";
+        }
+        return null;
+    }
 
     /**
      * Trims whitespace and strips markdown emphasis markers ({@code *}, {@code _},

@@ -35,6 +35,7 @@ import java.util.*;
  * {@code breachedThresholds} values are always consistent with the SLA threshold
  * the user actually cares about — eliminating contradictory signals between
  * {@code anomalyTransactions} and the SLA evaluation in the system prompt.</p>
+ * @since 4.6.0
  */
 public class PromptBuilder {
 
@@ -113,7 +114,7 @@ public class PromptBuilder {
      * No-arg constructor for tests and backward compatibility.
      * Uses a minimal hardcoded stub prompt so tests have no classpath dependency.
      * Production code always uses {@link #PromptBuilder(String)} with a prompt
-     * loaded by {@link com.personal.jmeter.ai.PromptLoader}.
+     * loaded by {@link com.personal.jmeter.ai.prompt.PromptLoader}.
      */
     PromptBuilder() {
         this("You are a performance engineer. Analyse the JMeter results and report findings.");
@@ -302,7 +303,7 @@ public class PromptBuilder {
 
         // Determine which field to compare — avgMs for "Avg (ms)", pnnMs for percentile
         String metric = (request.rtSlaMetric() != null
-                && request.rtSlaMetric().toLowerCase().contains("avg"))
+                && request.rtSlaMetric().toLowerCase(java.util.Locale.ROOT).contains("avg"))
                 ? "avgMs" : "pnnMs";
 
         result.put("configured", true);

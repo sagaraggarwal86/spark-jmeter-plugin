@@ -326,7 +326,7 @@ final class CliArgs {
 
         // SLA dependency
         if (rtMetric != null && !rtMetric.isBlank()) {
-            String lower = rtMetric.toLowerCase();
+            String lower = rtMetric.toLowerCase(java.util.Locale.ROOT);
             if (!lower.equals("avg") && !lower.equals("percentile"))
                 errors.add("--rt-metric must be 'avg' or 'percentile'");
             rtMetric = lower;
@@ -344,6 +344,6 @@ final class CliArgs {
 
         // Normalise provider to lowercase
         if (provider != null)
-            provider = provider.toLowerCase();
+            provider = provider.toLowerCase(java.util.Locale.ROOT);
     }
 }

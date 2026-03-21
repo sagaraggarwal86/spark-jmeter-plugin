@@ -26,6 +26,7 @@ import java.util.Objects;
  * <p>Retry behaviour: up to {@value #MAX_ATTEMPTS} attempts with a
  * {@value #RETRY_DELAY_MS} ms delay between attempts. Only HTTP 429 and 5xx
  * responses are retried; 4xx errors other than 429 are terminal.</p>
+ * @since 4.6.0
  */
 public class AiReportService {
 

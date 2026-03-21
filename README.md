@@ -17,6 +17,7 @@ runtime overhead.
 - [AI Performance Report](#ai-performance-report)
 - [Local LLM Support](#local-llm-support)
 - [CLI Mode](#cli-mode)
+- [Large JTL Files](#large-jtl-files)
 - [Running Tests](#running-tests)
 - [Troubleshooting](#troubleshooting)
 - [Contributing](#contributing)
@@ -32,7 +33,7 @@ runtime overhead.
 | ⏱️ **Start / End Offset**      | Exclude ramp-up and ramp-down periods by entering a time window in seconds                       |
 | 📈 **Configurable Percentile** | Set any percentile value: 50th, 90th, 95th, 99th, or custom                                      |
 | 🔍 **Transaction Filter**      | Filter by transaction name with Include/Exclude mode, plain text or regex                        |
-| 👁️ **Column Visibility**      | Show or hide any column via a dropdown multi-select control                                      |
+| 👁️ **Column Visibility**      | Show or hide any column via a dropdown multi-select control                                       |
 | ✅ **Pass / Fail Counts**       | Dedicated columns for transactions passed and transactions failed                                |
 | 🕐 **Test Time Info**          | Start Date/Time, End Date/Time, and total Duration shown automatically                           |
 | 🔀 **Sortable Columns**        | Click any column header to sort ascending; click again for descending                            |
@@ -40,8 +41,9 @@ runtime overhead.
 | 💾 **CSV Export**              | Save all visible columns to a CSV file; SLA status columns (PASS/FAIL) included when configured  |
 | 🤖 **AI Performance Report**   | Generate a styled HTML report with deep-dive analysis, powered by any OpenAI-compatible provider |
 | 📊 **Chart Interval**          | Configure the time-bucket interval for performance charts (default: auto, or set custom)         |
-| 🔄 **Provider Reload**         | Reload the AI provider list from `ai-reporter.properties` without restarting JMeter              |
-| 📐 **Delimiter Detection**     | Automatically reads the JTL delimiter from JMeter's properties files (`;`, `                     |`, `\t`, etc.)       |
+| 🔄 **Provider Reload**         | Reload the AI provider list from `ai-reporter.properties` without restarting JMeter             |
+| 📐 **Delimiter Detection**     | Automatically reads the JTL delimiter from JMeter's properties files (`,`, `;`, `\t`, etc.)      |
+| 🕒 **Timestamp Format**        | Auto-detects epoch-ms and formatted timestamps (`yyyy/MM/dd HH:mm:ss`, `MM/dd/yyyy`, etc.)      |
 | 🚫 **No Live Metrics**         | Designed for post-test JTL analysis — no runtime overhead                                        |
 
 ---
@@ -207,8 +209,17 @@ computes the classification, verdict, or SLA outcomes itself.
 | Root Cause Hypotheses     | Ranked list of probable causes with supporting metric evidence     |
 | Recommendations           | Prioritised action table mapped to root cause findings             |
 | Verdict                   | Single PASS or FAIL outcome from pre-computed verdict              |
-| Transaction Metrics Table | Full per-transaction breakdown with SLA status                     |
+| Transaction Metrics Table | Full per-transaction breakdown with SLA status columns             |
 | Performance Charts        | Response time, error rate, throughput, and bandwidth over time     |
+
+### Report Exports
+
+The HTML report includes two export buttons:
+
+| Button           | Output                                                                                   |
+|------------------|------------------------------------------------------------------------------------------|
+| **Export Excel** | One worksheet per report tab — analysis sections as prose, Transaction Metrics as a table |
+| **Export PDF**   | Opens the browser print dialog with all tabs expanded and charts visible                 |
 
 ### Truncation Handling
 
@@ -245,6 +256,34 @@ ai.reporter.claude.api.key=sk-ant-your-key-here
 
 Select the provider from the dropdown next to the **Generate AI Report** button. Click **Reload** to
 refresh the provider list after editing `ai-reporter.properties` — no restart needed.
+
+### Provider Order
+
+By default, providers appear in the dropdown in built-in order (Groq first, then Gemini, Mistral, etc.).
+Override this with the `ai.reporter.order` property:
+
+```properties
+ai.reporter.order=cerebras,mistral,groq
+```
+
+Only configured providers (those with a non-blank `api.key`) are shown. Providers not listed in
+`ai.reporter.order` appear after the listed ones, in alphabetical order.
+
+### Custom Providers
+
+Any OpenAI-compatible endpoint can be added by specifying a provider key with `base.url` and `model`:
+
+```properties
+ai.reporter.myprovider.api.key=your-key-here
+ai.reporter.myprovider.base.url=https://api.myprovider.com/v1
+ai.reporter.myprovider.model=my-model-name
+ai.reporter.myprovider.tier=Free
+ai.reporter.myprovider.timeout.seconds=90
+ai.reporter.myprovider.max.tokens=8192
+ai.reporter.myprovider.temperature=0.3
+```
+
+The `tier` property sets the label shown in the dropdown (e.g. `My Provider (Free)`).
 
 ---
 
@@ -380,6 +419,36 @@ All `[CLI]` progress messages go to stderr so stdout stays clean for scripting.
 
 ---
 
+## Large JTL Files
+
+The parser is fully streaming — it never loads the entire file into memory. However, JTL files
+above ~500 MB require careful JVM configuration to avoid GC pressure.
+
+| JTL Size | Recommended JVM Heap | Approx Parse Time (SSD) |
+|----------|----------------------|-------------------------|
+| < 100 MB | Default (256 MB)     | < 2s                    |
+| 100 MB–500 MB | 512 MB          | 2–5s                    |
+| 500 MB–1 GB | `-Xmx1g`          | 5–10s                   |
+| 1–2 GB   | `-Xmx2g`             | 10–20s                  |
+
+**GUI mode:** Set the JVM heap in `<JMETER_HOME>/bin/jmeter.bat` (Windows) or
+`<JMETER_HOME>/bin/jmeter.sh` (macOS/Linux):
+
+```bash
+JVM_ARGS="-Xmx2g"
+```
+
+**CLI mode:** Pass the flag directly:
+
+```bash
+java -Xmx2g -jar jaar-jmeter-plugin-*.jar ...
+```
+
+> **Tip:** Use `--start-offset` and `--end-offset` to trim ramp-up/ramp-down before parsing —
+> this reduces the effective row count significantly on long tests.
+
+---
+
 ## Running Tests
 
 ```bash
@@ -421,6 +490,18 @@ Check that Start/End Offset are not excluding all samples. Verify the filter mod
 The configured delimiter does not match the JTL file. Check
 `jmeter.save.saveservice.default_delimiter` in your JMeter properties files.
 
+**"Unrecognised timestamp format" error when loading a JTL file.**
+The JTL uses a formatted timestamp (e.g. `2026/03/20 14:08:39`). Set the format in
+`<JMETER_HOME>/bin/user.properties`:
+
+```properties
+jmeter.save.saveservice.timestamp_format=yyyy/MM/dd HH:mm:ss
+```
+
+Supported patterns: `yyyy/MM/dd HH:mm:ss.SSS`, `yyyy/MM/dd HH:mm:ss`,
+`yyyy-MM-dd HH:mm:ss.SSS`, `yyyy-MM-dd HH:mm:ss`, `MM/dd/yyyy HH:mm:ss.SSS`,
+`MM/dd/yyyy HH:mm:ss`. Epoch-millisecond JTLs need no configuration.
+
 **The AI report times out.**
 Increase `timeout.seconds` for the provider. Default is 60 seconds; for large JTL files or
 local models, 120–300 seconds is recommended.
@@ -434,6 +515,9 @@ Wait a moment and retry, or switch to a different provider in the dropdown.
 
 **Ollama: "Could not connect" error.**
 Start Ollama with `ollama serve` and verify it is reachable at `http://localhost:11434`.
+
+**Out of memory or slow parsing on large JTL files.**
+See the [Large JTL Files](#large-jtl-files) section for JVM heap recommendations.
 
 ---
 

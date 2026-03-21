@@ -28,6 +28,7 @@ import java.util.function.Supplier;
  *
  * <p>Dependencies are injected at construction time to keep this class testable
  * without a live {@code AggregateReportPanel}.</p>
+ * @since 4.6.0
  */
 public final class CsvExporter {
 
@@ -121,7 +122,7 @@ public final class CsvExporter {
 
         if (fc.showSaveDialog(parent) == JFileChooser.APPROVE_OPTION) {
             File file = fc.getSelectedFile();
-            if (!file.getName().toLowerCase().endsWith(".csv")) {
+            if (!file.getName().toLowerCase(java.util.Locale.ROOT).endsWith(".csv")) {
                 file = new File(file.getAbsolutePath() + ".csv");
             }
             try {

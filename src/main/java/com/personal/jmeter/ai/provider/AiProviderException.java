@@ -14,6 +14,7 @@ import java.io.IOException;
  * <p>Distinct from {@link AiServiceException}, which covers runtime API errors
  * (HTTP errors, empty responses, retry exhaustion) during report generation.
  * This exception covers configuration-time failures before any API call is made.</p>
+ * @since 4.6.0
  */
 public class AiProviderException extends IOException {
 

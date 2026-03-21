@@ -38,6 +38,7 @@ import java.util.concurrent.ExecutorService;
  *
  * <p>All dependencies are constructor-injected, making this class independently
  * unit testable without a database, file-system, or live network connection.</p>
+ * @since 4.6.0
  */
 public class AiReportCoordinator {
 
@@ -102,7 +103,7 @@ public class AiReportCoordinator {
                 fc.setFileFilter(new FileNameExtensionFilter("HTML Files (*.html)", "html"));
                 if (fc.showSaveDialog(null) == JFileChooser.APPROVE_OPTION) {
                     File chosen = fc.getSelectedFile();
-                    if (!chosen.getName().toLowerCase().endsWith(".html")) {
+                    if (!chosen.getName().toLowerCase(java.util.Locale.ROOT).endsWith(".html")) {
                         chosen = new File(chosen.getAbsolutePath() + ".html");
                     }
                     result[0] = chosen.getAbsolutePath();

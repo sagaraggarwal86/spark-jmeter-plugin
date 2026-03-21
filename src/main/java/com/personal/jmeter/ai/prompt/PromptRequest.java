@@ -19,6 +19,7 @@ import java.util.Objects;
  * @param errorSlaThresholdPct user-configured error % SLA; "Not configured" if disabled
  * @param rtSlaThresholdMs     user-configured response time SLA in ms; "Not configured" if disabled
  * @param rtSlaMetric          response time metric the RT SLA applies to (e.g. "Avg (ms)", "P90 (ms)")
+ * @since 4.6.0
  */
 public record PromptRequest(
         String users,

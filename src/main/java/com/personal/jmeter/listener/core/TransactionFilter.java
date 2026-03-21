@@ -15,6 +15,7 @@ import java.util.regex.PatternSyntaxException;
  *       they produce no matches. Compiled patterns are cached to avoid
  *       recompilation on every table row during live search.</li>
  * </ul>
+ * @since 4.6.0
  */
 public final class TransactionFilter {
 
@@ -39,6 +40,7 @@ public final class TransactionFilter {
      * @param label    transaction name to test (never {@code null})
      * @param pattern  search text; {@code null} or blank means "show everything"
      * @param useRegex {@code true} to treat {@code pattern} as a regex
+     * @return {@code true} if the label matches the pattern, or the pattern is blank
      */
     public static boolean matches(String label, String pattern, boolean useRegex) {
         if (pattern == null || pattern.isBlank()) {
@@ -47,7 +49,7 @@ public final class TransactionFilter {
         if (useRegex) {
             return matchesRegex(label, pattern);
         }
-        return label.toLowerCase().contains(pattern.toLowerCase());
+        return label.toLowerCase(java.util.Locale.ROOT).contains(pattern.toLowerCase(java.util.Locale.ROOT));
     }
 
     /**

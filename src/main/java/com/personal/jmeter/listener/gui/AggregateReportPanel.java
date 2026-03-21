@@ -48,6 +48,13 @@ import java.util.function.Supplier;
  *   <li>{@link #setSuppressReload(boolean)}</li>
  *   <li>{@link #setMetadataSupplier(Supplier)}</li>
  * </ul>
+ *
+ * <p><b>Known design debt:</b> this class currently exceeds the 300-line SRP
+ * guideline (~958 lines). Splitting requires a dedicated GUI-test strategy
+ * (headless Swing or AssertJ-Swing) to validate behaviour after extraction.
+ * Tracked for a future release once a GUI-test harness is in place.</p>
+ *
+ * @since 4.6.0
  */
 public class AggregateReportPanel extends JPanel {
 

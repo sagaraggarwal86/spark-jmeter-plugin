@@ -20,6 +20,7 @@ import java.util.Map;
  * <p>Extracted from {@code AggregateReportPanel} to satisfy the 300-line class
  * design limit (Standard 3 SRP). Responsibility: data rendering only — no I/O,
  * no network, no file access.</p>
+ * @since 4.6.0
  */
 public final class TablePopulator {
 
@@ -73,11 +74,13 @@ public final class TablePopulator {
      * {@link #buildRow} (GUI table) and
      * {@link com.personal.jmeter.cli.CliReportPipeline} (CLI HTML report).</p>
      *
-     * @param calc      aggregated statistics for one label
+     * @param calc      aggregated statistics for one label; must not be null
      * @param pFraction percentile as a fraction (e.g. 0.90 for P90)
      * @return 13-element string array matching {@link ColumnIndex#ALL_COLUMNS}
+     * @throws NullPointerException if {@code calc} is null
      */
     public static String[] buildRowAsStrings(SamplingStatCalculator calc, double pFraction) {
+        java.util.Objects.requireNonNull(calc, "calc must not be null");
         long total = calc.getCount();
         long failed = Math.min(Math.round(calc.getErrorPercentage() * total), total);
         return new String[]{

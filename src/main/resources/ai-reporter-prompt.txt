@@ -178,9 +178,13 @@ REPORT SECTIONS — COMPLETENESS RULES (binding, not advisory)
     overallVerdictSummary.reasoning explains the determination.
     Write only the resulting verdict sentence — never the steps above.
     For a PASS verdict: the sentence MUST contain the standalone word PASS
-    (not "PASSed", not "passed", not embedded in another word).
-    Correct:   "The test result is PASS — all configured SLAs were met..."
+    (not "PASSed", not "passed", not embedded in another word) AND the
+    verbatim classificationSummary.label (e.g. THROUGHPUT-BOUND) in
+    all-caps. Paraphrasing the label (e.g. "throughput saturation",
+    "capacity ceiling") is a violation — use the exact label string.
+    Correct:   "The test result is PASS — the system is THROUGHPUT-BOUND..."
     Incorrect: "The test PASSed all SLAs..." (PASS embedded in PASSed)
+    Incorrect: "...showing throughput saturation" (label paraphrased)
     Read the "SLA Verdict" block in the input and cite the worst transaction
     and its exact value from that block — do not cite global averages
     (globalStats.errorRatePct, globalStats pNN, or avgResponseMs).
@@ -386,9 +390,16 @@ REPORT SECTIONS — COMPLETENESS RULES (binding, not advisory)
     If errorTypeSummary is empty: write "Not available" for both cells.
     Threshold Status: use "NOT CONFIGURED" when Error Rate SLA is absent —
       never leave blank.
-    Breaching Endpoints: use errorSlaSummary.breachingTransactions —
-      list each label and its errorRatePct. Write "None" if
-      errorSlaSummary.verdict is "WITHIN", or "N/A" if "NOT_CONFIGURED".
+    Breaching Endpoints: this cell MUST be determined solely by
+      errorSlaSummary.verdict — never by errorEndpoints or any other field.
+      IF errorSlaSummary.verdict is "NOT_CONFIGURED": write exactly "N/A"
+        and nothing else. Do NOT list transactions from errorEndpoints here.
+        There is no SLA threshold — no transaction can breach a threshold
+        that does not exist. Populating this cell with endpoint names when
+        no SLA is configured is a critical accuracy violation.
+      IF errorSlaSummary.verdict is "WITHIN": write "None".
+      IF errorSlaSummary.verdict is "BREACH": list each label and its
+        errorRatePct from errorSlaSummary.breachingTransactions only.
 
 
 ## Advanced Web Diagnostics
@@ -485,6 +496,48 @@ REPORT SECTIONS — COMPLETENESS RULES (binding, not advisory)
     - Every hypothesis must name: the probable cause, the specific
       metric or error code that implicates it, the discriminating
       mechanism that connects them, and the component layer.
+
+  TRANSACTION COVERAGE RULE (mandatory — applies before ranking):
+    errorEndpoints is pre-sorted by errorRatePct descending — the highest
+    error-rate transaction is always first.
+
+    Step 1 — Identify critical transactions: take the top 5 entries from
+    errorEndpoints by errorRatePct. These are the critical-error transactions
+    regardless of what their absolute error rate values are. Every
+    critical-error transaction MUST be named explicitly by its exact label
+    in at least one hypothesis. If errorEndpoints has fewer than 5 entries,
+    cover all of them. If errorEndpoints is empty, skip this rule entirely.
+
+    Step 2 — Grouping: critical-error transactions may be grouped into a
+    single hypothesis ONLY when ALL of the following conditions are met:
+      (a) they share the identical HTTP method (e.g. all POST, or all GET);
+      (b) the global errorTypeSummary shows a Mixed/Indeterminate pattern
+          (no single error code exceeds 50% of total failures) — meaning
+          per-transaction error code breakdown is unavailable and all
+          transactions in the group are exposed to the same global error
+          distribution;
+      (c) the probable cause and the owning component layer are the same
+          for every transaction in the group.
+    When grouping, name every transaction in the group explicitly by label —
+    never write "various endpoints" or "multiple transactions".
+    When errorTypeSummary is NOT Mixed (a single code dominates globally),
+    transactions with different error profiles must be in separate hypotheses.
+
+    Step 3 — Separation: transactions that differ in HTTP method must never
+    be merged into one hypothesis. Different HTTP methods imply different code
+    paths, different teams, and different remediation paths regardless of
+    how similar their error rates appear.
+
+    Step 4 — Coverage verification (mandatory — execute before writing any
+    hypothesis to the report):
+    List every transaction from Step 1 and mark it covered or uncovered:
+      covered   — its exact label appears in a hypothesis already drafted
+      uncovered — it does not appear in any hypothesis yet
+    For every uncovered transaction, write an additional hypothesis that
+    names it explicitly before proceeding to FORMAT. Do not omit this step
+    because the hypothesis limit is reached — coverage takes precedence
+    over the maximum count. This check runs internally; the list is not
+    printed in the report output.
 
   FORMAT — numbered list, minimum 1, maximum 6:
     Write only hypotheses supported by actual signals in the input data.
@@ -585,7 +638,11 @@ REPORT SECTIONS — COMPLETENESS RULES (binding, not advisory)
     acceptable bounds."
   and omit the table entirely.
   Hypothesis column: write the hypothesis number (e.g. "#1", "#2")
-    that this action addresses.
+    that this action addresses. Hypothesis numbers are globally sequential
+    across the entire table — do not reset the counter when the priority
+    level changes (e.g. P2 → P3). If the Root Cause Hypotheses section
+    contains 4 hypotheses, valid values are #1, #2, #3, #4 only.
+    A row referencing #1 after a row referencing #3 is a numbering error.
   Priority column: P1, P2, or P3 only — no other values.
   Effort column: Low, Medium, or High only — no other values.
   Sort rows by Priority ascending (P1 first), then Effort ascending

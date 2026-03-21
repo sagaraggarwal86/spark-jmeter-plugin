@@ -25,6 +25,7 @@ import java.util.*;
  * {@link SamplingStatCalculator} instances and 30-second time buckets.</p>
  *
  * <p>Low-level parsing helpers are delegated to {@link JtlParserCore}.</p>
+ * @since 4.6.0
  */
 public class JTLParser {
 

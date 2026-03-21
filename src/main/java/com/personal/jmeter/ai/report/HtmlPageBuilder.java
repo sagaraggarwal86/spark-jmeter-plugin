@@ -209,7 +209,7 @@ final class HtmlPageBuilder {
 
         String preamble = "";
         for (String fragment : fragments) {
-            if (!fragment.toLowerCase().contains("<h2")) {
+            if (!fragment.toLowerCase(java.util.Locale.ROOT).contains("<h2")) {
                 // Text before the first heading — hold as preamble, prepend to first section
                 preamble = fragment;
                 continue;
