@@ -8,7 +8,7 @@ assignees: ''
 ---
 
 **Plugin version**
-e.g. 4.7.0
+e.g. 5.0.0
 
 **Environment**
 

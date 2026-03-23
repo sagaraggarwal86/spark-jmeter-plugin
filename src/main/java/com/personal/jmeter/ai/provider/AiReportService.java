@@ -185,8 +185,8 @@ public class AiReportService {
             return SharedHttpClient.get().send(request, HttpResponse.BodyHandlers.ofString());
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            log.error("sendRequest: request interrupted. provider={} reason={}",
-                    config.providerKey, e.getMessage(), e);
+            log.warn("sendRequest: request interrupted. provider={} reason={}", // CHANGED: ERROR+stack → WARN, no trace
+                    config.providerKey, e.getMessage());
             throw new AiServiceException(
                     config.displayName + " API request was interrupted before a response was received. "
                             + "This may indicate a network issue or the request was cancelled. Please try again.", e);

@@ -19,7 +19,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Objects;
-import java.util.concurrent.ExecutorService;
+import java.util.concurrent.atomic.AtomicBoolean; // CHANGED
 
 /**
  * Orchestrates the AI performance report workflow on a background thread.
@@ -36,6 +36,12 @@ import java.util.concurrent.ExecutorService;
  * being passed to {@link #start}. This guarantees JMM visibility with no cross-thread
  * access to mutable objects.</p>
  *
+ * <p>{@link #start} executes {@code executeReport} directly on the caller's thread
+ * (already a background thread supplied by {@link AiReportLauncher}). No secondary
+ * executor submission is made; this simplifies cancellation — the caller tracks the
+ * single background thread and interrupts it when the user dismisses the progress
+ * dialog.</p>
+ *
  * <p>All dependencies are constructor-injected, making this class independently
  * unit testable without a database, file-system, or live network connection.</p>
  * @since 4.6.0
@@ -46,21 +52,19 @@ public class AiReportCoordinator {
 
     private final AiReportService aiService;
     private final HtmlReportRenderer renderer;
-    private final ExecutorService executor;
+
+    // CHANGED: executor removed — start() runs directly on the caller's background thread
 
     /**
      * Constructs the coordinator with all required collaborators.
      *
      * @param aiService the AI API client; must not be null
      * @param renderer  the HTML report renderer; must not be null
-     * @param executor  the background executor for the AI call; must not be null
      */
     public AiReportCoordinator(AiReportService aiService,
-                               HtmlReportRenderer renderer,
-                               ExecutorService executor) {
+                               HtmlReportRenderer renderer) { // CHANGED: executor param removed
         this.aiService = Objects.requireNonNull(aiService, "aiService must not be null");
         this.renderer = Objects.requireNonNull(renderer, "renderer must not be null");
-        this.executor = Objects.requireNonNull(executor, "executor must not be null");
     }
 
     private static void openInBrowser(String htmlPath) {
@@ -153,39 +157,49 @@ public class AiReportCoordinator {
     // ─────────────────────────────────────────────────────────────
 
     /**
-     * Submits the AI report workflow to the background executor.
-     * Progress is reported via {@code progressLabel}; {@code triggerBtn} is
-     * re-enabled and {@code progressDialog} is disposed when the task completes.
+     * Executes the AI report workflow directly on the calling thread (which must be a
+     * background thread — never the EDT). Progress is reported via {@code progressLabel};
+     * {@code triggerBtn} is re-enabled and {@code progressDialog} is disposed when the
+     * task completes or is cancelled.
      *
      * <p>{@code prompt} must be built by the caller on the Swing EDT before invoking
      * this method. The resulting {@link PromptContent} is an immutable record
-     * (two {@code final} Strings) and is safe to hand off to the background executor.</p>
+     * (two {@code final} Strings) and is safe to hand off to the background thread.</p>
+     *
+     * <p>If {@code cancelled} is set to {@code true} by the progress-dialog close
+     * listener before or during execution, the background thread is interrupted and
+     * no error dialog is shown on completion.</p>
      *
      * @param prompt         pre-built analysis prompt; must not be null
      * @param context        immutable snapshot of all data needed by the workflow
      * @param progressDialog modal-less progress dialog shown while the task runs
      * @param progressLabel  label inside the dialog updated with status messages
      * @param triggerBtn     the button that started the workflow (re-enabled on completion)
+     * @param cancelled      shared flag set by the dialog close listener on user cancellation // CHANGED
      */
     public void start(PromptContent prompt,
                       ReportContext context,
                       JDialog progressDialog,
                       JLabel progressLabel,
-                      JButton triggerBtn) {
+                      JButton triggerBtn,
+                      AtomicBoolean cancelled) { // CHANGED: added cancelled; runs directly (no executor.submit)
         Objects.requireNonNull(prompt, "prompt must not be null");
         Objects.requireNonNull(context, "context must not be null");
         Objects.requireNonNull(progressDialog, "progressDialog must not be null");
         Objects.requireNonNull(progressLabel, "progressLabel must not be null");
         Objects.requireNonNull(triggerBtn, "triggerBtn must not be null");
+        Objects.requireNonNull(cancelled, "cancelled must not be null"); // CHANGED
 
-        executor.submit(() -> executeReport(prompt, context, progressDialog, progressLabel, triggerBtn));
+        // CHANGED: direct call — caller is already on a background thread
+        executeReport(prompt, context, progressDialog, progressLabel, triggerBtn, cancelled);
     }
 
     private void executeReport(PromptContent prompt,
                                ReportContext ctx,
                                JDialog progressDialog,
                                JLabel progressLabel,
-                               JButton triggerBtn) {
+                               JButton triggerBtn,
+                               AtomicBoolean cancelled) { // CHANGED: added cancelled
         try {
             setProgress(progressLabel, "Calling " + ctx.providerDisplayName + " (this may take ~30 seconds)...");
             String markdown = aiService.generateReport(prompt);
@@ -209,7 +223,7 @@ public class AiReportCoordinator {
             setProgress(progressLabel, "Rendering HTML report...");
             String htmlPath = renderReport(ctx, strippedMarkdown);
 
-            SwingUtilities.invokeLater(() -> onSuccess(htmlPath, progressDialog, triggerBtn));
+            SwingUtilities.invokeLater(() -> onSuccess(htmlPath, progressDialog, triggerBtn, cancelled.get())); // CHANGED
 
         } catch (IOException ex) {
             // Evict the ping cache when the provider rejects the request with an auth error
@@ -222,14 +236,26 @@ public class AiReportCoordinator {
                         ctx.providerConfig.providerKey);
                 AiProviderRegistry.evictPingCache(ctx.providerConfig);
             }
-            log.error("executeReport: AI report generation failed. reason={}", ex.getMessage(), ex);
-            SwingUtilities.invokeLater(() -> onFailure(ex, progressDialog, triggerBtn));
+            // CHANGED: demote to INFO on cancellation — interrupted exception is expected, not an error
+            if (cancelled.get()) {
+                log.info("executeReport: report generation interrupted by user cancellation. provider={}",
+                        ctx.providerConfig.providerKey);
+            } else {
+                log.error("executeReport: AI report generation failed. reason={}", ex.getMessage(), ex);
+            }
+            SwingUtilities.invokeLater(() -> onFailure(ex, progressDialog, triggerBtn, cancelled.get())); // CHANGED
         } catch (RuntimeException ex) {
-            log.error("executeReport: unexpected error during report generation. reason={}", ex.getMessage(), ex);
+            // CHANGED: demote to INFO on cancellation
+            if (cancelled.get()) {
+                log.info("executeReport: report generation interrupted by user cancellation (runtime). provider={}",
+                        ctx.providerConfig.providerKey);
+            } else {
+                log.error("executeReport: unexpected error during report generation. reason={}", ex.getMessage(), ex);
+            }
             SwingUtilities.invokeLater(() -> onFailure(
                     new IOException("Unexpected error during report generation. "
                             + "Check the log for details. reason=" + ex.getMessage(), ex),
-                    progressDialog, triggerBtn));
+                    progressDialog, triggerBtn, cancelled.get())); // CHANGED
         }
     }
 
@@ -247,18 +273,24 @@ public class AiReportCoordinator {
         return renderer.renderToFile(markdown, outPath, ctx.config, ctx.tableRows, ctx.timeBuckets);
     }
 
-    private void onSuccess(String htmlPath, JDialog progressDialog, JButton triggerBtn) {
+    // CHANGED: added cancelled param — skips browser open when user cancelled
+    private void onSuccess(String htmlPath, JDialog progressDialog, JButton triggerBtn, boolean cancelled) {
         progressDialog.dispose();
         triggerBtn.setEnabled(true);
-        openInBrowser(htmlPath);
+        if (!cancelled) {
+            openInBrowser(htmlPath);
+        }
     }
 
-    private void onFailure(IOException ex, JDialog progressDialog, JButton triggerBtn) {
+    // CHANGED: added cancelled param — skips error dialog when user cancelled; dispose+enable always run (idempotent)
+    private void onFailure(IOException ex, JDialog progressDialog, JButton triggerBtn, boolean cancelled) {
         progressDialog.dispose();
         triggerBtn.setEnabled(true);
-        JOptionPane.showMessageDialog(triggerBtn.getParent(),
-                "Report generation failed:\n\n" + ex.getMessage(),
-                "Error", JOptionPane.ERROR_MESSAGE);
+        if (!cancelled) {
+            JOptionPane.showMessageDialog(triggerBtn.getParent(),
+                    "Report generation failed:\n\n" + ex.getMessage(),
+                    "Error", JOptionPane.ERROR_MESSAGE);
+        }
     }
 
     // ─────────────────────────────────────────────────────────────

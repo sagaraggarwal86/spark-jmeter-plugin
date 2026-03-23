@@ -18,9 +18,13 @@ import org.slf4j.LoggerFactory;
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.WindowAdapter; // CHANGED
+import java.awt.event.WindowEvent;   // CHANGED
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.atomic.AtomicBoolean;    // CHANGED
+import java.util.concurrent.atomic.AtomicReference;  // CHANGED
 
 /**
  * Handles the AI report generation workflow initiated from the panel's button.
@@ -31,6 +35,11 @@ import java.util.concurrent.ExecutorService;
  *
  * <p>All data needed to build the report is supplied via constructor injection
  * and a {@link DataProvider} callback, keeping this class independently testable.</p>
+ *
+ * <p>Closing the progress dialog cancels the in-flight background task: the shared
+ * {@code cancelled} flag is set, the background thread is interrupted, and the dialog
+ * is disposed with the trigger button re-enabled. No error dialog is shown on
+ * cancellation.</p>
  */
 public final class AiReportLauncher {
 
@@ -88,7 +97,10 @@ public final class AiReportLauncher {
      * disables the trigger button and shows the progress dialog before submitting work
      * to the background executor. API key validation and the live ping are performed
      * off the EDT so the UI remains responsive throughout.
-     * Re-enables the button and disposes the dialog on both success and failure.
+     * Re-enables the button and disposes the dialog on both success, failure, and cancellation.
+     *
+     * <p>Closing the progress dialog cancels the in-flight task: the background thread
+     * is interrupted and no error dialog is shown.</p>
      *
      * @param triggerBtn the button that initiated the workflow (re-enabled on completion)
      */
@@ -129,16 +141,26 @@ public final class AiReportLauncher {
         // final Strings) and is safe to hand off to the background executor.
         PromptContent prompt = buildPromptOnEdt(systemPrompt, providerConfig.displayName);
 
-        JDialog progressDialog = buildProgressDialog();
+        // CHANGED: shared cancellation state — flag + background thread reference
+        AtomicBoolean cancelled = new AtomicBoolean(false);
+        AtomicReference<Thread> bgThread = new AtomicReference<>();
+
+        JDialog progressDialog = buildProgressDialog(triggerBtn, cancelled, bgThread); // CHANGED
         JLabel progressLabel = extractProgressLabel(progressDialog);
         progressDialog.setVisible(true);
         triggerBtn.setEnabled(false);
 
+        // CHANGED: executor removed from coordinator constructor
         AiReportCoordinator coordinator = new AiReportCoordinator(
                 new AiReportService(providerConfig),
-                new HtmlReportRenderer(),
-                executor);
+                new HtmlReportRenderer());
+
         executor.submit(() -> {
+            bgThread.set(Thread.currentThread()); // CHANGED: register thread for interrupt
+
+            // CHANGED: handle close clicked before thread actually started
+            if (cancelled.get()) return;
+
             try {
                 SwingUtilities.invokeLater(() -> progressLabel.setText("Validating API key..."));
                 String pingError = AiProviderRegistry.validateAndPing(providerConfig);
@@ -146,22 +168,27 @@ public final class AiReportLauncher {
                     SwingUtilities.invokeLater(() -> {
                         progressDialog.dispose();
                         triggerBtn.setEnabled(true);
-                        JOptionPane.showMessageDialog(parent,
-                                "<html><b>Cannot connect to " + providerConfig.displayName + ".</b><br><br>"
-                                        + pingError.replace("\n", "<br>") + "</html>",
-                                "Provider Validation Failed", JOptionPane.ERROR_MESSAGE);
+                        if (!cancelled.get()) { // CHANGED: skip error dialog on cancel
+                            JOptionPane.showMessageDialog(parent,
+                                    "<html><b>Cannot connect to " + providerConfig.displayName + ".</b><br><br>"
+                                            + pingError.replace("\n", "<br>") + "</html>",
+                                    "Provider Validation Failed", JOptionPane.ERROR_MESSAGE);
+                        }
                     });
                     return;
                 }
-                coordinator.start(prompt, context, progressDialog, progressLabel, triggerBtn);
+                // CHANGED: start() runs directly on this thread; passes cancelled for clean shutdown
+                coordinator.start(prompt, context, progressDialog, progressLabel, triggerBtn, cancelled);
             } catch (RuntimeException ex) {
                 log.error("launch: unexpected error during provider validation. reason={}", ex.getMessage(), ex);
                 SwingUtilities.invokeLater(() -> {
                     progressDialog.dispose();
                     triggerBtn.setEnabled(true);
-                    JOptionPane.showMessageDialog(parent,
-                            "Unexpected error during report generation:\n\n" + ex.getMessage(),
-                            "Unexpected Error", JOptionPane.ERROR_MESSAGE);
+                    if (!cancelled.get()) { // CHANGED: skip error dialog on cancel
+                        JOptionPane.showMessageDialog(parent,
+                                "Unexpected error during report generation:\n\n" + ex.getMessage(),
+                                "Unexpected Error", JOptionPane.ERROR_MESSAGE);
+                    }
                 });
             }
         });
@@ -233,11 +260,28 @@ public final class AiReportLauncher {
                 providerConfig);
     }
 
-    private JDialog buildProgressDialog() {
+    // CHANGED: accepts cancelled + bgThread to wire the close listener
+    private JDialog buildProgressDialog(JButton triggerBtn,
+                                        AtomicBoolean cancelled,
+                                        AtomicReference<Thread> bgThread) {
         Window parentWindow = SwingUtilities.getWindowAncestor(parent);
         JDialog dialog = new JDialog(parentWindow, "Generating AI Report",
                 Dialog.ModalityType.MODELESS);
         dialog.setDefaultCloseOperation(JDialog.DO_NOTHING_ON_CLOSE);
+
+        // CHANGED: close listener — sets flag, interrupts thread, cleans up UI
+        dialog.addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent e) {
+                cancelled.set(true);
+                Thread t = bgThread.get();
+                if (t != null) t.interrupt();
+                dialog.dispose();
+                triggerBtn.setEnabled(true);
+                log.info("buildProgressDialog: report generation cancelled by user.");
+            }
+        });
+
         JLabel label = new JLabel("Initialising...");
         label.setFont(AggregateReportPanel.FONT_REGULAR);
         label.setBorder(BorderFactory.createEmptyBorder(24, 36, 24, 36));
