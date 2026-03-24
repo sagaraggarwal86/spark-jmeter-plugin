@@ -61,30 +61,6 @@ public final class CsvExporter {
         this.slaConfigSupplier = slaConfigSupplier;
     }
 
-    /**
-     * Strips the trailing {@code %} from an Error Rate cell before parsing.
-     */
-    private static double parseErrorRate(Object val) {
-        if (val == null) return 0;
-        try {
-            return Double.parseDouble(val.toString().replace("%", "").trim());
-        } catch (NumberFormatException e) {
-            return 0;
-        }
-    }
-
-    /**
-     * Parses a plain numeric cell value.
-     */
-    private static double parseDouble(Object val) {
-        if (val == null) return 0;
-        try {
-            return Double.parseDouble(val.toString().trim());
-        } catch (NumberFormatException e) {
-            return 0;
-        }
-    }
-
     // ─────────────────────────────────────────────────────────────
     // SLA evaluation helpers
     // ─────────────────────────────────────────────────────────────
@@ -187,10 +163,6 @@ public final class CsvExporter {
         }
     }
 
-    // ─────────────────────────────────────────────────────────────
-    // Parse helpers (mirrors SlaRowRenderer)
-    // ─────────────────────────────────────────────────────────────
-
     /**
      * Evaluates the error-rate SLA for one row.
      *
@@ -199,7 +171,7 @@ public final class CsvExporter {
     private String evaluateErrorSla(int row, SlaConfig sla) {
         if (isTotalRow(row)) return "-";
         if (!sla.isErrorPctEnabled()) return "-";
-        double observed = parseErrorRate(
+        double observed = CellValueParser.parseErrorRate( // CHANGED — delegates to shared utility
                 tableModel.getValueAt(row, ColumnIndex.ERROR_RATE_COL_INDEX));
         return observed > sla.errorPctThreshold ? "FAIL" : "PASS";
     }
@@ -215,7 +187,7 @@ public final class CsvExporter {
         int rtCol = (sla.rtMetric == SlaConfig.RtMetric.AVG)
                 ? ColumnIndex.AVG_COL_INDEX
                 : ColumnIndex.PERCENTILE_COL_INDEX;
-        double observed = parseDouble(tableModel.getValueAt(row, rtCol));
+        double observed = CellValueParser.parseDouble(tableModel.getValueAt(row, rtCol)); // CHANGED — delegates to shared utility
         return observed > sla.rtThresholdMs ? "FAIL" : "PASS";
     }
 

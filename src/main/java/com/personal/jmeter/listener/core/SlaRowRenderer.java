@@ -57,38 +57,6 @@ public final class SlaRowRenderer extends DefaultTableCellRenderer {
     // Renderer contract
     // ─────────────────────────────────────────────────────────────
 
-    /**
-     * Strips the trailing {@code %} from an Error Rate cell before parsing.
-     */
-    private static double parseErrorRate(Object val) {
-        if (val == null) return 0;
-        try {
-            return Double.parseDouble(val.toString().replace("%", "").trim());
-        } catch (NumberFormatException e) {
-            return 0;
-        }
-    }
-
-    // ─────────────────────────────────────────────────────────────
-    // Breach evaluation
-    // ─────────────────────────────────────────────────────────────
-
-    /**
-     * Parses a plain numeric cell value.
-     */
-    private static double parseDouble(Object val) {
-        if (val == null) return 0;
-        try {
-            return Double.parseDouble(val.toString().trim());
-        } catch (NumberFormatException e) {
-            return 0;
-        }
-    }
-
-    // ─────────────────────────────────────────────────────────────
-    // Parse helpers
-    // ─────────────────────────────────────────────────────────────
-
     @Override
     public Component getTableCellRendererComponent(JTable table, Object value,
                                                    boolean isSelected, boolean hasFocus, int row, int column) {
@@ -126,19 +94,19 @@ public final class SlaRowRenderer extends DefaultTableCellRenderer {
 
     private boolean isBreach(JTable table, int row, int modelCol, SlaConfig config) {
         if (modelCol == errorRateColIdx && config.isErrorPctEnabled()) {
-            return parseErrorRate(table.getModel().getValueAt(row, errorRateColIdx))
+            return CellValueParser.parseErrorRate(table.getModel().getValueAt(row, errorRateColIdx)) // CHANGED — delegates to shared utility
                     > config.errorPctThreshold;
         }
         if (modelCol == avgColIdx
                 && config.isRtEnabled()
                 && config.rtMetric == SlaConfig.RtMetric.AVG) {
-            return parseDouble(table.getModel().getValueAt(row, avgColIdx))
+            return CellValueParser.parseDouble(table.getModel().getValueAt(row, avgColIdx)) // CHANGED — delegates to shared utility
                     > config.rtThresholdMs;
         }
         if (modelCol == pnnColIdx
                 && config.isRtEnabled()
                 && config.rtMetric == SlaConfig.RtMetric.PNN) {
-            return parseDouble(table.getModel().getValueAt(row, pnnColIdx))
+            return CellValueParser.parseDouble(table.getModel().getValueAt(row, pnnColIdx)) // CHANGED — delegates to shared utility
                     > config.rtThresholdMs;
         }
         return false;

@@ -202,7 +202,7 @@
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>
-            <version>6.0.3</version>
+            <version>5.11.3</version> <!-- CHANGED: 6.0.3 was pre-release; pinned to latest stable 5.x -->
             <scope>test</scope>
         </dependency>
 
@@ -290,7 +290,6 @@
                                 <exclude>com/personal/jmeter/listener/gui/AiReportLauncher$*.class</exclude>
                                 <exclude>com/personal/jmeter/ai/report/AiReportCoordinator.class</exclude>
                                 <exclude>com/personal/jmeter/ai/report/AiReportCoordinator$*.class</exclude>
-                                <exclude>com/personal/jmeter/ai/report/HtmlPageBuilder.class</exclude>
                                 <!-- HTML report rendering — requires live file system and full render pipeline -->
                                 <exclude>com/personal/jmeter/ai/report/HtmlReportRenderer.class</exclude>
                                 <exclude>com/personal/jmeter/ai/report/HtmlReportRenderer$*.class</exclude>
@@ -300,7 +299,7 @@
                                 <!-- Constants-only class — no executable logic -->
                                 <exclude>com/personal/jmeter/listener/core/ColumnIndex.class</exclude>
                                 <!-- Live-network classes — require real AI provider endpoints -->
-                                <exclude>com/personal/jmeter/ai/provider/AiReportService.class</exclude>
+                                <!-- CHANGED: AiReportService removed from exclusions; extractAndValidateContent is unit-tested in AiReportServiceTest -->
                                 <exclude>com/personal/jmeter/ai/provider/AiProviderRegistry.class</exclude>
                                 <exclude>com/personal/jmeter/ai/provider/SharedHttpClient.class</exclude>
                                 <!-- CLI pipeline — requires live API + full JMeter runtime -->
