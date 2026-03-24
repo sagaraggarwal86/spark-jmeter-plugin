@@ -18,13 +18,13 @@ import org.slf4j.LoggerFactory;
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.WindowAdapter; // CHANGED
-import java.awt.event.WindowEvent;   // CHANGED
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.atomic.AtomicBoolean;    // CHANGED
-import java.util.concurrent.atomic.AtomicReference;  // CHANGED
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Handles the AI report generation workflow initiated from the panel's button.

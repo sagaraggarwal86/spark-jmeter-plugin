@@ -19,7 +19,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Objects;
-import java.util.concurrent.atomic.AtomicBoolean; // CHANGED
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Orchestrates the AI performance report workflow on a background thread.

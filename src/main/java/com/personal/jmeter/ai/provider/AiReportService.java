@@ -159,7 +159,7 @@ public class AiReportService {
             };
             lastEx = new AiServiceException(String.format(
                     "%s API returned HTTP %d.%s Body: %s",
-                    config.displayName, status, statusHint, response.body()));
+                    config.displayName, status, statusHint, sanitizeResponseBody(response.body()))); // CHANGED — sanitized
 
             if (!retryable || attempt == MAX_ATTEMPTS) {
                 throw lastEx;
@@ -191,6 +191,20 @@ public class AiReportService {
                     config.displayName + " API request was interrupted before a response was received. "
                             + "This may indicate a network issue or the request was cancelled. Please try again.", e);
         }
+    }
+
+    /**
+     * Strips HTML tags and truncates the response body for safe user-facing display.
+     * Prevents information disclosure (server stack traces, internal paths) and
+     * potential UI injection via HTML error pages returned by provider gateways.
+     *
+     * @param body raw HTTP response body; may be null
+     * @return sanitized, truncated string safe for embedding in error messages
+     */
+    private static String sanitizeResponseBody(String body) { // CHANGED
+        if (body == null || body.isBlank()) return "(empty)";
+        String stripped = body.replaceAll("<[^>]+>", "").trim(); // strip HTML tags
+        return stripped.length() > 200 ? stripped.substring(0, 200) + "…" : stripped;
     }
 
     private void sleepBeforeRetry() throws AiServiceException {
