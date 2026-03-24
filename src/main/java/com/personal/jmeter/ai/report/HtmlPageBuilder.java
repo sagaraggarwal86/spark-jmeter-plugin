@@ -23,8 +23,9 @@ import java.util.regex.Pattern;
  *
  * <p>The report is rendered as a single self-contained HTML file with:</p>
  * <ul>
- *   <li>Up to 9 clickable tabs — 7 AI analysis sections, Transaction Metrics,
- *       Performance Charts (metrics tab omitted when empty)</li>
+ *   <li>Up to 9 clickable tabs — Executive Summary, Transaction Metrics,
+ *       5 AI analysis sections, Performance Charts, Verdict
+ *       (metrics tab omitted when empty)</li> // CHANGED
  *   <li>Export buttons — "Export Excel" (SheetJS, one sheet per tab) and
  *       "Export PDF" (browser print dialog)</li>
  *   <li>Chart.js initialisation outside the Charts tab panel to avoid the
@@ -59,21 +60,27 @@ final class HtmlPageBuilder {
     // ─────────────────────────────────────────────────────────────
 
     /**
-     * Assembles the full standalone HTML page with tabbed section navigation
+     * Assembles the full standalone HTML page with sidebar navigation
      * and Excel / PDF export buttons.
      *
      * <p>Page structure (top to bottom):</p>
      * <ol>
-     *   <li>Report header — title and scenario metadata (always visible)</li>
-     *   <li>Tab bar — one button per section (sticky, always visible)</li>
-     *   <li>Export bar — "Export Excel" and "Export PDF" buttons</li>
-     *   <li>Content area — tab panels; only the active panel is displayed</li>
-     *   <li>Footer — attribution (always visible)</li>
+     *   <li>Header ({@code .rpt-header}) — title, AI-notice subtitle, metadata grid,
+     *       and Export Excel / Export PDF buttons (always visible)</li>
+     *   <li>Body row ({@code .body-row}) — flex row containing sidebar + main column</li>
+     *   <li>Sidebar ({@code .sidebar}) — vertical sticky nav; one button per section</li>
+     *   <li>Content area ({@code .content-area}) — {@code .panel} divs; only active is displayed</li>
      * </ol>
      *
+     * <p>Tab ordering: Executive Summary → Transaction Metrics → Bottleneck Analysis →
+     * Error Analysis → Advanced Web Diagnostics → Root Cause Hypotheses →
+     * Recommendations → Performance Charts → Verdict. Transaction Metrics is
+     * inserted at index 1 (after Executive Summary); Performance Charts is
+     * inserted before Verdict (the last AI section).</p> // CHANGED
+     *
      * <p>The Chart.js initialisation {@code <script>} block is placed
-     * <em>outside</em> its tab panel so Chart.js instances are created on page
-     * load even when the Charts tab is hidden. On Charts-tab activation a resize
+     * <em>outside</em> its panel so Chart.js instances are created on page
+     * load even when the Charts panel is hidden. On panel activation a resize
      * call corrects the 0×0 canvas dimensions.</p>
      *
      * @param htmlBody     the AI-generated analysis converted from Markdown
@@ -85,73 +92,73 @@ final class HtmlPageBuilder {
     static String buildPage(String htmlBody, String metricsTable,
                             String chartsBlock, HtmlReportRenderer.RenderConfig config) {
 
-        // ── Metadata header ──────────────────────────────────────────────────
+        // ── Provider display name (HTML-escaped, used in header and footer) ── // CHANGED
         String runDateTime = buildRunDateTime(config.startTime, config.endTime);
-        StringBuilder meta = new StringBuilder("<table class=\"meta-table\">\n");
-        appendMetaRow(meta, "Scenario Name", config.scenarioName);
-        appendMetaRow(meta, "Scenario Description", config.scenarioDesc);
-        appendMetaRow(meta, "Virtual Users", config.users);
-        if (!runDateTime.isEmpty()) appendMetaRow(meta, "Run Date/Time", runDateTime);
-        appendMetaRow(meta, "Duration", config.duration);
-        meta.append("</table>\n");
+        String providerDisplay = HtmlReportRenderer.escapeHtml(
+                config.providerDisplayName.isBlank() ? "AI" : config.providerDisplayName);
+
+        // ── Metadata grid — CSS grid of span pairs, not an HTML table ────────── // CHANGED
+        StringBuilder metaGrid = new StringBuilder("<div class=\"meta-grid\">\n");
+        appendMetaRow(metaGrid, "Scenario Name",        config.scenarioName, false);
+        appendMetaRow(metaGrid, "Scenario Description", config.scenarioDesc, false);
+        appendMetaRow(metaGrid, "Virtual Users",        config.users,        false);
+        if (!runDateTime.isEmpty()) appendMetaRow(metaGrid, "Run Date/Time", runDateTime, false);
+        appendMetaRow(metaGrid, "Duration",             config.duration,     true);
+        metaGrid.append("</div>\n");
 
         // ── Section list ─────────────────────────────────────────────────────
-        // 1–7: AI analysis sections split from htmlBody at <h2> boundaries
-        List<String[]> sections = splitAtH2(htmlBody != null ? htmlBody : "");
+        // AI sections split from htmlBody at <h2> boundaries (typically 7:
+        // Executive Summary, Bottleneck, Error, Diagnostics, RCA, Recommendations, Verdict)
+        // CHANGED — style standalone PASS/FAIL tokens before splitting into panels
+        String styledBody = styleVerdictTokens(htmlBody != null ? htmlBody : "");
+        List<String[]> sections = splitAtH2(styledBody);
 
-        // 8: Transaction Metrics — only when non-blank
+        // CHANGED — Transaction Metrics: insert at index 1 (after Executive Summary)
+        // so the data table is immediately accessible after the summary overview.
+        // When splitAtH2 returns 0 or 1 sections (truncated AI), appends at end.
         String safeMetrics = metricsTable != null ? metricsTable : "";
         if (!safeMetrics.isBlank()) {
-            sections.add(new String[]{"Transaction Metrics", safeMetrics});
+            int metricsInsertIdx = Math.min(1, sections.size()); // CHANGED
+            sections.add(metricsInsertIdx, new String[]{"Transaction Metrics", safeMetrics}); // CHANGED
         }
 
-        // 9: Performance Charts — always added.
+        // CHANGED — Performance Charts: insert before the last section (Verdict).
         // Split the Chart.js <script> block out of the panel so instances are
-        // created on page load regardless of which tab is initially visible.
+        // created on page load regardless of which panel is initially visible.
         String[] chartsParts = splitChartsBlock(chartsBlock != null ? chartsBlock : "");
         String chartsContent = chartsParts[0]; // <div class="charts-section">…canvases…</div>
-        String chartsScript = chartsParts[1]; // <script>(function(){…})();</script>
-        int chartsTabIndex = sections.size();
-        sections.add(new String[]{"Performance Charts", chartsContent});
+        String chartsScript  = chartsParts[1]; // <script>(function(){…})();</script>
+        int chartsInsertIdx = Math.max(0, sections.size() - 1); // CHANGED — before Verdict (last AI section)
+        sections.add(chartsInsertIdx, new String[]{"Performance Charts", chartsContent}); // CHANGED
 
-        // ── Tab bar ──────────────────────────────────────────────────────────
-        StringBuilder tabBar = new StringBuilder("<nav class=\"tab-bar\" role=\"tablist\">\n");
+        // ── Sidebar navigation ───────────────────────────────────────────────── // CHANGED
+        StringBuilder sidebar = new StringBuilder("<nav class=\"sidebar\">\n");
         for (int i = 0; i < sections.size(); i++) {
             String title = sections.get(i)[0];
-            tabBar.append("  <button class=\"tab-btn")
+            sidebar.append("  <button class=\"nav-item")
                     .append(i == 0 ? " active" : "")
-                    .append("\" role=\"tab\" data-tab=\"").append(i).append("\"")
-                    .append(i == chartsTabIndex ? " data-charts=\"true\"" : "")
-                    .append(">").append(HtmlReportRenderer.escapeHtml(title))
+                    .append("\" data-panel=\"panel-").append(i).append("\">")
+                    .append(HtmlReportRenderer.escapeHtml(title))
                     .append("</button>\n");
         }
-        tabBar.append("</nav>\n");
+        sidebar.append("</nav>\n");
 
-        // ── Export bar ───────────────────────────────────────────────────────
-        String exportBar = "<div class=\"export-bar\">\n"
-                + "  <button onclick=\"exportExcel()\">&#x1F4E5; Export Excel</button>\n"
-                + "  <button onclick=\"window.print()\">&#x1F4C4; Export PDF</button>\n"
-                + "</div>\n";
-
-        // ── Tab panels ───────────────────────────────────────────────────────
+        // ── Panels ───────────────────────────────────────────────────────────── // CHANGED
+        // class="panel", id="panel-{i}", data-title for Excel export sheet naming.
+        // No ai-notice div — AI notice is in the header .sub line only.
         StringBuilder panels = new StringBuilder();
         for (int i = 0; i < sections.size(); i++) {
-            String title = sections.get(i)[0];
+            String title   = sections.get(i)[0];
             String content = sections.get(i)[1];
-            panels.append("<div class=\"tab-panel")
+            panels.append("<div class=\"panel")
                     .append(i == 0 ? " active" : "")
-                    .append("\" id=\"tab-").append(i).append("\"")
+                    .append("\" id=\"panel-").append(i).append("\"")
                     .append(" data-title=\"").append(HtmlReportRenderer.escapeHtml(title)).append("\">\n")
                     .append(content)
                     .append("\n</div>\n");
         }
 
-        // ── Footer ───────────────────────────────────────────────────────────
-        String footer = "  <div class=\"footer\">Generated by JAAR Plugin using "
-                + HtmlReportRenderer.escapeHtml(
-                config.providerDisplayName.isBlank() ? "AI" : config.providerDisplayName)
-                + ". AI analysis may contain errors &mdash; validate results before use."
-                + " The author assumes no liability for decisions based on this report.</div>\n";
+        // CHANGED — footer removed; header .sub line already carries the AI disclaimer
 
         return new StringBuilder(12288)
                 .append("<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n")
@@ -163,18 +170,30 @@ final class HtmlPageBuilder {
                 .append(buildCss())
                 .append(buildMetaScript(config, runDateTime)) // window.jaarMeta for Test Info sheet
                 .append("</head>\n<body>\n")
-                .append("<div class=\"report-header\">\n")
-                .append("  <h1>JMeter AI Performance Report</h1>\n")
-                .append("  ").append(meta)
-                .append("</div>\n")
-                .append(tabBar)
-                .append(exportBar)
-                .append("<div class=\"content\">\n")
+                // ── Outer wrapper ────────────────────────────────────────────────── // CHANGED
+                .append("<div class=\"rpt\">\n")
+                .append("  <div class=\"rpt-header\">\n")
+                .append("    <div>\n")
+                .append("      <h1>JMeter AI Performance Report</h1>\n")
+                .append("      <div class=\"sub\">Generated by JAAR Plugin using ").append(providerDisplay)
+                .append(" &nbsp;|&nbsp; &#9888; AI-Generated Analysis &mdash; Validate Before Use.</div>\n")
+                .append("      ").append(metaGrid)
+                .append("    </div>\n")
+                .append("    <div class=\"header-actions\">\n")
+                .append("      <button class=\"exp-btn\" onclick=\"exportExcel()\">&#x1F4E5;&nbsp; Export Excel</button>\n")
+                .append("    </div>\n")
+                .append("  </div>\n")
+                .append("  <div class=\"body-row\">\n")
+                .append("    ").append(sidebar)
+                .append("    <div class=\"main-col\">\n")
+                .append("      <div class=\"content-area\">\n")
                 .append(panels)
-                .append(footer)
+                .append("      </div>\n")
+                .append("    </div>\n") // CHANGED — footer removed
+                .append("  </div>\n")
                 .append("</div>\n")
                 .append(chartsScript)   // Chart.js init OUTSIDE panels — avoids 0x0 canvas bug
-                .append(buildTabJs())   // tab switching + Excel export
+                .append(buildTabJs())   // sidebar switching + Excel export
                 .append("</body>\n</html>\n")
                 .toString();
     }
@@ -278,17 +297,20 @@ final class HtmlPageBuilder {
      */
     static String buildChartsSection(List<JTLParser.TimeBucket> timeBuckets) {
         if (timeBuckets == null || timeBuckets.isEmpty()) {
+            // CHANGED — new message format with reason + remedy
             return buildChartsUnavailableSection(
                     "No time-series data is available for this report. "
                             + "This typically occurs when the test duration is shorter than the "
                             + "chart bucket interval, or when --start-offset / --end-offset filters "
-                            + "exclude all samples. Try reducing --start-offset or running a longer test.");
+                            + "exclude all samples.",
+                    "Try reducing --start-offset or running a longer test.");
         }
         if (timeBuckets.size() < 2) {
+            // CHANGED — specific one-bucket reason and remedy per spec
             return buildChartsUnavailableSection(
-                    "Insufficient data for time-series charts — only one time bucket was captured. "
-                            + "Try reducing --start-offset, increasing --chart-interval, or ensuring "
-                            + "the test runs long enough to produce multiple data points.");
+                    "Only One Time Bucket Was Captured.",
+                    "To Generate Charts: Set <code>Chart Interval (s)</code> &gt; 0 In The JAAR Plugin,"
+                            + " Or Ensure The Test Runs Long Enough For Multiple Intervals.");
         }
 
         List<String> jLabels = new ArrayList<>();
@@ -324,19 +346,23 @@ final class HtmlPageBuilder {
         String avgArr = "[" + String.join(",", jAvg) + "]";
         String errArr = "[" + String.join(",", jErr) + "]";
         String tpsArr = "[" + String.join(",", jTps) + "]";
-        String kbArr = "[" + String.join(",", jKb) + "]";
+        String kbArr  = "[" + String.join(",", jKb) + "]";
 
         long intervalSeconds = (timeBuckets.get(1).epochMs - timeBuckets.get(0).epochMs) / 1_000L;
 
         return new StringBuilder(2048)
                 .append("<div class=\"charts-section\">\n")
                 .append("  <h2>Performance Charts Over Time</h2>\n")
-                .append("  <p class=\"charts-note\">Each point represents a ")
+                // CHANGED — removed "a" before interval count; matches spec exactly
+                .append("  <p class=\"charts-note\">Each point represents ")
                 .append(intervalSeconds).append("-second interval.</p>\n")
-                .append(chartBox("chartAvgRt", "Average Response Time Over Time (ms)"))
+                // CHANGED — 2-column charts-grid wrapper
+                .append("  <div class=\"charts-grid\">\n")
+                .append(chartBox("chartAvgRt",  "Average Response Time Over Time (ms)"))
                 .append(chartBox("chartErrPct", "Error Rate Over Time (%)"))
-                .append(chartBox("chartTps", "Throughput Over Time (req/s)"))
-                .append(chartBox("chartKb", "Received Bandwidth Over Time (KB/s)"))
+                .append(chartBox("chartTps",    "Throughput Over Time (req/s)"))
+                .append(chartBox("chartKb",     "Received Bandwidth Over Time (KB/s)"))
+                .append("  </div>\n")
                 .append("</div>\n")
                 .append("<script>\n(function() {\n")
                 .append("  var labels = ").append(labels).append(";\n")
@@ -352,15 +378,23 @@ final class HtmlPageBuilder {
     /**
      * Renders a charts section placeholder when time-series data is unavailable.
      *
-     * @param reason human-readable explanation shown in the report
+     * <p>Emits a {@code .charts-warn} div containing a bold title, the plain-text
+     * {@code reason}, and a {@code remedy} string that may include trusted HTML
+     * (e.g. {@code <code>} tags). The reason is HTML-escaped; the remedy is
+     * emitted verbatim and must be safe at the call site.</p> // CHANGED
+     *
+     * @param reason plain-text explanation of why data is unavailable (will be HTML-escaped)
+     * @param remedy HTML remedy string shown after the reason (emitted verbatim)
      * @return HTML string for the placeholder charts section
      */
-    private static String buildChartsUnavailableSection(String reason) {
+    private static String buildChartsUnavailableSection(String reason, String remedy) { // CHANGED
         return "<div class=\"charts-section\">\n"
                 + "  <h2>Performance Charts Over Time</h2>\n"
-                + "  <p class=\"charts-note charts-unavailable\">"
-                + HtmlReportRenderer.escapeHtml(reason)
-                + "</p>\n"
+                + "  <div class=\"charts-warn\">\n"
+                + "    <strong>Insufficient Data For Time-Series Charts</strong> &mdash; "
+                + HtmlReportRenderer.escapeHtml(reason) + "<br>\n"
+                + "    " + remedy + "\n"
+                + "  </div>\n"
                 + "</div>\n";
     }
 
@@ -393,6 +427,43 @@ final class HtmlPageBuilder {
         Parser parser = Parser.builder().build();
         HtmlRenderer renderer = HtmlRenderer.builder().escapeHtml(false).build();
         return renderer.render(parser.parse(preprocessed));
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // Verdict token styling                                        // CHANGED
+    // ─────────────────────────────────────────────────────────────
+
+    /**
+     * Post-processes AI-generated HTML to style standalone {@code PASS} and
+     * {@code FAIL} verdict tokens with colour and bold weight.
+     *
+     * <p>Wraps whole-word occurrences of {@code PASS} in a green bold
+     * {@code <span>} and {@code FAIL} in a red bold {@code <span>}.
+     * Only matches uppercase tokens at word boundaries — will not affect
+     * words like "bypass" or "failing".</p>
+     *
+     * <p>Applied to the AI-generated HTML body before {@link #splitAtH2}
+     * so that both the Executive Summary and Verdict panels display the
+     * verdict token in the correct colour.</p>
+     *
+     * @param html AI-generated HTML from {@link #markdownToHtml}; may be null or blank
+     * @return HTML with PASS/FAIL tokens styled; input returned unchanged if null or blank
+     */
+    static String styleVerdictTokens(String html) { // CHANGED
+        if (html == null || html.isBlank()) return html;
+        // Word-boundary match ensures "bypass", "PASSED", "FAILING" are not affected.
+        // Replacement uses inline styles so the styling is self-contained within the
+        // AI-generated panel content — no dependency on external CSS class names.
+        html = html.replaceAll("\\bPASS\\b",
+                "<span style=\"color:#276749;font-weight:700\">PASS</span>"); // CHANGED
+        html = html.replaceAll("\\bFAIL\\b",
+                "<span style=\"color:#c53030;font-weight:700\">FAIL</span>"); // CHANGED
+        // Bold the four exact classification tokens. Literal alternation — no
+        // generic pattern — so only the documented labels are ever matched.
+        html = html.replaceAll(
+                "\\b(THROUGHPUT-BOUND|LATENCY-BOUND|ERROR-BOUND|CAPACITY-WALL)\\b",
+                "<strong>$1</strong>"); // CHANGED
+        return html;
     }
 
     /**
@@ -455,7 +526,7 @@ final class HtmlPageBuilder {
     }
 
     private static String renderPipeTable(List<String[]> tableLines) {
-        StringBuilder sb = new StringBuilder("<table>\n<thead>\n<tr>");
+        StringBuilder sb = new StringBuilder("<div class=\"tbl-wrap\"><table>\n<thead>\n<tr>"); // CHANGED — tbl-wrap for horizontal scroll
         for (String cell : tableLines.get(0)) {
             sb.append("<th>").append(HtmlReportRenderer.escapeHtml(cell.trim())).append("</th>");
         }
@@ -467,7 +538,7 @@ final class HtmlPageBuilder {
             }
             sb.append("</tr>\n");
         }
-        return sb.append("</tbody>\n</table>\n").toString();
+        return sb.append("</tbody>\n</table></div>\n").toString(); // CHANGED
     }
 
     /**
@@ -528,12 +599,21 @@ final class HtmlPageBuilder {
         return "";
     }
 
-    private static void appendMetaRow(StringBuilder sb, String label, String value) {
+    /**
+     * Appends a metadata row to the {@code .meta-grid} as a {@code <span class="ml">} /
+     * {@code <span class="mv">} pair. Skips blank or null values.
+     *
+     * @param sb        target string builder
+     * @param label     visible label text (not escaped — must be a literal constant)
+     * @param value     metadata value; skipped when null or blank
+     * @param boldValue when {@code true}, emits {@code style="font-weight:700"} on the value span
+     */ // CHANGED
+    private static void appendMetaRow(StringBuilder sb, String label, String value, boolean boldValue) { // CHANGED
         if (value == null || value.isBlank()) return;
-        sb.append("  <tr>")
-                .append("<td class=\"meta-label\">").append(label).append("</td>")
-                .append("<td class=\"meta-value\">").append(HtmlReportRenderer.escapeHtml(value)).append("</td>")
-                .append("</tr>\n");
+        sb.append("  <span class=\"ml\">").append(label).append("</span>")
+                .append("<span class=\"mv\"");
+        if (boldValue) sb.append(" style=\"font-weight:700\"");
+        sb.append(">").append(HtmlReportRenderer.escapeHtml(value)).append("</span>\n");
     }
 
     private static String chartBox(String canvasId, String title) {
@@ -587,42 +667,38 @@ final class HtmlPageBuilder {
     }
 
     /**
-     * Builds the inline JavaScript for tab switching and Excel export.
+     * Builds the inline JavaScript for sidebar navigation and Excel export.
      *
-     * <h4>Tab switching</h4>
-     * <p>Each tab button stores its panel index in {@code data-tab}. On click, all
-     * active classes are cleared and reapplied to the clicked button and its panel.
-     * When the Charts tab is activated ({@code data-charts="true"}), all Chart.js
-     * instances are resized to fix the 0×0 canvas dimensions from hidden initialisation.
-     * {@code Chart.instances} is a plain object in Chart.js 4.x — iterated via
-     * {@code Object.values()}.</p>
+     * <h4>Sidebar navigation</h4> // CHANGED
+     * <p>Each nav button stores the target panel's {@code id} in {@code data-panel}.
+     * On click, all active classes are cleared and reapplied to the clicked button
+     * and its panel. When the activated panel contains a {@code <canvas>} element,
+     * all Chart.js instances are resized to fix the 0×0 canvas dimensions from
+     * hidden initialisation. {@code Chart.instances} is a plain object in
+     * Chart.js 4.x — iterated via {@code Object.values()}.</p>
      *
      * <h4>Excel export (SheetJS)</h4>
-     * <p>One worksheet per tab panel, named by the panel's {@code data-title}.
+     * <p>One worksheet per panel, named by the panel's {@code data-title}.
      * Charts panels receive a placeholder message (canvases are not serialisable).
      * Table panels use {@code XLSX.utils.table_to_sheet}. Prose-only panels produce
      * a single wide text column.</p>
      *
      * @return self-executing {@code <script>} block string
      */
-    private static String buildTabJs() {
+    private static String buildTabJs() { // CHANGED
         return new StringBuilder(2048)
                 .append("<script>\n(function() {\n")
-                // ── Tab switching ──────────────────────────────────────────────
-                .append("  document.querySelectorAll('.tab-btn').forEach(function(btn) {\n")
+                // ── Sidebar switching ─────────────────────────────────────────── // CHANGED
+                .append("  document.querySelectorAll('.nav-item').forEach(function(btn) {\n")
                 .append("    btn.addEventListener('click', function() {\n")
-                .append("      document.querySelectorAll('.tab-btn').forEach(function(b) {\n")
-                .append("        b.classList.remove('active');\n")
-                .append("      });\n")
-                .append("      document.querySelectorAll('.tab-panel').forEach(function(p) {\n")
-                .append("        p.classList.remove('active');\n")
-                .append("      });\n")
+                .append("      document.querySelectorAll('.nav-item').forEach(function(b) { b.classList.remove('active'); });\n")
+                .append("      document.querySelectorAll('.panel').forEach(function(p) { p.classList.remove('active'); });\n")
                 .append("      btn.classList.add('active');\n")
-                .append("      document.getElementById('tab-' + btn.dataset.tab).classList.add('active');\n")
-                .append("      if (btn.dataset.charts === 'true' && typeof Chart !== 'undefined') {\n")
-                .append("        Object.values(Chart.instances).forEach(function(inst) {\n")
-                .append("          inst.resize();\n")
-                .append("        });\n")
+                .append("      var el = document.getElementById(btn.dataset.panel);\n")
+                .append("      if (el) el.classList.add('active');\n")
+                // Chart resize: keyed on canvas presence, not data-charts attribute // CHANGED
+                .append("      if (el && el.querySelector('canvas') && typeof Chart !== 'undefined') {\n")
+                .append("        Object.values(Chart.instances).forEach(function(inst) { inst.resize(); });\n")
                 .append("      }\n")
                 .append("    });\n")
                 .append("  });\n\n")
@@ -646,8 +722,8 @@ final class HtmlPageBuilder {
                 .append("    var wsInfo = XLSX.utils.aoa_to_sheet(infoRows);\n")
                 .append("    wsInfo['!cols'] = [{wch: 25}, {wch: 80}];\n")
                 .append("    XLSX.utils.book_append_sheet(wb, wsInfo, 'Test Info');\n")
-                // ── Sheets 2–N: one per tab panel ──────────────────────────────
-                .append("    document.querySelectorAll('.tab-panel').forEach(function(panel) {\n")
+                // ── Sheets 2–N: one per panel ─────────────────────────────────── // CHANGED
+                .append("    document.querySelectorAll('.panel').forEach(function(panel) {\n")
                 .append("      var title = panel.dataset.title || 'Sheet';\n")
                 .append("      var sheetName = title.substring(0, 31);\n")
                 .append("      var ws;\n")
@@ -758,103 +834,159 @@ final class HtmlPageBuilder {
     }
 
     @SuppressWarnings("java:S5665") // CSS string — not a sensitive data concatenation
-    private static String buildCss() {
-        return new StringBuilder(4096)
-                .append("  <style>\n")
-                .append("    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }\n")
-                .append("    body { font-family: 'Segoe UI', system-ui, sans-serif; font-size: 14px;\n")
-                .append("           line-height: 1.7; color: #1a202c; background: #f7f8fc; }\n")
-                .append("    .report-header { background: linear-gradient(135deg, #1a365d 0%, #2b6cb0 100%);\n")
-                .append("                     color: white; padding: 32px 48px 28px; }\n")
-                .append("    .report-header h1 { font-size: 24px; font-weight: 700; margin-bottom: 16px; }\n")
-                .append("    .report-header .meta-table { border-collapse: collapse; background: transparent;\n")
-                .append("                                  box-shadow: none; border-radius: 0; margin: 0; width: auto; }\n")
-                .append("    .report-header .meta-table td { padding: 3px 0; font-size: 13px;\n")
-                .append("                                     border-bottom: none; background: transparent !important; }\n")
-                .append("    .report-header .meta-table tr:nth-child(even) td { background: transparent !important; }\n")
-                .append("    .report-header .meta-table .meta-label { color: rgba(255,255,255,0.70); font-weight: 600;\n")
-                .append("                                              padding-right: 16px; white-space: nowrap; }\n")
-                .append("    .report-header .meta-table .meta-value { color: white; }\n")
-                // ── Tab bar ──────────────────────────────────────────────────
-                .append("    .tab-bar { display: flex; flex-wrap: wrap; gap: 4px;\n")
-                .append("               padding: 8px 16px; background: #edf2f7;\n")
-                .append("               border-bottom: 2px solid #cbd5e0;\n")
-                .append("               position: sticky; top: 0; z-index: 10; }\n")
-                .append("    .tab-btn { padding: 7px 14px; border: 1px solid #cbd5e0; border-bottom: none;\n")
-                .append("               background: #fff; cursor: pointer; border-radius: 6px 6px 0 0;\n")
-                .append("               font-size: 13px; font-family: inherit; white-space: nowrap; color: #4a5568; }\n")
-                .append("    .tab-btn:hover { background: #e2e8f0; }\n")
-                .append("    .tab-btn.active { background: #2b6cb0; color: #fff;\n")
-                .append("                      font-weight: 600; border-color: #2b6cb0; }\n")
-                // ── Export bar ───────────────────────────────────────────────
-                .append("    .export-bar { display: flex; gap: 8px; padding: 8px 16px;\n")
-                .append("                  background: #f7f8fc; border-bottom: 1px solid #e2e8f0; }\n")
-                .append("    .export-bar button { padding: 6px 14px; border: 1px solid #cbd5e0;\n")
-                .append("                         background: #fff; cursor: pointer; border-radius: 4px;\n")
-                .append("                         font-size: 13px; font-family: inherit; color: #2d3748; }\n")
-                .append("    .export-bar button:hover { background: #e2e8f0; }\n")
-                // ── Tab panels ───────────────────────────────────────────────
-                .append("    .tab-panel { display: none; padding: 16px 0; }\n")
-                .append("    .tab-panel.active { display: block; }\n")
-                // ── Content area ─────────────────────────────────────────────
-                .append("    .content { max-width: 1000px; margin: 32px auto; padding: 0 24px; }\n")
-                .append("    h1 { display: none; }\n")
-                .append("    h2 { font-size: 17px; font-weight: 700; color: #1a365d;\n")
-                .append("         border-left: 4px solid #3182ce; padding-left: 12px;\n")
-                .append("         margin: 32px 0 12px; }\n")
-                .append("    h3 { font-size: 14px; font-weight: 600; color: #2d3748; margin: 18px 0 8px; }\n")
-                .append("    p  { margin-bottom: 12px; }\n")
-                .append("    table { border-collapse: collapse; width: 100%; margin: 14px 0 20px;\n")
-                .append("            background: white; border-radius: 6px; overflow: hidden;\n")
-                .append("            box-shadow: 0 1px 4px rgba(0,0,0,0.08); }\n")
-                .append("    th { background: #2d3748; color: white; padding: 9px 14px;\n")
-                .append("         text-align: left; font-size: 12px; font-weight: 600;\n")
-                .append("         text-transform: uppercase; letter-spacing: 0.5px; }\n")
-                .append("    td { padding: 8px 14px; border-bottom: 1px solid #edf2f7; font-size: 13px; }\n")
-                .append("    td.num { text-align: right; font-variant-numeric: tabular-nums; }\n")
-                .append("    td.sla-pass { text-align: center; font-weight: 600; color: #276749; }\n")
-                .append("    td.sla-fail { text-align: center; font-weight: 600; color: #c53030; }\n")
-                .append("    td.sla-na   { text-align: center; color: #a0aec0; }\n")
-                .append("    tr:last-child td { border-bottom: none; }\n")
-                .append("    tr:nth-child(even) td { background: #f7fafc; }\n")
-                .append("    code { background: #edf2f7; padding: 2px 6px; border-radius: 4px;\n")
-                .append("           font-family: Consolas, monospace; font-size: 12px; color: #c53030; }\n")
-                .append("    pre  { background: #2d3748; color: #e2e8f0; padding: 14px 18px;\n")
-                .append("           border-radius: 6px; overflow-x: auto; margin: 12px 0 18px; }\n")
-                .append("    pre code { background: none; color: inherit; padding: 0; }\n")
-                .append("    blockquote { border-left: 4px solid #63b3ed; margin: 14px 0;\n")
-                .append("                 padding: 8px 14px; background: #ebf8ff;\n")
-                .append("                 border-radius: 0 6px 6px 0; }\n")
-                .append("    ul, ol { margin: 8px 0 14px 24px; }\n")
-                .append("    li { margin-bottom: 4px; }\n")
-                .append("    strong { font-weight: 600; }\n")
-                .append("    .metrics-section { margin: 40px 0 0; }\n")
-                .append("    .charts-section  { margin: 40px 0 0; }\n")
-                .append("    .charts-note { font-size: 12px; color: #718096; margin-bottom: 20px; }\n")
-                .append("    .charts-unavailable { background: #fffbeb; border: 1px solid #f6e05e;\n")
-                .append("                          border-radius: 6px; padding: 12px 16px;\n")
-                .append("                          color: #744210; font-size: 13px; }\n")
-                .append("    .chart-box { background: white; border-radius: 8px; padding: 20px 24px 16px;\n")
-                .append("                 box-shadow: 0 1px 4px rgba(0,0,0,0.08); margin-bottom: 24px; }\n")
-                .append("    .chart-box h3 { font-size: 13px; font-weight: 600; color: #2d3748;\n")
-                .append("                    margin: 0 0 14px; border: none; padding: 0; }\n")
-                .append("    .chart-canvas-wrap { position: relative; height: 280px; }\n")
-                .append("    .footer { text-align: center; font-size: 11px; color: #a0aec0;\n")
-                .append("              margin: 48px 0 24px; padding-top: 14px;\n")
-                .append("              border-top: 1px solid #e2e8f0; }\n")
-                // ── Print / PDF ───────────────────────────────────────────────
-                .append("    @media print {\n")
-                .append("      .tab-bar    { display: none; }\n")
-                .append("      .export-bar { display: none; }\n")
-                .append("      .tab-panel  { display: block !important;\n")
-                .append("                    page-break-inside: avoid; margin-bottom: 24px; }\n")
-                .append("      .tab-panel h2 { page-break-after: avoid; }\n")
-                .append("      canvas { max-width: 100%; height: auto !important; }\n")
-                .append("      .report-header { background: #1a365d !important;\n")
-                .append("                       -webkit-print-color-adjust: exact; }\n")
-                .append("      body { background: white; }\n")
-                .append("    }\n")
-                .append("  </style>\n")
-                .toString();
+    private static String buildCss() { // CHANGED — full CSS replacement
+        return "  <style>\n"
+                // ── Custom properties ─────────────────────────────────────────
+                + "    :root {\n"
+                + "      --color-text-primary:         #1a202c;\n"
+                + "      --color-text-secondary:       #4a5568;\n"
+                + "      --color-text-tertiary:        #718096;\n"
+                + "      --color-background-primary:   #ffffff;\n"
+                + "      --color-background-secondary: #f7fafc;\n"
+                + "      --color-background-tertiary:  #f0f4f8;\n"
+                + "      --color-border-secondary:     #cbd5e0;\n"
+                + "      --color-border-tertiary:      #e2e8f0;\n"
+                + "    }\n"
+                // ── Reset ─────────────────────────────────────────────────────
+                + "    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }\n"
+                + "    html, body { height: 100%; }\n"
+                // ── Root wrapper ─────────────────────────────────────────────
+                + "    .rpt {\n"
+                + "      font-family: 'Segoe UI', system-ui, sans-serif; font-size: 14px;\n"
+                + "      line-height: 1.7; color: var(--color-text-primary);\n"
+                + "      background: var(--color-background-tertiary);\n"
+                + "      display: flex; flex-direction: column; min-height: 100vh;\n"
+                + "    }\n"
+                // ── Header ───────────────────────────────────────────────────
+                + "    .rpt-header {\n"
+                + "      background: #1a365d; color: white; padding: 24px 32px;\n"
+                + "      display: flex; align-items: flex-start; justify-content: space-between;\n"
+                + "      gap: 24px; flex-shrink: 0;\n"
+                + "    }\n"
+                + "    .rpt-header h1 { font-size: 22px; font-weight: 600; margin-bottom: 4px; color: white; }\n"
+                + "    .rpt-header .sub { font-size: 13px; color: rgba(255,255,255,0.65); margin-bottom: 14px; }\n"
+                + "    .meta-grid { display: grid; grid-template-columns: auto 1fr; gap: 2px 16px; font-size: 12px; }\n"
+                + "    .ml { color: rgba(255,255,255,0.6); font-weight: 500; white-space: nowrap; }\n"
+                + "    .mv { color: white; }\n"
+                // ── Header action buttons ────────────────────────────────────
+                + "    .header-actions { display: flex; flex-direction: column; gap: 6px; align-items: flex-end; flex-shrink: 0; }\n"
+                + "    .exp-btn {\n"
+                + "      width: 148px; padding: 7px 0;\n"
+                + "      border: 1px solid rgba(255,255,255,0.35); background: rgba(255,255,255,0.10);\n"
+                + "      cursor: pointer; border-radius: 5px; font-size: 13px; font-family: inherit;\n"
+                + "      color: white; white-space: nowrap; line-height: 1.3; text-align: center;\n"
+                + "    }\n"
+                + "    .exp-btn:hover { background: rgba(255,255,255,0.22); }\n"
+                // ── Body row (sidebar + main column) ─────────────────────────
+                + "    .body-row { display: flex; align-items: stretch; flex: 1; }\n"
+                // ── Sidebar ──────────────────────────────────────────────────
+                + "    .sidebar {\n"
+                + "      width: 200px; flex-shrink: 0; background: #f0f4f8;\n"
+                + "      border-right: 1px solid #cbd5e0; padding: 12px 0;\n"
+                + "      position: sticky; top: 0; align-self: flex-start;\n"
+                + "      height: 100vh; overflow-y: auto;\n"
+                + "    }\n"
+                + "    .nav-item {\n"
+                + "      display: block; width: 100%; padding: 9px 20px; border: none;\n"
+                + "      background: transparent; text-align: left; font-size: 13px;\n"
+                + "      font-family: inherit; color: #4a5568; cursor: pointer;\n"
+                + "      line-height: 1.4; border-left: 3px solid transparent;\n"
+                + "    }\n"
+                + "    .nav-item:hover  { background: #e2e8f0; color: #2d3748; }\n"
+                + "    .nav-item.active { background: #fff; color: #1a365d; font-weight: 600; border-left: 3px solid #1a365d; }\n"
+                // ── Main column ───────────────────────────────────────────────
+                + "    .main-col { flex: 1; display: flex; flex-direction: column; min-width: 0; }\n"
+                + "    .content-area { flex: 1; padding: 28px 32px; background: var(--color-background-primary); overflow: auto; }\n"
+                // ── Panels ───────────────────────────────────────────────────
+                + "    .panel       { display: none; }\n"
+                + "    .panel.active { display: block; }\n"
+                // ── Typography ───────────────────────────────────────────────
+                + "    h2 {\n"
+                + "      font-size: 16px; font-weight: 600; color: var(--color-text-primary);\n"
+                + "      border-left: 3px solid #3182ce; padding-left: 11px; margin: 0 0 16px;\n"
+                + "    }\n"
+                + "    h3 { font-size: 13px; font-weight: 600; color: #2d3748; margin: 18px 0 8px; }\n"
+                + "    p  { margin-bottom: 12px; font-size: 13px; color: var(--color-text-primary); }\n"
+                // ── Tables ───────────────────────────────────────────────────
+                + "    .tbl-wrap { overflow-x: auto; margin: 12px 0 20px; border-radius: 6px; border: 0.5px solid var(--color-border-secondary); }\n"
+                + "    table { border-collapse: collapse; width: 100%; background: var(--color-background-primary); font-size: 12px; }\n"
+                + "    th {\n"
+                + "      background: #2d3748; color: white; padding: 8px 12px;\n"
+                + "      text-align: left; font-size: 11px; font-weight: 600;\n"
+                + "      text-transform: uppercase; letter-spacing: 0.4px; white-space: nowrap;\n"
+                + "    }\n"
+                + "    td { padding: 7px 12px; border-bottom: 0.5px solid var(--color-border-tertiary); white-space: nowrap; }\n"
+                + "    td.num { text-align: right; font-variant-numeric: tabular-nums; }\n"
+                + "    td.sla-pass { text-align: center; font-weight: 600; color: #276749; }\n"
+                + "    td.sla-fail { text-align: center; font-weight: 600; color: #c53030; }\n"
+                + "    td.sla-na   { text-align: center; color: #a0aec0; }\n"
+                + "    tr:last-child td  { border-bottom: none; }\n"
+                + "    tr:nth-child(even) td { background: var(--color-background-secondary); }\n"
+                // ── Inline elements ───────────────────────────────────────────
+                + "    code { background: #edf2f7; padding: 2px 6px; border-radius: 4px; font-family: Consolas, monospace; font-size: 12px; color: #c53030; }\n"
+                + "    pre  { background: #2d3748; color: #e2e8f0; padding: 14px 18px; border-radius: 6px; overflow-x: auto; margin: 12px 0 18px; }\n"
+                + "    pre code { background: none; color: inherit; padding: 0; }\n"
+                + "    blockquote { border-left: 4px solid #63b3ed; margin: 14px 0; padding: 8px 14px; background: #ebf8ff; border-radius: 0 6px 6px 0; }\n"
+                + "    ul, ol { margin: 8px 0 14px 22px; font-size: 13px; }\n"
+                + "    li { margin-bottom: 5px; }\n"
+                + "    strong { font-weight: 700; }\n"
+                // ── AI notice ─────────────────────────────────────────────────
+                + "    .ai-notice {\n"
+                + "      display: flex; align-items: center; gap: 8px;\n"
+                + "      background: #fffbeb; border: 1px solid #f6e05e;\n"
+                + "      border-radius: 6px; padding: 8px 14px;\n"
+                + "      font-size: 12px; color: #744210; margin-bottom: 20px;\n"
+                + "    }\n"
+                // ── KPI cards ─────────────────────────────────────────────────
+                + "    .kpi-grid { display: grid; grid-template-columns: repeat(5, minmax(0,1fr)); gap: 12px; margin-bottom: 24px; }\n"
+                + "    .kpi { background: var(--color-background-secondary); border-radius: 8px; padding: 14px 16px; border: 1px solid var(--color-border-tertiary); }\n"
+                + "    .kpi-label { font-size: 11px; color: var(--color-text-secondary); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.4px; }\n"
+                + "    .kpi-value { font-size: 20px; font-weight: 500; color: var(--color-text-primary); line-height: 1.2; }\n"
+                + "    .kpi-value.pass { color: #276749; font-weight: 700; }\n"
+                + "    .kpi-value.fail { color: #c53030; font-weight: 700; }\n"
+                // ── Verdict banner ────────────────────────────────────────────
+                + "    .verdict-banner {\n"
+                + "      display: flex; align-items: center; gap: 20px;\n"
+                + "      background: #f0fff4; border: 1.5px solid #9ae6b4;\n"
+                + "      border-radius: 10px; padding: 18px 22px; margin-bottom: 24px;\n"
+                + "    }\n"
+                + "    .verdict-banner.fail { background: #fff5f5; border-color: #feb2b2; }\n"
+                + "    .verdict-badge-sm     { font-size: 26px; font-weight: 700; color: #276749; flex-shrink: 0; }\n"
+                + "    .verdict-badge-sm.fail { color: #c53030; }\n"
+                + "    .verdict-desc  { font-size: 13px; color: #22543d; line-height: 1.6; }\n"
+                + "    .verdict-desc strong { font-weight: 600; }\n"
+                // ── No-error box ──────────────────────────────────────────────
+                + "    .no-err {\n"
+                + "      display: flex; align-items: center; gap: 12px;\n"
+                + "      background: #f0fff4; border: 1px solid #9ae6b4;\n"
+                + "      border-radius: 8px; padding: 16px 20px;\n"
+                + "    }\n"
+                + "    .no-err-icon {\n"
+                + "      width: 32px; height: 32px; border-radius: 50%;\n"
+                + "      background: #c6f6d5; display: flex; align-items: center;\n"
+                + "      justify-content: center; font-size: 16px; flex-shrink: 0;\n"
+                + "    }\n"
+                + "    .no-err-text { font-size: 13px; color: #22543d; font-weight: 500; }\n"
+                // ── Verdict panel (large stamp) ───────────────────────────────
+                + "    .verdict-pass { font-size: 64px; font-weight: 700; color: #276749; line-height: 1; margin-bottom: 8px; }\n"
+                + "    .verdict-fail { font-size: 64px; font-weight: 700; color: #c53030; line-height: 1; margin-bottom: 8px; }\n"
+                // ── Section-specific ─────────────────────────────────────────
+                + "    .metrics-section { margin: 40px 0 0; }\n"
+                + "    .charts-section  { margin: 0; }\n"
+                + "    .charts-note { font-size: 11px; color: var(--color-text-tertiary); margin-bottom: 16px; }\n"
+                + "    .charts-warn { background: #fffbeb; border: 1px solid #f6e05e; border-radius: 6px; padding: 12px 16px; color: #744210; font-size: 13px; }\n"
+                + "    .charts-warn strong { font-weight: 600; }\n"
+                // ── Charts grid (2 columns) ───────────────────────────────────
+                + "    .charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 4px; }\n"
+                + "    .chart-box { background: var(--color-background-secondary); border: 1px solid var(--color-border-tertiary); border-radius: 8px; padding: 16px 18px 12px; }\n"
+                + "    .chart-box h3 { font-size: 12px; font-weight: 600; color: var(--color-text-secondary); margin: 0 0 12px; text-transform: uppercase; letter-spacing: 0.4px; border: none; padding: 0; }\n"
+                + "    .chart-canvas-wrap { position: relative; height: 220px; }\n"
+                // ── Footer ───────────────────────────────────────────────────
+                + "    .footer-rpt {\n"
+                + "      font-size: 11px; color: var(--color-text-tertiary); padding: 12px 32px;\n"
+                + "      border-top: 1px solid var(--color-border-tertiary);\n"
+                + "      background: var(--color-background-primary); flex-shrink: 0;\n"
+                + "    }\n"
+                + "  </style>\n";
     }
 }

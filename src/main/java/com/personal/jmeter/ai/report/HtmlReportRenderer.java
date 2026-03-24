@@ -19,10 +19,15 @@ import java.util.Objects;
  *
  * <p>Report layout:</p>
  * <ol>
- *   <li>Cover header — scenario metadata (via {@link HtmlPageBuilder})</li>
- *   <li>AI-generated analysis — Markdown → HTML (via {@link HtmlPageBuilder})</li>
- *   <li>Transaction Metrics table — built here</li>
- *   <li>Performance Charts — Chart.js (via {@link HtmlPageBuilder})</li>
+ *   <li>Header ({@code .rpt-header}) — title, AI-notice subtitle, metadata grid,
+ *       and Export Excel / Export PDF buttons (via {@link HtmlPageBuilder})</li>
+ *   <li>Sidebar ({@code .sidebar}) — vertical sticky navigation; one button per
+ *       section (via {@link HtmlPageBuilder})</li>
+ *   <li>Content area ({@code .content-area}) — one {@code .panel} per section;
+ *       only the active panel is displayed (via {@link HtmlPageBuilder})</li>
+ *   <li>Transaction Metrics table — built here, rendered as a dedicated panel</li>
+ *   <li>Performance Charts — Chart.js 2-column grid; inserted before Verdict
+ *       (via {@link HtmlPageBuilder})</li> // CHANGED — footer removed; charts no longer last
  * </ol>
  *
  * <p>{@link #buildTransactionMetricsSection(List)} and {@link #escapeHtml(String)}
@@ -228,11 +233,16 @@ public class HtmlReportRenderer {
     /**
      * Builds the Transaction Metrics HTML section with optional SLA status columns.
      *
-     * <p>When SLA thresholds are configured ({@code > -1}), two extra columns are
-     * appended — one for error-rate SLA status and one for response-time SLA status.
-     * Each cell shows {@code PASS} (green) or {@code FAIL} (red). When a threshold
-     * is not configured the cell shows {@code -}. All comparisons are performed here
-     * in Java — no model arithmetic is involved.</p>
+     * <p>When at least one SLA threshold is configured ({@code > -1}), two extra
+     * columns are appended — one for error-rate SLA status and one for response-time
+     * SLA status. Each cell shows {@code PASS} (green) or {@code FAIL} (red). When
+     * only one threshold is configured, the unconfigured column shows {@code -}.</p>
+     *
+     * <p>When <em>neither</em> SLA is configured, both SLA columns are hidden entirely
+     * and a footnote is appended after the table: "SLA Columns Hidden — No SLA
+     * Thresholds Were Configured For This Run."</p> // CHANGED
+     *
+     * <p>All comparisons are performed here in Java — no model arithmetic is involved.</p>
      *
      * @param rows              data rows to render (TOTAL excluded)
      * @param percentile        configured percentile — drives the Nth Pct column header
@@ -248,15 +258,16 @@ public class HtmlReportRenderer {
 
         boolean hasErrorSla = errorSlaThreshold >= 0;
         boolean hasRtSla = rtSlaThresholdMs >= 0;
+        boolean hasSla = hasErrorSla || hasRtSla; // CHANGED — gate for SLA column rendering
 
         // ── Column headers ────────────────────────────────────────────────────
         String[] baseHeaders = buildTableHeaders(percentile);
         // Error SLA column header: "Error% SLA (≤N%)" or "Error% SLA"
+        boolean useAvg = "avg".equalsIgnoreCase(rtSlaMetric); // CHANGED — moved before SLA header construction
         String errorSlaHeader = hasErrorSla
                 ? "Error% SLA (\u2264" + formatThreshold(errorSlaThreshold) + "%)"
                 : "Error% SLA";
         // RT SLA column header reflects the configured metric and threshold
-        boolean useAvg = "avg".equalsIgnoreCase(rtSlaMetric);
         String rtSlaHeader = hasRtSla
                 ? (useAvg ? "Avg" : "P" + percentile) + " RT SLA (\u2264" + rtSlaThresholdMs + " ms)"
                 : (useAvg ? "Avg" : "P" + percentile) + " RT SLA";
@@ -264,14 +275,18 @@ public class HtmlReportRenderer {
         StringBuilder sb = new StringBuilder(512 + rows.size() * 200);
         sb.append("<div class=\"metrics-section\">\n")
                 .append("  <h2>Transaction Metrics</h2>\n")
+                .append("  <div class=\"tbl-wrap\">\n")  // CHANGED — horizontal scroll wrapper
                 .append("  <table>\n")
                 .append("    <thead><tr>\n");
 
         for (String h : baseHeaders) {
             sb.append("      <th>").append(escapeHtml(h)).append("</th>\n");
         }
-        sb.append("      <th>").append(escapeHtml(errorSlaHeader)).append("</th>\n");
-        sb.append("      <th>").append(escapeHtml(rtSlaHeader)).append("</th>\n");
+        // CHANGED — SLA column headers only when at least one SLA is configured
+        if (hasSla) {
+            sb.append("      <th>").append(escapeHtml(errorSlaHeader)).append("</th>\n");
+            sb.append("      <th>").append(escapeHtml(rtSlaHeader)).append("</th>\n");
+        }
         sb.append("    </tr></thead>\n").append("    <tbody>\n");
 
         // ── Data rows ─────────────────────────────────────────────────────────
@@ -293,19 +308,29 @@ public class HtmlReportRenderer {
                         .append(escapeHtml(cell))
                         .append(TD_CLOSE).append("\n");
             }
-            // Error SLA column
-            sb.append("      ").append(buildSlaCell(
-                    parseErrorRate(safeCell(row, ERROR_RATE_COL)),
-                    errorSlaThreshold, hasErrorSla)).append("\n");
-            // RT SLA column
-            int rtCol = useAvg ? AVG_RT_COL : PNN_RT_COL;
-            sb.append("      ").append(buildSlaCell(
-                    parseMs(safeCell(row, rtCol)),
-                    rtSlaThresholdMs, hasRtSla)).append("\n");
+            // CHANGED — SLA cells only when at least one SLA is configured
+            if (hasSla) {
+                // Error SLA column
+                sb.append("      ").append(buildSlaCell(
+                        parseErrorRate(safeCell(row, ERROR_RATE_COL)),
+                        errorSlaThreshold, hasErrorSla)).append("\n");
+                // RT SLA column
+                int rtCol = useAvg ? AVG_RT_COL : PNN_RT_COL;
+                sb.append("      ").append(buildSlaCell(
+                        parseMs(safeCell(row, rtCol)),
+                        rtSlaThresholdMs, hasRtSla)).append("\n");
+            }
 
             sb.append("    </tr>\n");
         }
-        sb.append("    </tbody>\n").append("  </table>\n").append("</div>\n");
+        sb.append("    </tbody>\n").append("  </table>\n").append("  </div>\n"); // CHANGED — close tbl-wrap
+        // CHANGED — footnote when no SLA columns are rendered
+        if (!hasSla) {
+            sb.append("  <p style=\"font-size:11px;color:var(--color-text-tertiary)\">")
+                    .append("SLA Columns Hidden \u2014 No SLA Thresholds Were Configured For This Run.")
+                    .append("</p>\n");
+        }
+        sb.append("</div>\n");
         return sb.toString();
     }
 

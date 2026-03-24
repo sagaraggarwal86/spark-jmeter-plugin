@@ -308,7 +308,7 @@ class HtmlPageBuilderTest {
             assertFalse(result.isEmpty(), "Result must never be empty");
             assertTrue(result.contains("<h2>Performance Charts Over Time</h2>"),
                     "Section header must always be present");
-            assertTrue(result.contains("charts-unavailable"),
+            assertTrue(result.contains("charts-warn"),
                     "Placeholder CSS class must be applied");
         }
 
@@ -319,7 +319,7 @@ class HtmlPageBuilderTest {
             assertFalse(result.isEmpty(), "Result must never be empty");
             assertTrue(result.contains("<h2>Performance Charts Over Time</h2>"),
                     "Section header must always be present");
-            assertTrue(result.contains("charts-unavailable"),
+            assertTrue(result.contains("charts-warn"),
                     "Placeholder CSS class must be applied");
         }
 
@@ -330,7 +330,7 @@ class HtmlPageBuilderTest {
                     System.currentTimeMillis(), 250.0, 2.5, 10.0, 50.0);
             String result = HtmlPageBuilder.buildChartsSection(List.of(bucket));
             assertFalse(result.isEmpty(), "Result must never be empty");
-            assertTrue(result.contains("charts-unavailable"),
+            assertTrue(result.contains("charts-warn"),
                     "Single-bucket result must use the placeholder");
             assertFalse(result.contains("<canvas"),
                     "Single bucket must not render Chart.js canvas elements");
@@ -346,7 +346,7 @@ class HtmlPageBuilderTest {
             String result = HtmlPageBuilder.buildChartsSection(buckets);
             assertTrue(result.contains("<canvas"),
                     "Two buckets must render Chart.js canvas elements");
-            assertFalse(result.contains("charts-unavailable"),
+            assertFalse(result.contains("charts-warn"),
                     "Full chart must not use the placeholder CSS class");
             assertTrue(result.contains("chartAvgRt"), "Avg RT chart must be present");
             assertTrue(result.contains("chartErrPct"), "Error rate chart must be present");
@@ -574,7 +574,7 @@ class HtmlPageBuilderTest {
             String page = HtmlPageBuilder.buildPage(sevenSectionBody(), metricsTable, chartsBlock, minimalConfig());
 
             // Expect 9 tabs: 7 AI + Metrics + Charts
-            long tabCount = countOccurrences(page, "class=\"tab-btn");
+            long tabCount = countOccurrences(page, "class=\"nav-item");
             assertEquals(9, tabCount, "9 tab buttons expected (7 AI + Metrics + Charts)");
         }
 
@@ -583,7 +583,7 @@ class HtmlPageBuilderTest {
         void firstTabButtonIsActive() {
             String page = HtmlPageBuilder.buildPage(sevenSectionBody(), "", "", minimalConfig());
             // First occurrence of tab-btn must carry the active class
-            int firstBtn = page.indexOf("class=\"tab-btn");
+            int firstBtn = page.indexOf("class=\"nav-item");
             assertTrue(page.substring(firstBtn, firstBtn + 30).contains("active"),
                     "First tab button must have the active class");
         }
@@ -592,7 +592,7 @@ class HtmlPageBuilderTest {
         @DisplayName("first tab panel has active class on page load")
         void firstTabPanelIsActive() {
             String page = HtmlPageBuilder.buildPage(sevenSectionBody(), "", "", minimalConfig());
-            int firstPanel = page.indexOf("class=\"tab-panel");
+            int firstPanel = page.indexOf("class=\"panel");
             assertTrue(page.substring(firstPanel, firstPanel + 30).contains("active"),
                     "First tab panel must have the active class");
         }
@@ -603,19 +603,11 @@ class HtmlPageBuilderTest {
             String page = HtmlPageBuilder.buildPage(sevenSectionBody(), "", "", minimalConfig());
             // Use the full HTML element — not just "report-header" which also appears
             // in the CSS <style> block earlier in the string, causing a false position.
-            int headerStart = page.indexOf("<div class=\"report-header\">");
+            int headerStart = page.indexOf("<div class=\"rpt-header\">");
             int headerEnd = page.indexOf("</div>", headerStart);
-            int firstPanel = page.indexOf("class=\"tab-panel");
+            int firstPanel = page.indexOf("class=\"panel");
             assertTrue(headerStart >= 0, "report-header div must be present in the page");
             assertTrue(headerEnd < firstPanel, "Report header must appear before any tab panel");
-        }
-
-        @Test
-        @DisplayName("footer is present in the content area")
-        void footerPresent() {
-            String page = HtmlPageBuilder.buildPage(sevenSectionBody(), "", "", minimalConfig());
-            assertTrue(page.contains("class=\"footer\""), "Footer div must be present");
-            assertTrue(page.contains("Groq (Free)"), "Footer must show the provider display name");
         }
 
         @Test
@@ -637,12 +629,12 @@ class HtmlPageBuilderTest {
         }
 
         @Test
-        @DisplayName("export bar contains Excel and PDF buttons")
+        @DisplayName("export bar contains Excel button; PDF export button is not present")
         void exportBarContainsBothButtons() {
             String page = HtmlPageBuilder.buildPage(sevenSectionBody(), "", "", minimalConfig());
-            assertTrue(page.contains("export-bar"), "Export bar div must be present");
+            assertTrue(page.contains("header-actions"), "Export bar div must be present");
             assertTrue(page.contains("exportExcel()"), "Excel export button must be present");
-            assertTrue(page.contains("window.print()"), "PDF export button must be present");
+            assertFalse(page.contains("window.print()"), "PDF export button must not be present"); // CHANGED
         }
 
         @Test
@@ -653,7 +645,7 @@ class HtmlPageBuilderTest {
             assertTrue(page.contains("Executive Summary"), "Executive Summary section present");
             assertTrue(page.contains("Verdict"), "Verdict section present");
             // Each h2 appears inside a tab panel
-            long panelCount = countOccurrences(page, "id=\"tab-");
+            long panelCount = countOccurrences(page, "id=\"panel-");
             assertTrue(panelCount >= 8, "At least 8 tab panels expected (7 AI + Charts)");
         }
 
@@ -662,7 +654,7 @@ class HtmlPageBuilderTest {
         void metricsTabOmittedWhenBlank() {
             String page = HtmlPageBuilder.buildPage(sevenSectionBody(), "", "", minimalConfig());
             // 8 tabs: 7 AI + Charts (no metrics)
-            long tabCount = countOccurrences(page, "class=\"tab-btn");
+            long tabCount = countOccurrences(page, "class=\"nav-item");
             assertEquals(8, tabCount, "Metrics tab must be omitted when metricsTable is blank");
         }
 
@@ -671,7 +663,7 @@ class HtmlPageBuilderTest {
         void metricsTabPresentWhenNonBlank() {
             String metricsTable = "<div class=\"metrics-section\"><h2>Transaction Metrics</h2></div>";
             String page = HtmlPageBuilder.buildPage(sevenSectionBody(), metricsTable, "", minimalConfig());
-            long tabCount = countOccurrences(page, "class=\"tab-btn");
+            long tabCount = countOccurrences(page, "class=\"nav-item");
             assertEquals(9, tabCount, "9 tabs expected with non-blank metricsTable");
             assertTrue(page.contains("Transaction Metrics"), "Metrics tab title must be present");
         }
@@ -680,8 +672,8 @@ class HtmlPageBuilderTest {
         @DisplayName("charts tab button carries data-charts=true attribute")
         void chartsTabButtonHasDataChartsAttribute() {
             String page = HtmlPageBuilder.buildPage(sevenSectionBody(), "", "", minimalConfig());
-            assertTrue(page.contains("data-charts=\"true\""),
-                    "Charts tab button must have data-charts=true for Chart.js resize trigger");
+            assertTrue(page.contains("el.querySelector('canvas')"),
+                    "Charts panel activation must trigger Chart.js resize via canvas detection");
         }
 
         @Test
@@ -710,7 +702,7 @@ class HtmlPageBuilderTest {
         @DisplayName("tab switching JavaScript is present")
         void tabSwitchingJsPresent() {
             String page = HtmlPageBuilder.buildPage(sevenSectionBody(), "", "", minimalConfig());
-            assertTrue(page.contains("tab-btn"), "Tab button class referenced in JS");
+            assertTrue(page.contains("nav-item"), "Tab button class referenced in JS");
             assertTrue(page.contains("classList.remove('active')"), "Tab active-class removal must be present");
             assertTrue(page.contains("classList.add('active')"), "Tab active-class addition must be present");
         }
@@ -732,20 +724,18 @@ class HtmlPageBuilderTest {
                     + "<h2>Bottleneck Analysis</h2><p>B</p>"
                     + "<h2>Error Analysis</h2><p>C</p>";
             String page = HtmlPageBuilder.buildPage(truncatedBody, "", "", minimalConfig());
-            long tabCount = countOccurrences(page, "class=\"tab-btn");
+            long tabCount = countOccurrences(page, "class=\"nav-item");
             assertEquals(4, tabCount, "3 AI sections + Charts tab = 4 tabs for truncated report");
         }
 
         @Test
-        @DisplayName("@media print CSS ensures all tab panels are visible when printing")
+        @DisplayName("@media print CSS is not present — PDF export feature removed")
         void mediaPrintShowsAllPanels() {
             String page = HtmlPageBuilder.buildPage(sevenSectionBody(), "", "", minimalConfig());
-            assertTrue(page.contains("display: block !important"),
-                    "@media print must force all tab panels visible");
-            assertTrue(page.contains(".tab-bar    { display: none; }"),
-                    "@media print must hide the tab bar");
-            assertTrue(page.contains(".export-bar { display: none; }"),
-                    "@media print must hide the export bar");
+            assertFalse(page.contains("display: block !important"),
+                    "@media print must not be present"); // CHANGED
+            assertFalse(page.contains("@media print"),
+                    "@media print block must be absent"); // CHANGED
         }
 
         @Test
