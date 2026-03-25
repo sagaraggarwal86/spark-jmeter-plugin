@@ -9,7 +9,7 @@
     <version>5.0.0</version>
     <packaging>jar</packaging>
     <name>JAAR — JTL AI Analysis &amp; Reporting</name>
-    <description>JAAR is an AI-powered JMeter listener plugin that analyze load test results and generates intelligent
+    <description>JAAR is an AI-powered JMeter listener plugin that analyzes load test results and generates intelligent
         performance reports with PASS/FAIL verdicts.
     </description>
     <url>https://github.com/sagaraggarwal86/jaar-jmeter-plugin</url>
