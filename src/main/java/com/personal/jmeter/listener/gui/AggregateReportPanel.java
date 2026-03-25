@@ -108,16 +108,14 @@ public class AggregateReportPanel extends JPanel {
     private final JComboBox<AiProviderConfig> providerCombo = new JComboBox<>();
 
     // ── Background executor ───────────────────────────────────────
-    private final ExecutorService aiExecutor = Executors.newSingleThreadExecutor(r -> {
-        Thread t = new Thread(r, "ai-report-worker");
-        t.setDaemon(true);
-        return t;
-    });
+    // CHANGED: not final — recreated in addNotify() after removeNotify() terminates it
+    private ExecutorService aiExecutor;
 
     // ── Collaborators ────────────────────────────────────────────
     private final TablePopulator tablePopulator;
     private final CsvExporter csvExporter;
-    private final AiReportLauncher aiReportLauncher;
+    // CHANGED: not final — recreated alongside aiExecutor in addNotify()
+    private AiReportLauncher aiReportLauncher;
 
     // ── State ────────────────────────────────────────────────────
     private Map<String, SamplingStatCalculator> cachedResults = Collections.emptyMap();
@@ -156,6 +154,7 @@ public class AggregateReportPanel extends JPanel {
                 allTableColumns, columnMenuItems);
         csvExporter = new CsvExporter(this, tableModel, allTableColumns,
                 columnMenuItems, this::buildSlaConfig);
+        aiExecutor = newAiExecutor(); // CHANGED: initialised here; recreated in addNotify()
         aiReportLauncher = new AiReportLauncher(this, aiExecutor, new PanelDataProvider());
 
         ReportPanelBuilder builder = new ReportPanelBuilder(
@@ -319,6 +318,23 @@ public class AggregateReportPanel extends JPanel {
     }
 
     /**
+     * Recreates the background AI executor and launcher if the panel is re-attached
+     * to the Swing hierarchy after a previous {@link #removeNotify()} call terminated
+     * the executor. Without this, clicking "Generate AI Report" after the panel has
+     * been detached and re-attached throws {@link java.util.concurrent.RejectedExecutionException}.
+     */
+    // CHANGED: added to mirror removeNotify() and fix RejectedExecutionException on re-attach
+    @Override
+    public void addNotify() {
+        super.addNotify();
+        if (aiExecutor.isShutdown()) {
+            aiExecutor = newAiExecutor();
+            aiReportLauncher = new AiReportLauncher(this, aiExecutor, new PanelDataProvider());
+            log.debug("addNotify: aiExecutor recreated after shutdown.");
+        }
+    }
+
+    /**
      * Releases the background AI executor when this panel is detached from the
      * Swing hierarchy (JMeter shutdown or listener removal).
      * Interrupts any in-progress AI call — the worker thread is a daemon so the
@@ -329,6 +345,15 @@ public class AggregateReportPanel extends JPanel {
         super.removeNotify();
         aiExecutor.shutdownNow();
         log.debug("removeNotify: aiExecutor shut down.");
+    }
+
+    // CHANGED: extracted factory so constructor and addNotify() share the same thread config
+    private static ExecutorService newAiExecutor() {
+        return Executors.newSingleThreadExecutor(r -> {
+            Thread t = new Thread(r, "ai-report-worker");
+            t.setDaemon(true);
+            return t;
+        });
     }
 
     /**
