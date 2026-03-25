@@ -38,7 +38,7 @@ jobs:
             target/jaar-jmeter-plugin-*.jar
             src/main/scripts/jaar-cli-report.bat
             src/main/scripts/jaar-cli-report.sh
-            docs/ai-reporter.properties  # CHANGED
+            docs/ai-reporter.properties
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
