@@ -421,6 +421,26 @@ class CliArgsTest {
         }
 
         @Test
+        @DisplayName("start-offset=-5 produces error (negative not allowed)")
+        void startOffsetNegativeProducesError(@TempDir Path dir) throws IOException {
+            CliArgs cli = CliArgs.parse(new String[]{
+                    "--input", tempJtl(dir), "--provider", "groq",
+                    "--config", tempConfig(dir), "--start-offset", "-5"
+            });
+            assertTrue(cli.errors().stream().anyMatch(e -> e.contains("--start-offset")));
+        }
+
+        @Test
+        @DisplayName("end-offset=-10 produces error (negative not allowed)")
+        void endOffsetNegativeProducesError(@TempDir Path dir) throws IOException {
+            CliArgs cli = CliArgs.parse(new String[]{
+                    "--input", tempJtl(dir), "--provider", "groq",
+                    "--config", tempConfig(dir), "--end-offset", "-10"
+            });
+            assertTrue(cli.errors().stream().anyMatch(e -> e.contains("--end-offset")));
+        }
+
+        @Test
         @DisplayName("chart-interval=-1 produces error (below minimum)")
         void chartIntervalNegativeProducesError(@TempDir Path dir) throws IOException {
             CliArgs cli = CliArgs.parse(new String[]{

@@ -19,6 +19,7 @@ import java.nio.charset.StandardCharsets;
  * allowing the caller to show an appropriate error dialog.</p>
  *
  * <p>All public methods are static; this class is a stateless utility.</p>
+ *
  * @since 4.6.0
  */
 public final class PromptLoader {

@@ -27,6 +27,7 @@ package com.personal.jmeter.ai.report;
  * <p>Neither token is ever visible in the rendered HTML report.
  * {@link #stripVerdictLine(String)} removes all lines starting with either
  * {@code VERDICT:} or {@code BRIEF_VERDICT:} before rendering.</p>
+ *
  * @since 4.6.0
  */
 public final class MarkdownUtils {

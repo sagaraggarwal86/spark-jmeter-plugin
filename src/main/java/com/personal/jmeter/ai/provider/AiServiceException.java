@@ -8,6 +8,7 @@ import java.io.IOException;
  *
  * <p>Extends {@link IOException} so callers that declare {@code throws IOException}
  * need no signature change.</p>
+ *
  * @since 4.6.0
  */
 public class AiServiceException extends IOException {

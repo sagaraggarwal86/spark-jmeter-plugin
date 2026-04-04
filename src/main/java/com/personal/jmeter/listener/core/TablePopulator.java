@@ -20,22 +20,27 @@ import java.util.Map;
  * <p>Extracted from {@code AggregateReportPanel} to satisfy the 300-line class
  * design limit (Standard 3 SRP). Responsibility: data rendering only — no I/O,
  * no network, no file access.</p>
+ *
  * @since 4.6.0
  */
 public final class TablePopulator {
 
     /**
-     * DecimalFormat for integer-rounded values (response times).
+     * Thread-safe DecimalFormat for integer-rounded values (response times).
+     * Uses {@link ThreadLocal} because {@link DecimalFormat} is not thread-safe.
      */
-    private static final DecimalFormat FORMAT_INTEGER = new DecimalFormat("#");
+    private static final ThreadLocal<DecimalFormat> FORMAT_INTEGER =
+            ThreadLocal.withInitial(() -> new DecimalFormat("#"));
     /**
-     * DecimalFormat for one decimal place (std deviation).
+     * Thread-safe DecimalFormat for one decimal place (std deviation).
      */
-    private static final DecimalFormat FORMAT_ONE_DP = new DecimalFormat("0.0");
+    private static final ThreadLocal<DecimalFormat> FORMAT_ONE_DP =
+            ThreadLocal.withInitial(() -> new DecimalFormat("0.0"));
     /**
-     * DecimalFormat for two decimal places (error rate).
+     * Thread-safe DecimalFormat for two decimal places (error rate).
      */
-    private static final DecimalFormat FORMAT_TWO_DP = new DecimalFormat("0.00");
+    private static final ThreadLocal<DecimalFormat> FORMAT_TWO_DP =
+            ThreadLocal.withInitial(() -> new DecimalFormat("0.00"));
 
     private final DefaultTableModel tableModel;
     private final JTable resultsTable;
@@ -88,15 +93,15 @@ public final class TablePopulator {
                 String.valueOf(total),
                 String.valueOf(total - failed),
                 String.valueOf(failed),
-                FORMAT_INTEGER.format(calc.getMean()),
+                FORMAT_INTEGER.get().format(calc.getMean()),
                 String.valueOf(calc.getMin().intValue()),
                 String.valueOf(calc.getMax().intValue()),
-                FORMAT_INTEGER.format(calc.getPercentPoint(pFraction).doubleValue()),
-                FORMAT_ONE_DP.format(calc.getStandardDeviation()),
-                FORMAT_TWO_DP.format(calc.getErrorPercentage() * 100.0) + "%",
+                FORMAT_INTEGER.get().format(calc.getPercentPoint(pFraction).doubleValue()),
+                FORMAT_ONE_DP.get().format(calc.getStandardDeviation()),
+                FORMAT_TWO_DP.get().format(calc.getErrorPercentage() * 100.0) + "%",
                 String.format("%.2f/sec", calc.getRate()),
-                FORMAT_TWO_DP.format(calc.getKBPerSecond()),
-                FORMAT_ONE_DP.format(calc.getAvgPageBytes())
+                FORMAT_TWO_DP.get().format(calc.getKBPerSecond()),
+                FORMAT_ONE_DP.get().format(calc.getAvgPageBytes())
         };
     }
 

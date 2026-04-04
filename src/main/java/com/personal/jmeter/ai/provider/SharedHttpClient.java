@@ -14,6 +14,7 @@ import java.time.Duration;
  *
  * <p>Reusing one client allows connection-pool sharing across report
  * generation and provider pings, avoiding redundant TLS handshakes.</p>
+ *
  * @since 4.6.0
  */
 public final class SharedHttpClient {

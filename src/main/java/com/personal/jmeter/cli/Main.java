@@ -31,6 +31,7 @@ import java.net.URL;
  * java -cp jaar-jmeter-plugin.jar com.personal.jmeter.cli.Main \
  *   -i results.jtl --provider groq --config ai-reporter.properties
  * </pre>
+ *
  * @since 4.6.0
  */
 public final class Main {
@@ -64,7 +65,7 @@ public final class Main {
      */
     static final int EXIT_WRITE_ERROR = 6;
     /**
-     * Exit code: unexpected / unhandled error (RuntimeException, Error, etc.) — full stack trace printed to stderr.
+     * Exit code: unexpected / unhandled exception (RuntimeException, etc.) — full stack trace printed to stderr.
      */
     static final int EXIT_UNEXPECTED_ERROR = 7;
 
@@ -115,9 +116,9 @@ public final class Main {
         } catch (IOException e) {
             System.err.println("Error: " + e.getMessage());
             System.exit(EXIT_WRITE_ERROR);
-        } catch (Throwable t) {
-            System.err.println("Unexpected error: " + t.getMessage());
-            t.printStackTrace(System.err);
+        } catch (Exception e) {
+            System.err.println("Unexpected error: " + e.getMessage());
+            e.printStackTrace(System.err);
             System.exit(EXIT_UNEXPECTED_ERROR);
         }
     }

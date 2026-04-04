@@ -312,6 +312,10 @@ final class CliArgs {
             errors.add("Config file not found: " + configFile);
 
         // Ranges
+        if (startOffset < 0)
+            errors.add("--start-offset must not be negative");
+        if (endOffset < 0)
+            errors.add("--end-offset must not be negative");
         if (percentile < 1 || percentile > 99)
             errors.add("--percentile must be between 1 and 99");
         if (chartInterval < 0 || chartInterval > 3600)

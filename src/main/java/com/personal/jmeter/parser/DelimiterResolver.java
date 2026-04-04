@@ -21,6 +21,7 @@ import java.nio.charset.StandardCharsets;
  * {@code =} sign. Commented-out or missing entries are treated as absent.</p>
  *
  * <p>All methods are static; this class is a stateless utility.</p>
+ *
  * @since 4.6.0
  */
 public final class DelimiterResolver {
@@ -123,8 +124,8 @@ public final class DelimiterResolver {
                 }
             }
         } catch (IOException e) {
-            log.warn("readDelimiterFromFile: failed to read {}. reason={}",
-                    file.getAbsolutePath(), e.getMessage());
+            log.warn("readDelimiterFromFile: failed to read {}",
+                    file.getAbsolutePath(), e);
             return '\0';
         }
         return result;

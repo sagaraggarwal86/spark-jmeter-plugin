@@ -106,14 +106,12 @@ public class AggregateReportPanel extends JPanel {
      * Provider dropdown — populated lazily when opened; null item = no providers configured.
      */
     private final JComboBox<AiProviderConfig> providerCombo = new JComboBox<>();
-
-    // ── Background executor ───────────────────────────────────────
-    // CHANGED: not final — recreated in addNotify() after removeNotify() terminates it
-    private ExecutorService aiExecutor;
-
     // ── Collaborators ────────────────────────────────────────────
     private final TablePopulator tablePopulator;
     private final CsvExporter csvExporter;
+    // ── Background executor ───────────────────────────────────────
+    // CHANGED: not final — recreated in addNotify() after removeNotify() terminates it
+    private ExecutorService aiExecutor;
     // CHANGED: not final — recreated alongside aiExecutor in addNotify()
     private AiReportLauncher aiReportLauncher;
 
@@ -210,6 +208,20 @@ public class AggregateReportPanel extends JPanel {
         } catch (NumberFormatException e) {
             return fallback;
         }
+    }
+
+    // CHANGED: extracted factory so constructor and addNotify() share the same thread config
+    private static ExecutorService newAiExecutor() {
+        return Executors.newSingleThreadExecutor(r -> {
+            Thread t = new Thread(r, "ai-report-worker");
+            t.setDaemon(true);
+            return t;
+        });
+    }
+
+    private static void copyToClipboard(String text) { // CHANGED
+        Toolkit.getDefaultToolkit().getSystemClipboard()
+                .setContents(new java.awt.datatransfer.StringSelection(text), null);
     }
 
     /**
@@ -356,15 +368,6 @@ public class AggregateReportPanel extends JPanel {
         super.removeNotify();
         aiExecutor.shutdownNow();
         log.debug("removeNotify: aiExecutor shut down.");
-    }
-
-    // CHANGED: extracted factory so constructor and addNotify() share the same thread config
-    private static ExecutorService newAiExecutor() {
-        return Executors.newSingleThreadExecutor(r -> {
-            Thread t = new Thread(r, "ai-report-worker");
-            t.setDaemon(true);
-            return t;
-        });
     }
 
     /**
@@ -533,6 +536,10 @@ public class AggregateReportPanel extends JPanel {
         return filterModeCombo.getSelectedIndex();
     }
 
+    // ─────────────────────────────────────────────────────────────
+    // Package-private API (used by collaborators and tests)
+    // ─────────────────────────────────────────────────────────────
+
     /**
      * @param i index to select; out-of-range defaults to 0 (Include)
      */
@@ -540,16 +547,16 @@ public class AggregateReportPanel extends JPanel {
         filterModeCombo.setSelectedIndex((i == 1) ? 1 : 0);
     }
 
-    // ─────────────────────────────────────────────────────────────
-    // Package-private API (used by collaborators and tests)
-    // ─────────────────────────────────────────────────────────────
-
     /**
      * @return the last loaded JTL file path, or {@code null} if none loaded
      */
     public String getLastLoadedFilePath() {
         return lastLoadedFilePath;
     }
+
+    // ─────────────────────────────────────────────────────────────
+    // SLA renderer installation
+    // ─────────────────────────────────────────────────────────────
 
     /**
      * Returns the column visibility state as a comma-separated boolean string.
@@ -566,10 +573,6 @@ public class AggregateReportPanel extends JPanel {
         }
         return sb.toString();
     }
-
-    // ─────────────────────────────────────────────────────────────
-    // SLA renderer installation
-    // ─────────────────────────────────────────────────────────────
 
     /**
      * Restores column visibility from a comma-separated boolean string.
@@ -590,6 +593,10 @@ public class AggregateReportPanel extends JPanel {
         }
     }
 
+    // ─────────────────────────────────────────────────────────────
+    // Bottom panel
+    // ─────────────────────────────────────────────────────────────
+
     JTLParser.FilterOptions buildFilterOptions() {
         JTLParser.FilterOptions opts = new JTLParser.FilterOptions();
         opts.startOffset = parseIntField(startOffsetField, 0);
@@ -602,10 +609,6 @@ public class AggregateReportPanel extends JPanel {
                 AiReportLauncher.resolveJmeterHomeStatic());
         return opts;
     }
-
-    // ─────────────────────────────────────────────────────────────
-    // Bottom panel
-    // ─────────────────────────────────────────────────────────────
 
     List<String[]> getVisibleTableRows() {
         return tablePopulator.getVisibleRows();
@@ -681,11 +684,6 @@ public class AggregateReportPanel extends JPanel {
         popup.addSeparator();
         popup.add(copyAll);
         resultsTable.setComponentPopupMenu(popup);
-    }
-
-    private static void copyToClipboard(String text) { // CHANGED
-        Toolkit.getDefaultToolkit().getSystemClipboard()
-                .setContents(new java.awt.datatransfer.StringSelection(text), null);
     }
 
     // ─────────────────────────────────────────────────────────────

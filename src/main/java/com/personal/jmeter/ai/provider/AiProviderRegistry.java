@@ -12,6 +12,9 @@ import java.io.InputStream;
 import java.net.URI;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -40,6 +43,7 @@ import java.util.regex.Pattern;
  * <p>A successful live-ping result for a given provider key is cached for the
  * lifetime of the JVM.  A failed ping clears the cache entry so it is
  * re-tested on the next attempt.</p>
+ *
  * @since 4.6.0
  */
 public final class AiProviderRegistry {
@@ -412,18 +416,41 @@ public final class AiProviderRegistry {
     // ─────────────────────────────────────────────────────────────────────────
 
     /**
-     * Builds the composite ping-cache key from provider key and API key value.
+     * Builds the composite ping-cache key from provider key and a one-way hash
+     * of the API key value.
      *
      * <p>Keying on both fields ensures that when a user rotates their API key
      * and {@code ai-reporter.properties} is reloaded, the old cache entry never
      * matches the new {@link AiProviderConfig} — forcing a fresh live ping rather
      * than silently reusing a stale success result.</p>
      *
+     * <p>The API key is hashed with SHA-256 so that plaintext keys are never
+     * stored as map keys in memory — preventing accidental exposure via heap
+     * dumps or debug logging of the cache contents.</p>
+     *
      * @param config provider configuration
-     * @return composite cache key in the form {@code "providerKey:apiKey"}
+     * @return composite cache key in the form {@code "providerKey:sha256(apiKey)"}
      */
     private static String cacheKey(AiProviderConfig config) {
-        return config.providerKey + ":" + config.apiKey;
+        return config.providerKey + ":" + sha256(config.apiKey);
+    }
+
+    /**
+     * Returns the hex-encoded SHA-256 digest of the input string.
+     */
+    private static String sha256(String input) {
+        try {
+            byte[] hash = MessageDigest.getInstance("SHA-256")
+                    .digest(input.getBytes(StandardCharsets.UTF_8));
+            StringBuilder hex = new StringBuilder(hash.length * 2);
+            for (byte b : hash) {
+                hex.append(String.format("%02x", b));
+            }
+            return hex.toString();
+        } catch (NoSuchAlgorithmException e) {
+            // SHA-256 is mandated by the Java specification — this cannot happen.
+            throw new AssertionError("SHA-256 not available", e);
+        }
     }
 
     // ─────────────────────────────────────────────────────────────────────────

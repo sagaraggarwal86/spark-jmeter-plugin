@@ -26,6 +26,7 @@ import java.util.Objects;
  * <p>Retry behaviour: up to {@value #MAX_ATTEMPTS} attempts with a
  * {@value #RETRY_DELAY_MS} ms delay between attempts. Only HTTP 429 and 5xx
  * responses are retried; 4xx errors other than 429 are terminal.</p>
+ *
  * @since 4.6.0
  */
 public class AiReportService {
@@ -113,6 +114,20 @@ public class AiReportService {
     }
 
     /**
+     * Strips HTML tags and truncates the response body for safe user-facing display.
+     * Prevents information disclosure (server stack traces, internal paths) and
+     * potential UI injection via HTML error pages returned by provider gateways.
+     *
+     * @param body raw HTTP response body; may be null
+     * @return sanitized, truncated string safe for embedding in error messages
+     */
+    private static String sanitizeResponseBody(String body) { // CHANGED
+        if (body == null || body.isBlank()) return "(empty)";
+        String stripped = body.replaceAll("<[^>]+>", "").trim(); // strip HTML tags
+        return stripped.length() > 200 ? stripped.substring(0, 200) + "…" : stripped;
+    }
+
+    /**
      * Sends the two-part prompt to the configured AI provider and returns the
      * AI-generated Markdown report.
      *
@@ -191,20 +206,6 @@ public class AiReportService {
                     config.displayName + " API request was interrupted before a response was received. "
                             + "This may indicate a network issue or the request was cancelled. Please try again.", e);
         }
-    }
-
-    /**
-     * Strips HTML tags and truncates the response body for safe user-facing display.
-     * Prevents information disclosure (server stack traces, internal paths) and
-     * potential UI injection via HTML error pages returned by provider gateways.
-     *
-     * @param body raw HTTP response body; may be null
-     * @return sanitized, truncated string safe for embedding in error messages
-     */
-    private static String sanitizeResponseBody(String body) { // CHANGED
-        if (body == null || body.isBlank()) return "(empty)";
-        String stripped = body.replaceAll("<[^>]+>", "").trim(); // strip HTML tags
-        return stripped.length() > 200 ? stripped.substring(0, 200) + "…" : stripped;
     }
 
     private void sleepBeforeRetry() throws AiServiceException {
