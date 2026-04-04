@@ -275,8 +275,22 @@ public class HtmlReportRenderer {
         StringBuilder sb = new StringBuilder(512 + rows.size() * 200);
         sb.append("<div class=\"metrics-section\">\n")
                 .append("  <h2>Transaction Metrics</h2>\n")
-                .append("  <div class=\"tbl-wrap\">\n")  // CHANGED — horizontal scroll wrapper
-                .append("  <table>\n")
+                // CHANGED — toolbar: search input + page-size dropdown
+                .append("  <div class=\"metrics-toolbar\">\n")
+                .append("    <input type=\"text\" id=\"metricsSearch\" placeholder=\"Search transactions\u2026\">\n")
+                .append("    <div class=\"metrics-toolbar-right\">\n")
+                .append("      <label>Show\n")
+                .append("        <select id=\"metricsPageSize\">\n")
+                .append("          <option value=\"10\" selected>10</option>\n")
+                .append("          <option value=\"25\">25</option>\n")
+                .append("          <option value=\"50\">50</option>\n")
+                .append("          <option value=\"100\">100</option>\n")
+                .append("        </select> entries\n")
+                .append("      </label>\n")
+                .append("    </div>\n")
+                .append("  </div>\n")
+                .append("  <div class=\"tbl-wrap\">\n")
+                .append("  <table id=\"metricsTable\">\n") // CHANGED — id for JS hooks
                 .append("    <thead><tr>\n");
 
         for (String h : baseHeaders) {
@@ -323,8 +337,12 @@ public class HtmlReportRenderer {
 
             sb.append("    </tr>\n");
         }
-        sb.append("    </tbody>\n").append("  </table>\n").append("  </div>\n"); // CHANGED — close tbl-wrap
-        // CHANGED — footnote when no SLA columns are rendered
+        sb.append("    </tbody>\n").append("  </table>\n").append("  </div>\n");
+        // CHANGED — pagination controls below table
+        sb.append("  <div class=\"metrics-paging\">\n")
+                .append("    <span id=\"metricsInfo\"></span>\n")
+                .append("    <div id=\"metricsPages\"></div>\n")
+                .append("  </div>\n");
         if (!hasSla) {
             sb.append("  <p style=\"font-size:11px;color:var(--color-text-tertiary)\">")
                     .append("SLA Columns Hidden \u2014 No SLA Thresholds Were Configured For This Run.")

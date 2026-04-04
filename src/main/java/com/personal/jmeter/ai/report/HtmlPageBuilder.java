@@ -194,6 +194,7 @@ final class HtmlPageBuilder {
                 .append("</div>\n")
                 .append(chartsScript)   // Chart.js init OUTSIDE panels — avoids 0x0 canvas bug
                 .append(buildTabJs())   // sidebar switching + Excel export
+                .append(buildMetricsJs()) // metrics table: search, pagination, column sort
                 .append("</body>\n</html>\n")
                 .toString();
     }
@@ -756,6 +757,130 @@ final class HtmlPageBuilder {
                 .toString();
     }
 
+    /**
+     * Builds the inline JavaScript for the Transaction Metrics table features:
+     * search filtering, client-side pagination, and click-to-sort columns.
+     *
+     * <h4>Search</h4>
+     * <p>Case-insensitive substring match on the transaction name column (index 0).
+     * Non-matching rows receive a {@code data-hide="1"} attribute and are excluded
+     * from pagination. Resets to page 1 on every keystroke.</p>
+     *
+     * <h4>Pagination</h4>
+     * <p>Dropdown selection (10/25/50/100) controls how many rows are visible per
+     * page. Page buttons are dynamically rendered with ellipsis for large page
+     * counts. Prev/Next arrow buttons provided.</p>
+     *
+     * <h4>Column sort</h4>
+     * <p>Clicking any {@code <th>} toggles ascending/descending sort. Numeric
+     * columns are compared as floats (after stripping {@code %} and {@code ,}).
+     * Text columns (transaction name, SLA status) use locale-aware string
+     * comparison. Active sort direction is shown via CSS classes
+     * ({@code .sort-asc} / {@code .sort-desc}).</p>
+     *
+     * <p>Gracefully no-ops when the metrics table is absent (empty row list).</p>
+     *
+     * @return self-executing {@code <script>} block string
+     */
+    private static String buildMetricsJs() { // CHANGED
+        return new StringBuilder(3072)
+                .append("<script>\n(function() {\n")
+                .append("  var tbl = document.getElementById('metricsTable');\n")
+                .append("  if (!tbl) return;\n")
+                .append("  var tbody = tbl.querySelector('tbody');\n")
+                .append("  var allRows = Array.from(tbody.querySelectorAll('tr'));\n")
+                .append("  var searchIn = document.getElementById('metricsSearch');\n")
+                .append("  var pageSel = document.getElementById('metricsPageSize');\n")
+                .append("  var info = document.getElementById('metricsInfo');\n")
+                .append("  var pgDiv = document.getElementById('metricsPages');\n")
+                .append("  var curPage = 1, pgSize = parseInt(pageSel.value, 10);\n\n")
+                // ── visible rows (excluding search-hidden) ────────────────────
+                .append("  function vis() {\n")
+                .append("    return allRows.filter(function(r) { return r.dataset.hide !== '1'; });\n")
+                .append("  }\n\n")
+                // ── render: apply pagination to visible rows ──────────────────
+                .append("  function render() {\n")
+                .append("    var v = vis(), total = v.length;\n")
+                .append("    var tp = Math.max(1, Math.ceil(total / pgSize));\n")
+                .append("    if (curPage > tp) curPage = tp;\n")
+                .append("    var s = (curPage - 1) * pgSize, e = Math.min(s + pgSize, total);\n")
+                .append("    allRows.forEach(function(r) { r.style.display = 'none'; });\n")
+                .append("    for (var i = s; i < e; i++) v[i].style.display = '';\n")
+                // info label
+                .append("    info.textContent = total === 0 ? 'No matching transactions'\n")
+                .append("      : 'Showing ' + (s + 1) + '\\u2013' + e + ' of ' + total + ' transactions';\n")
+                // page buttons
+                .append("    pgDiv.innerHTML = '';\n")
+                // prev
+                .append("    addBtn('\\u25C0', curPage <= 1, function() { curPage--; render(); });\n")
+                // numbered pages
+                .append("    pgRange(curPage, tp).forEach(function(p) {\n")
+                .append("      if (p === 0) {\n")
+                .append("        var sp = document.createElement('span');\n")
+                .append("        sp.textContent = '\\u2026'; sp.style.cssText = 'padding:4px;font-size:11px';\n")
+                .append("        pgDiv.appendChild(sp);\n")
+                .append("      } else {\n")
+                .append("        var b = addBtn(p, false, (function(pg) {\n")
+                .append("          return function() { curPage = pg; render(); };\n")
+                .append("        })(p));\n")
+                .append("        if (p === curPage) b.classList.add('active');\n")
+                .append("      }\n")
+                .append("    });\n")
+                // next
+                .append("    addBtn('\\u25B6', curPage >= tp, function() { curPage++; render(); });\n")
+                .append("  }\n\n")
+                // ── helper: create and append a page button ───────────────────
+                .append("  function addBtn(txt, dis, fn) {\n")
+                .append("    var b = document.createElement('button');\n")
+                .append("    b.textContent = txt; b.disabled = dis; b.onclick = fn;\n")
+                .append("    pgDiv.appendChild(b); return b;\n")
+                .append("  }\n\n")
+                // ── smart page range with ellipsis (0 = ellipsis) ─────────────
+                .append("  function pgRange(c, t) {\n")
+                .append("    if (t <= 7) { var a=[]; for (var i=1;i<=t;i++) a.push(i); return a; }\n")
+                .append("    var p = [1];\n")
+                .append("    if (c > 3) p.push(0);\n")
+                .append("    for (var i=Math.max(2,c-1); i<=Math.min(t-1,c+1); i++) p.push(i);\n")
+                .append("    if (c < t-2) p.push(0);\n")
+                .append("    p.push(t); return p;\n")
+                .append("  }\n\n")
+                // ── search: filter by transaction name ────────────────────────
+                .append("  searchIn.addEventListener('input', function() {\n")
+                .append("    var q = this.value.toLowerCase();\n")
+                .append("    allRows.forEach(function(r) {\n")
+                .append("      var tx = r.cells[0] ? r.cells[0].textContent.toLowerCase() : '';\n")
+                .append("      r.dataset.hide = tx.indexOf(q) === -1 ? '1' : '';\n")
+                .append("    });\n")
+                .append("    curPage = 1; render();\n")
+                .append("  });\n\n")
+                // ── page-size change ──────────────────────────────────────────
+                .append("  pageSel.addEventListener('change', function() {\n")
+                .append("    pgSize = parseInt(this.value, 10); curPage = 1; render();\n")
+                .append("  });\n\n")
+                // ── column sort ───────────────────────────────────────────────
+                .append("  var ths = tbl.querySelectorAll('thead th');\n")
+                .append("  ths.forEach(function(th, col) {\n")
+                .append("    th.addEventListener('click', function() {\n")
+                .append("      var asc = !th.classList.contains('sort-asc');\n")
+                .append("      ths.forEach(function(h) { h.classList.remove('sort-asc','sort-desc'); });\n")
+                .append("      th.classList.add(asc ? 'sort-asc' : 'sort-desc');\n")
+                .append("      allRows.sort(function(a, b) {\n")
+                .append("        var at = a.cells[col] ? a.cells[col].textContent.trim() : '';\n")
+                .append("        var bt = b.cells[col] ? b.cells[col].textContent.trim() : '';\n")
+                .append("        var an = parseFloat(at.replace(/[,%]/g, ''));\n")
+                .append("        var bn = parseFloat(bt.replace(/[,%]/g, ''));\n")
+                .append("        if (!isNaN(an) && !isNaN(bn)) return asc ? an-bn : bn-an;\n")
+                .append("        return asc ? at.localeCompare(bt) : bt.localeCompare(at);\n")
+                .append("      });\n")
+                .append("      allRows.forEach(function(r) { tbody.appendChild(r); });\n")
+                .append("      curPage = 1; render();\n")
+                .append("    });\n")
+                .append("  });\n\n")
+                // ── initial render ────────────────────────────────────────────
+                .append("  render();\n")
+                .append("})();\n</script>\n")
+                .toString();
+    }
 
     /**
      * Builds an inline {@code <script>} block that exposes scenario metadata as
@@ -972,6 +1097,50 @@ final class HtmlPageBuilder {
                 + "    .verdict-fail { font-size: 64px; font-weight: 700; color: #c53030; line-height: 1; margin-bottom: 8px; }\n"
                 // ── Section-specific ─────────────────────────────────────────
                 + "    .metrics-section { margin: 40px 0 0; }\n"
+                // CHANGED — toolbar: search + page-size dropdown
+                + "    .metrics-toolbar {\n"
+                + "      display: flex; align-items: center; justify-content: space-between;\n"
+                + "      gap: 12px; margin-bottom: 10px;\n"
+                + "    }\n"
+                + "    #metricsSearch {\n"
+                + "      width: 240px; padding: 6px 10px;\n"
+                + "      border: 1px solid var(--color-border-secondary); border-radius: 5px;\n"
+                + "      font-size: 12px; font-family: inherit; outline: none;\n"
+                + "    }\n"
+                + "    #metricsSearch:focus { border-color: #3182ce; box-shadow: 0 0 0 2px rgba(49,130,206,0.2); }\n"
+                + "    #metricsPageSize {\n"
+                + "      padding: 4px 6px; border: 1px solid var(--color-border-secondary);\n"
+                + "      border-radius: 4px; font-size: 12px; font-family: inherit; margin: 0 4px;\n"
+                + "    }\n"
+                + "    .metrics-toolbar-right label { font-size: 12px; color: var(--color-text-secondary); }\n"
+                // CHANGED — pagination controls
+                + "    .metrics-paging {\n"
+                + "      display: flex; align-items: center; justify-content: space-between;\n"
+                + "      margin-top: 10px; font-size: 12px; color: var(--color-text-secondary);\n"
+                + "    }\n"
+                + "    #metricsPages { display: flex; gap: 4px; flex-wrap: wrap; }\n"
+                + "    #metricsPages button {\n"
+                + "      min-width: 28px; padding: 4px 8px;\n"
+                + "      border: 1px solid var(--color-border-secondary); border-radius: 4px;\n"
+                + "      background: var(--color-background-primary); cursor: pointer;\n"
+                + "      font-size: 11px; font-family: inherit; color: var(--color-text-secondary);\n"
+                + "    }\n"
+                + "    #metricsPages button:hover { background: var(--color-background-tertiary); }\n"
+                + "    #metricsPages button.active {\n"
+                + "      background: #1a365d; color: white; border-color: #1a365d;\n"
+                + "    }\n"
+                + "    #metricsPages button:disabled { opacity: 0.4; cursor: default; }\n"
+                // CHANGED — sortable column indicators (metrics table only)
+                + "    #metricsTable th { cursor: pointer; user-select: none; }\n"
+                + "    #metricsTable th::after {\n"
+                + "      content: ' \\21C5'; font-size: 9px; opacity: 0.35;\n"
+                + "    }\n"
+                + "    #metricsTable th.sort-asc::after {\n"
+                + "      content: ' \\25B2'; opacity: 0.9;\n"
+                + "    }\n"
+                + "    #metricsTable th.sort-desc::after {\n"
+                + "      content: ' \\25BC'; opacity: 0.9;\n"
+                + "    }\n"
                 + "    .charts-section  { margin: 0; }\n"
                 + "    .charts-note { font-size: 11px; color: var(--color-text-tertiary); margin-bottom: 16px; }\n"
                 + "    .charts-warn { background: #fffbeb; border: 1px solid #f6e05e; border-radius: 6px; padding: 12px 16px; color: #744210; font-size: 13px; }\n"
