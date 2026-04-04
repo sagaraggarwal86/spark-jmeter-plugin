@@ -177,6 +177,7 @@ public class AggregateReportPanel extends JPanel {
         tablePopulator.storeOriginalColumns();
         installSlaRenderer();
         setupFieldListeners();
+        installTableContextMenu(); // CHANGED — right-click copy support
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -217,9 +218,19 @@ public class AggregateReportPanel extends JPanel {
      * during state restoration — SLA and chart interval fields are already restored
      * from the TestElement before this is called, so they must not be wiped.
      *
+     * <p>When the cache is already populated for the same file path, the table
+     * is repopulated from cache without re-parsing the file. This avoids
+     * redundant I/O on every JMeter tree navigation return — matching the
+     * behaviour of JMeter's built-in Aggregate Report listener.</p> // CHANGED
+     *
      * @param filePath path to the JTL file
      */
     void loadJtlFileForRestore(String filePath) {
+        // CHANGED — skip re-parse when cache is warm for the same file
+        if (filePath.equals(lastLoadedFilePath) && !cachedResults.isEmpty()) {
+            repopulate(readPercentile());
+            return;
+        }
         lastLoadedFilePath = filePath;
         try {
             JTLParser.FilterOptions opts = buildFilterOptions();
@@ -612,6 +623,69 @@ public class AggregateReportPanel extends JPanel {
                 ColumnIndex.PERCENTILE_COL_INDEX,
                 ColumnIndex.NAME_COL_INDEX);
         resultsTable.setDefaultRenderer(Object.class, renderer);
+    }
+
+    /**
+     * Installs a right-click context menu on the results table with
+     * Copy Cell, Copy Row, and Copy All Visible options.
+     * Values are tab-separated for direct paste into Excel / Sheets.
+     */
+    private void installTableContextMenu() { // CHANGED
+        JPopupMenu popup = new JPopupMenu();
+
+        JMenuItem copyCell = new JMenuItem("Copy Cell");
+        copyCell.addActionListener(e -> {
+            int row = resultsTable.getSelectedRow();
+            int col = resultsTable.getSelectedColumn();
+            if (row < 0 || col < 0) return;
+            Object val = resultsTable.getValueAt(row, col);
+            copyToClipboard(val != null ? val.toString() : "");
+        });
+
+        JMenuItem copyRow = new JMenuItem("Copy Row");
+        copyRow.addActionListener(e -> {
+            int row = resultsTable.getSelectedRow();
+            if (row < 0) return;
+            StringBuilder sb = new StringBuilder();
+            for (int c = 0; c < resultsTable.getColumnCount(); c++) {
+                if (c > 0) sb.append('\t');
+                Object val = resultsTable.getValueAt(row, c);
+                sb.append(val != null ? val : "");
+            }
+            copyToClipboard(sb.toString());
+        });
+
+        JMenuItem copyAll = new JMenuItem("Copy All Visible");
+        copyAll.addActionListener(e -> {
+            StringBuilder sb = new StringBuilder();
+            // Header
+            for (int c = 0; c < resultsTable.getColumnCount(); c++) {
+                if (c > 0) sb.append('\t');
+                sb.append(resultsTable.getColumnName(c));
+            }
+            sb.append('\n');
+            // Rows
+            for (int r = 0; r < resultsTable.getRowCount(); r++) {
+                for (int c = 0; c < resultsTable.getColumnCount(); c++) {
+                    if (c > 0) sb.append('\t');
+                    Object val = resultsTable.getValueAt(r, c);
+                    sb.append(val != null ? val : "");
+                }
+                sb.append('\n');
+            }
+            copyToClipboard(sb.toString());
+        });
+
+        popup.add(copyCell);
+        popup.add(copyRow);
+        popup.addSeparator();
+        popup.add(copyAll);
+        resultsTable.setComponentPopupMenu(popup);
+    }
+
+    private static void copyToClipboard(String text) { // CHANGED
+        Toolkit.getDefaultToolkit().getSystemClipboard()
+                .setContents(new java.awt.datatransfer.StringSelection(text), null);
     }
 
     // ─────────────────────────────────────────────────────────────
