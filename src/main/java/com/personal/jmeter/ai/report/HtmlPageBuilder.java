@@ -181,6 +181,7 @@ final class HtmlPageBuilder {
                 .append("    </div>\n")
                 .append("    <div class=\"header-actions\">\n")
                 .append("      <button class=\"exp-btn\" onclick=\"exportExcel()\">&#x1F4E5;&nbsp; Export Excel</button>\n")
+                .append("      <button class=\"exp-btn\" id=\"darkToggle\" onclick=\"toggleDark()\">&#x1F319;&nbsp; Dark Mode</button>\n") // CHANGED
                 .append("    </div>\n")
                 .append("  </div>\n")
                 .append("  <div class=\"body-row\">\n")
@@ -195,6 +196,7 @@ final class HtmlPageBuilder {
                 .append(chartsScript)   // Chart.js init OUTSIDE panels — avoids 0x0 canvas bug
                 .append(buildTabJs())   // sidebar switching + Excel export
                 .append(buildMetricsJs()) // metrics table: search, pagination, column sort
+                .append(buildDarkModeJs()) // CHANGED — dark mode toggle
                 .append("</body>\n</html>\n")
                 .toString();
     }
@@ -883,6 +885,27 @@ final class HtmlPageBuilder {
     }
 
     /**
+     * Builds the inline JavaScript for the dark mode toggle button.
+     *
+     * <p>Toggles the {@code .dark} CSS class on the {@code .rpt} root element
+     * and updates the button label between "Dark Mode" and "Light Mode".
+     * State is not persisted — defaults to light mode on every page load.</p>
+     *
+     * @return self-executing {@code <script>} block string
+     */
+    private static String buildDarkModeJs() { // CHANGED
+        return "<script>\n"
+                + "function toggleDark() {\n"
+                + "  var rpt = document.querySelector('.rpt');\n"
+                + "  var btn = document.getElementById('darkToggle');\n"
+                + "  rpt.classList.toggle('dark');\n"
+                + "  var isDark = rpt.classList.contains('dark');\n"
+                + "  btn.innerHTML = isDark ? '&#9728;&nbsp; Light Mode' : '&#127769;&nbsp; Dark Mode';\n"
+                + "}\n"
+                + "</script>\n";
+    }
+
+    /**
      * Builds an inline {@code <script>} block that exposes scenario metadata as
      * {@code window.jaarMeta} so the Excel export function can build the
      * "Test Info" sheet and derive the dynamic Excel filename without parsing the
@@ -972,6 +995,37 @@ final class HtmlPageBuilder {
                 + "      --color-border-secondary:     #cbd5e0;\n"
                 + "      --color-border-tertiary:      #e2e8f0;\n"
                 + "    }\n"
+                // CHANGED — dark mode palette override
+                + "    .dark {\n"
+                + "      --color-text-primary:         #e2e8f0;\n"
+                + "      --color-text-secondary:       #a0aec0;\n"
+                + "      --color-text-tertiary:        #718096;\n"
+                + "      --color-background-primary:   #1a202c;\n"
+                + "      --color-background-secondary: #2d3748;\n"
+                + "      --color-background-tertiary:  #171923;\n"
+                + "      --color-border-secondary:     #4a5568;\n"
+                + "      --color-border-tertiary:      #2d3748;\n"
+                + "    }\n"
+                + "    .dark .rpt-header { background: #0d1b2a; }\n"
+                + "    .dark .sidebar { background: #171923; border-right-color: #2d3748; }\n"
+                + "    .dark .nav-item { color: #a0aec0; }\n"
+                + "    .dark .nav-item:hover { background: #2d3748; color: #e2e8f0; }\n"
+                + "    .dark .nav-item.active { background: #1a202c; color: #63b3ed; border-left-color: #63b3ed; }\n"
+                + "    .dark th { background: #1a202c; color: #e2e8f0; }\n"
+                + "    .dark code { background: #2d3748; color: #fc8181; }\n"
+                + "    .dark pre { background: #171923; color: #e2e8f0; }\n"
+                + "    .dark blockquote { background: #1a3a5c; border-left-color: #3182ce; }\n"
+                + "    .dark .charts-warn { background: #2d2a1a; border-color: #d69e2e; color: #fefcbf; }\n"
+                + "    .dark .chart-box { background: #2d3748; border-color: #4a5568; }\n"
+                + "    .dark .chart-box h3 { color: #a0aec0; }\n"
+                + "    .dark .verdict-banner { background: #1a3a2a; border-color: #276749; }\n"
+                + "    .dark .verdict-banner.fail { background: #3a1a1a; border-color: #c53030; }\n"
+                + "    .dark .verdict-desc { color: #c6f6d5; }\n"
+                + "    .dark .no-err { background: #1a3a2a; border-color: #276749; }\n"
+                + "    .dark .no-err-icon { background: #276749; }\n"
+                + "    .dark .no-err-text { color: #c6f6d5; }\n"
+                + "    .dark .ai-notice { background: #2d2a1a; border-color: #d69e2e; color: #fefcbf; }\n"
+                + "    .dark .kpi { background: #2d3748; border-color: #4a5568; }\n"
                 // ── Reset ─────────────────────────────────────────────────────
                 + "    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }\n"
                 + "    html, body { height: 100%; }\n"
