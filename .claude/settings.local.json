@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "Bash(mvn clean:*)",
-      "Bash(mvn -f F:/Projects/JAAR-jmeter-plugin/pom.xml clean verify)"
+      "Bash(mvn -f F:/Projects/JAAR-jmeter-plugin/pom.xml clean verify)",
+      "Bash(grep -E \"\\\\.\\(java|xml|yml|yaml|properties|txt\\)$\")",
+      "Bash(git mv:*)"
     ]
   }
 }

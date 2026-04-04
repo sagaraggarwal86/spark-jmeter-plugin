@@ -27,6 +27,7 @@ import java.time.format.DateTimeFormatter;
  * if the pattern is invalid, {@code null} is returned and a warning is logged.</p>
  *
  * <p>All methods are static; this class is a stateless utility.</p>
+ *
  * @since 4.6.0
  */
 public final class TimestampFormatResolver {
@@ -141,8 +142,8 @@ public final class TimestampFormatResolver {
                 }
             }
         } catch (IOException e) {
-            log.warn("readFormatFromFile: failed to read {}. reason={}",
-                    file.getAbsolutePath(), e.getMessage());
+            log.warn("readFormatFromFile: failed to read {}",
+                    file.getAbsolutePath(), e);
             return null;
         }
         return result;

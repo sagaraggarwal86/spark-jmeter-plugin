@@ -44,6 +44,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  *
  * <p>All dependencies are constructor-injected, making this class independently
  * unit testable without a database, file-system, or live network connection.</p>
+ *
  * @since 4.6.0
  */
 public class AiReportCoordinator {

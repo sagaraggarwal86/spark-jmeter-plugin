@@ -31,6 +31,75 @@ class PromptBuilderStaticsTest {
     // buildClassificationSummary
     // ─────────────────────────────────────────────────────────────
 
+    private static Map<String, Object> globalStats(double avgMs, double p99Ms, double errPct) {
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("avgResponseMs", avgMs);
+        m.put("p99ResponseMs", p99Ms);
+        m.put("errorRatePct", errPct);
+        return m;
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // buildOverallVerdictSummary
+    // ─────────────────────────────────────────────────────────────
+
+    private static Map<String, Object> emptyGlobalStats() {
+        return new LinkedHashMap<>();
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // Helpers
+    // ─────────────────────────────────────────────────────────────
+
+    private static Map<String, Object> slaSummary(String verdict) {
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("verdict", verdict);
+        m.put("configured", true);
+        return m;
+    }
+
+    private static Map<String, Object> noSlaSummary() {
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("verdict", "NOT_CONFIGURED");
+        m.put("configured", false);
+        return m;
+    }
+
+    private static Map<String, Object> classification(String label) {
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("label", label);
+        return m;
+    }
+
+    /**
+     * Produces a plateaued TPS series: tail avg ≥ 90% of peak.
+     * 8 buckets all at TPS=10.0 — tail avg == peak → plateauRatio=1.0.
+     */
+    private static List<JTLParser.TimeBucket> plateauedBuckets() {
+        long base = 1_700_000_000_000L;
+        long interval = 30_000L;
+        List<JTLParser.TimeBucket> list = new java.util.ArrayList<>();
+        for (int i = 0; i < 8; i++) {
+            list.add(new JTLParser.TimeBucket(base + i * interval, 200.0, 0.5, 10.0, 50.0));
+        }
+        return list;
+    }
+
+    /**
+     * Produces a rising TPS series: tail avg < 90% of peak (not plateaued).
+     * Peak is 10.0 at bucket 0; tail buckets are at 5.0 → plateauRatio=0.5.
+     */
+    private static List<JTLParser.TimeBucket> risingBuckets() {
+        long base = 1_700_000_000_000L;
+        long interval = 30_000L;
+        List<JTLParser.TimeBucket> list = new java.util.ArrayList<>();
+        list.add(new JTLParser.TimeBucket(base, 200.0, 0.5, 10.0, 50.0));
+        for (int i = 1; i < 8; i++) {
+            list.add(new JTLParser.TimeBucket(base + i * interval, 200.0, 0.5, 5.0, 25.0));
+        }
+        return list;
+    }
+
     @Nested
     @DisplayName("buildClassificationSummary")
     class ClassificationSummaryTests {
@@ -120,10 +189,6 @@ class PromptBuilderStaticsTest {
             assertTrue(result.containsKey("reasoning"));
         }
     }
-
-    // ─────────────────────────────────────────────────────────────
-    // buildOverallVerdictSummary
-    // ─────────────────────────────────────────────────────────────
 
     @Nested
     @DisplayName("buildOverallVerdictSummary")
@@ -224,70 +289,5 @@ class PromptBuilderStaticsTest {
             assertDoesNotThrow(() ->
                     PromptBuilder.buildOverallVerdictSummary(null, null, null, emptyGlobalStats()));
         }
-    }
-
-    // ─────────────────────────────────────────────────────────────
-    // Helpers
-    // ─────────────────────────────────────────────────────────────
-
-    private static Map<String, Object> globalStats(double avgMs, double p99Ms, double errPct) {
-        Map<String, Object> m = new LinkedHashMap<>();
-        m.put("avgResponseMs", avgMs);
-        m.put("p99ResponseMs", p99Ms);
-        m.put("errorRatePct", errPct);
-        return m;
-    }
-
-    private static Map<String, Object> emptyGlobalStats() {
-        return new LinkedHashMap<>();
-    }
-
-    private static Map<String, Object> slaSummary(String verdict) {
-        Map<String, Object> m = new LinkedHashMap<>();
-        m.put("verdict", verdict);
-        m.put("configured", true);
-        return m;
-    }
-
-    private static Map<String, Object> noSlaSummary() {
-        Map<String, Object> m = new LinkedHashMap<>();
-        m.put("verdict", "NOT_CONFIGURED");
-        m.put("configured", false);
-        return m;
-    }
-
-    private static Map<String, Object> classification(String label) {
-        Map<String, Object> m = new LinkedHashMap<>();
-        m.put("label", label);
-        return m;
-    }
-
-    /**
-     * Produces a plateaued TPS series: tail avg ≥ 90% of peak.
-     * 8 buckets all at TPS=10.0 — tail avg == peak → plateauRatio=1.0.
-     */
-    private static List<JTLParser.TimeBucket> plateauedBuckets() {
-        long base = 1_700_000_000_000L;
-        long interval = 30_000L;
-        List<JTLParser.TimeBucket> list = new java.util.ArrayList<>();
-        for (int i = 0; i < 8; i++) {
-            list.add(new JTLParser.TimeBucket(base + i * interval, 200.0, 0.5, 10.0, 50.0));
-        }
-        return list;
-    }
-
-    /**
-     * Produces a rising TPS series: tail avg < 90% of peak (not plateaued).
-     * Peak is 10.0 at bucket 0; tail buckets are at 5.0 → plateauRatio=0.5.
-     */
-    private static List<JTLParser.TimeBucket> risingBuckets() {
-        long base = 1_700_000_000_000L;
-        long interval = 30_000L;
-        List<JTLParser.TimeBucket> list = new java.util.ArrayList<>();
-        list.add(new JTLParser.TimeBucket(base, 200.0, 0.5, 10.0, 50.0));
-        for (int i = 1; i < 8; i++) {
-            list.add(new JTLParser.TimeBucket(base + i * interval, 200.0, 0.5, 5.0, 25.0));
-        }
-        return list;
     }
 }

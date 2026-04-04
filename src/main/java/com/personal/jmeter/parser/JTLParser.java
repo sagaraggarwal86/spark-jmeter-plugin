@@ -25,6 +25,7 @@ import java.util.*;
  * {@link SamplingStatCalculator} instances and 30-second time buckets.</p>
  *
  * <p>Low-level parsing helpers are delegated to {@link JtlParserCore}.</p>
+ *
  * @since 4.6.0
  */
 public class JTLParser {
@@ -294,6 +295,7 @@ public class JTLParser {
         long totalLatencyMs = 0L;
         long totalConnectMs = 0L;
         int latencySampleCount = 0;
+        int skippedRows = 0;
 
         try (BufferedReader reader = new BufferedReader(
                 new InputStreamReader(new FileInputStream(filePath), StandardCharsets.UTF_8), 65_536)) {
@@ -314,7 +316,10 @@ public class JTLParser {
                 // made on the same line.
                 String[] tokens = JtlParserCore.splitCsvLine(line, delimiter);
                 SampleResult sr = JtlParserCore.parseLineTokens(tokens, colMap);
-                if (sr == null) continue;
+                if (sr == null) {
+                    skippedRows++;
+                    continue;
+                }
 
                 // Re-parse timestamp when it is 0 — indicates a formatted date string
                 // (e.g. "2023/11/15 10:30:00.123") that Long.parseLong could not read.
@@ -403,10 +408,13 @@ public class JTLParser {
 
         List<TimeBucket> timeBuckets = JtlParserCore.buildTimeBuckets(
                 bucketMap, bucketSizeMs, testStartMs, testEndMs);
-        log.info("parse: completed. labels={}, samples={}, buckets={}, latencyPresent={}",
-                results.size(), totalCalc.getCount(), timeBuckets.size(), latencyPresent);
+        if (skippedRows > 0) {
+            log.warn("parse: {} row(s) skipped due to malformed CSV data. filePath={}", skippedRows, filePath);
+        }
+        log.info("parse: completed. labels={}, samples={}, buckets={}, skippedRows={}, latencyPresent={}",
+                results.size(), totalCalc.getCount(), timeBuckets.size(), skippedRows, latencyPresent);
         return new ParseResult(results, testStartMs, testEndMs, timeBuckets, errorTypeCount,
-                avgLatencyMs, avgConnectMs, latencyPresent);
+                avgLatencyMs, avgConnectMs, latencyPresent, skippedRows);
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -468,24 +476,31 @@ public class JTLParser {
          * Advanced Web Diagnostics section.
          */
         public final boolean latencyPresent;
+        /**
+         * Number of CSV data rows skipped in Pass 2 due to malformed fields.
+         * Zero when all rows parsed successfully.
+         */
+        public final int skippedRowCount;
 
         /**
          * Constructs a parse result.
          *
-         * @param results        per-label aggregated statistics
-         * @param startTimeMs    epoch millis of first sample
-         * @param endTimeMs      epoch millis of last sample end
-         * @param timeBuckets    ordered list of 30-second time buckets
-         * @param errorTypeCount raw "responseCode | responseMessage" → count map
-         * @param avgLatencyMs   average Latency ms (0 if absent or all-zero)
-         * @param avgConnectMs   average Connect ms (0 if latencyPresent is false)
-         * @param latencyPresent true iff ≥ 1 non-zero Latency value was seen
+         * @param results         per-label aggregated statistics
+         * @param startTimeMs     epoch millis of first sample
+         * @param endTimeMs       epoch millis of last sample end
+         * @param timeBuckets     ordered list of 30-second time buckets
+         * @param errorTypeCount  raw "responseCode | responseMessage" → count map
+         * @param avgLatencyMs    average Latency ms (0 if absent or all-zero)
+         * @param avgConnectMs    average Connect ms (0 if latencyPresent is false)
+         * @param latencyPresent  true iff ≥ 1 non-zero Latency value was seen
+         * @param skippedRowCount number of CSV rows skipped due to malformed data
          */
         public ParseResult(Map<String, SamplingStatCalculator> results,
                            long startTimeMs, long endTimeMs,
                            List<TimeBucket> timeBuckets,
                            Map<String, Long> errorTypeCount,
-                           long avgLatencyMs, long avgConnectMs, boolean latencyPresent) {
+                           long avgLatencyMs, long avgConnectMs, boolean latencyPresent,
+                           int skippedRowCount) {
             this.results = results;
             this.startTimeMs = startTimeMs;
             this.endTimeMs = endTimeMs;
@@ -495,6 +510,7 @@ public class JTLParser {
             this.avgLatencyMs = avgLatencyMs;
             this.avgConnectMs = avgConnectMs;
             this.latencyPresent = latencyPresent;
+            this.skippedRowCount = skippedRowCount;
         }
 
         private static String formatEpochMs(long epochMs) {

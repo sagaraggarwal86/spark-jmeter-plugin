@@ -92,6 +92,29 @@ class PromptBuilderTest {
     // PromptContent contract
     // ─────────────────────────────────────────────────────────────
 
+    /**
+     * Builds a results map with a TOTAL row and {@code count} labelled error
+     * transactions, each with exactly one failed sample. Labels are named
+     * "Txn-1", "Txn-2", … "Txn-N" so tests can assert on them predictably.
+     */
+    private static Map<String, SamplingStatCalculator> resultsWithErrorTransactions(int count) {
+        SamplingStatCalculator total = new SamplingStatCalculator("TOTAL");
+        Map<String, SamplingStatCalculator> results = new LinkedHashMap<>();
+        results.put("TOTAL", total);
+        for (int i = 1; i <= count; i++) {
+            SamplingStatCalculator txn = new SamplingStatCalculator("Txn-" + i);
+            SampleResult failed = failedSample(200L);
+            total.addSample(failed);
+            txn.addSample(failed);
+            results.put("Txn-" + i, txn);
+        }
+        return results;
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // User message content
+    // ─────────────────────────────────────────────────────────────
+
     @Nested
     @DisplayName("PromptContent contract")
     class PromptContentContractTests {
@@ -134,7 +157,7 @@ class PromptBuilderTest {
     }
 
     // ─────────────────────────────────────────────────────────────
-    // User message content
+    // Edge cases
     // ─────────────────────────────────────────────────────────────
 
     @Nested
@@ -185,7 +208,7 @@ class PromptBuilderTest {
     }
 
     // ─────────────────────────────────────────────────────────────
-    // Edge cases
+    // Latency context
     // ─────────────────────────────────────────────────────────────
 
     @Nested
@@ -237,7 +260,7 @@ class PromptBuilderTest {
     }
 
     // ─────────────────────────────────────────────────────────────
-    // Latency context
+    // mandatedHypothesisTargets
     // ─────────────────────────────────────────────────────────────
 
     @Nested
@@ -299,29 +322,6 @@ class PromptBuilderTest {
             assertTrue(msg.contains("\"avgConnectMs\":75"),
                     "userMessage JSON must contain the exact avgConnectMs value");
         }
-    }
-
-    // ─────────────────────────────────────────────────────────────
-    // mandatedHypothesisTargets
-    // ─────────────────────────────────────────────────────────────
-
-    /**
-     * Builds a results map with a TOTAL row and {@code count} labelled error
-     * transactions, each with exactly one failed sample. Labels are named
-     * "Txn-1", "Txn-2", … "Txn-N" so tests can assert on them predictably.
-     */
-    private static Map<String, SamplingStatCalculator> resultsWithErrorTransactions(int count) {
-        SamplingStatCalculator total = new SamplingStatCalculator("TOTAL");
-        Map<String, SamplingStatCalculator> results = new LinkedHashMap<>();
-        results.put("TOTAL", total);
-        for (int i = 1; i <= count; i++) {
-            SamplingStatCalculator txn = new SamplingStatCalculator("Txn-" + i);
-            SampleResult failed = failedSample(200L);
-            total.addSample(failed);
-            txn.addSample(failed);
-            results.put("Txn-" + i, txn);
-        }
-        return results;
     }
 
     @Nested

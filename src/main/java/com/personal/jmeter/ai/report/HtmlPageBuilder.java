@@ -99,11 +99,11 @@ final class HtmlPageBuilder {
 
         // ── Metadata grid — CSS grid of span pairs, not an HTML table ────────── // CHANGED
         StringBuilder metaGrid = new StringBuilder("<div class=\"meta-grid\">\n");
-        appendMetaRow(metaGrid, "Scenario Name",        config.scenarioName, false);
+        appendMetaRow(metaGrid, "Scenario Name", config.scenarioName, false);
         appendMetaRow(metaGrid, "Scenario Description", config.scenarioDesc, false);
-        appendMetaRow(metaGrid, "Virtual Users",        config.users,        false);
+        appendMetaRow(metaGrid, "Virtual Users", config.users, false);
         if (!runDateTime.isEmpty()) appendMetaRow(metaGrid, "Run Date/Time", runDateTime, false);
-        appendMetaRow(metaGrid, "Duration",             config.duration,     true);
+        appendMetaRow(metaGrid, "Duration", config.duration, true);
         metaGrid.append("</div>\n");
 
         // ── Section list ─────────────────────────────────────────────────────
@@ -127,7 +127,7 @@ final class HtmlPageBuilder {
         // created on page load regardless of which panel is initially visible.
         String[] chartsParts = splitChartsBlock(chartsBlock != null ? chartsBlock : "");
         String chartsContent = chartsParts[0]; // <div class="charts-section">…canvases…</div>
-        String chartsScript  = chartsParts[1]; // <script>(function(){…})();</script>
+        String chartsScript = chartsParts[1]; // <script>(function(){…})();</script>
         int chartsInsertIdx = Math.max(0, sections.size() - 1); // CHANGED — before Verdict (last AI section)
         sections.add(chartsInsertIdx, new String[]{"Performance Charts", chartsContent}); // CHANGED
 
@@ -148,7 +148,7 @@ final class HtmlPageBuilder {
         // No ai-notice div — AI notice is in the header .sub line only.
         StringBuilder panels = new StringBuilder();
         for (int i = 0; i < sections.size(); i++) {
-            String title   = sections.get(i)[0];
+            String title = sections.get(i)[0];
             String content = sections.get(i)[1];
             panels.append("<div class=\"panel")
                     .append(i == 0 ? " active" : "")
@@ -349,7 +349,7 @@ final class HtmlPageBuilder {
         String avgArr = "[" + String.join(",", jAvg) + "]";
         String errArr = "[" + String.join(",", jErr) + "]";
         String tpsArr = "[" + String.join(",", jTps) + "]";
-        String kbArr  = "[" + String.join(",", jKb) + "]";
+        String kbArr = "[" + String.join(",", jKb) + "]";
 
         long intervalSeconds = (timeBuckets.get(1).epochMs - timeBuckets.get(0).epochMs) / 1_000L;
 
@@ -361,10 +361,10 @@ final class HtmlPageBuilder {
                 .append(intervalSeconds).append("-second interval.</p>\n")
                 // CHANGED — 2-column charts-grid wrapper
                 .append("  <div class=\"charts-grid\">\n")
-                .append(chartBox("chartAvgRt",  "Average Response Time Over Time (ms)"))
+                .append(chartBox("chartAvgRt", "Average Response Time Over Time (ms)"))
                 .append(chartBox("chartErrPct", "Error Rate Over Time (%)"))
-                .append(chartBox("chartTps",    "Throughput Over Time (req/s)"))
-                .append(chartBox("chartKb",     "Received Bandwidth Over Time (KB/s)"))
+                .append(chartBox("chartTps", "Throughput Over Time (req/s)"))
+                .append(chartBox("chartKb", "Received Bandwidth Over Time (KB/s)"))
                 .append("  </div>\n")
                 .append("</div>\n")
                 .append("<script>\n(function() {\n")

@@ -10,6 +10,7 @@ package com.personal.jmeter.listener.core;
  * parsing logic requires a single edit.</p>
  *
  * <p>All methods are {@code public static} and this class is non-instantiable.</p>
+ *
  * @since 4.7.0
  */
 public final class CellValueParser {

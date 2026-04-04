@@ -11,6 +11,7 @@ import com.personal.jmeter.listener.core.TablePopulator;
 import com.personal.jmeter.listener.core.TransactionFilter;
 import com.personal.jmeter.parser.DelimiterResolver;
 import com.personal.jmeter.parser.JTLParser;
+import com.personal.jmeter.parser.JtlParseException;
 import com.personal.jmeter.parser.TimestampFormatResolver;
 import org.apache.jmeter.visualizers.SamplingStatCalculator;
 
@@ -31,6 +32,7 @@ final class CliReportPipeline {
 
     private final CliArgs args;
     private final PrintStream progress;
+
     CliReportPipeline(CliArgs args) {
         this.args = args;
         this.progress = System.err;
@@ -49,10 +51,15 @@ final class CliReportPipeline {
         progress("Parsing JTL file: " + args.inputFile());
         JTLParser.FilterOptions opts = buildFilterOptions();
         JTLParser.ParseResult result = new JTLParser().parse(args.inputFile(), opts);
+        long totalSamples = result.results.containsKey(JTLParser.TOTAL_LABEL)
+                ? result.results.get(JTLParser.TOTAL_LABEL).getCount() : 0;
         progress("Parsed %d transaction types, %d total samples.",
-                Math.max(0, result.results.size() - 1),
-                result.results.containsKey(JTLParser.TOTAL_LABEL)
-                        ? result.results.get(JTLParser.TOTAL_LABEL).getCount() : 0);
+                Math.max(0, result.results.size() - 1), totalSamples);
+        if (totalSamples == 0) {
+            throw new JtlParseException(
+                    "No samples matched the filter criteria. Check --start-offset, --end-offset, "
+                            + "--search, and --exclude settings.");
+        }
 
         // Step 2 — Build table rows
         List<String[]> tableRows = buildTableRows(result, opts.percentile);
@@ -106,7 +113,7 @@ final class CliReportPipeline {
                         provider.providerKey);
                 AiProviderRegistry.evictPingCache(provider);
             }
-            throw ex;
+            throw new AiServiceException("[" + provider.providerKey + "] " + ex.getMessage(), ex);
         }
         progress("AI response received: %d chars in %.1fs.", markdown.length(), aiElapsedMs / 1000.0);
 
@@ -131,13 +138,14 @@ final class CliReportPipeline {
     // ─────────────────────────────────────────────────────────────
 
     private JTLParser.FilterOptions buildFilterOptions() {
+        java.io.File jmeterHome = resolveJmeterHome();
         JTLParser.FilterOptions opts = new JTLParser.FilterOptions();
         opts.startOffset = args.startOffset();
         opts.endOffset = args.endOffset();
         opts.percentile = args.percentile();
         opts.chartIntervalSeconds = args.chartInterval();
-        opts.delimiter = DelimiterResolver.resolve(resolveJmeterHome());
-        opts.timestampFormatter = TimestampFormatResolver.resolve(resolveJmeterHome());
+        opts.delimiter = DelimiterResolver.resolve(jmeterHome);
+        opts.timestampFormatter = TimestampFormatResolver.resolve(jmeterHome);
         return opts;
     }
 
@@ -207,7 +215,7 @@ final class CliReportPipeline {
                                 + ".\nConfigured providers: "
                                 + (providers.isEmpty() ? "(none)"
                                 : String.join(", ", providers.stream()
-                                .map(p -> p.providerKey).toList()))));
+                                                    .map(p -> p.providerKey).toList()))));
     }
 
     // ─────────────────────────────────────────────────────────────

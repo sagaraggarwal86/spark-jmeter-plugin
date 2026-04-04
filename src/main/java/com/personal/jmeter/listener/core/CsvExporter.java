@@ -28,6 +28,7 @@ import java.util.function.Supplier;
  *
  * <p>Dependencies are injected at construction time to keep this class testable
  * without a live {@code AggregateReportPanel}.</p>
+ *
  * @since 4.6.0
  */
 public final class CsvExporter {

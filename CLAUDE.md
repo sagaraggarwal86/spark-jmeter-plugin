@@ -56,7 +56,8 @@ mvn test -Dtest=JTLParserTest#testParse   # Single test method
 mvn clean deploy -Prelease                # Release to Maven Central
 ```
 
-Requirements: JDK 17 only, Maven 3.6+. JaCoCo enforces **80%** line coverage excluding `listener.gui/**`, `ai.report/**`,
+Requirements: JDK 17 only, Maven 3.6+. JaCoCo enforces **80%** line coverage excluding `listener.gui/**`,
+`ai.report/**`,
 `AiProviderRegistry`, `SharedHttpClient`, `Main`, `TimestampFormatResolver`.
 
 ## Architecture
@@ -67,15 +68,15 @@ All processing is file-based with zero runtime overhead — no live metrics coll
 
 ### Package Structure
 
-| Package         | Responsibility                                                                                                                                                                                                                |
-|-----------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `parser`        | `JTLParser` (two-pass CSV parser), `JtlParserCore` (static utilities), `DelimiterResolver`, `TimestampFormatResolver`, `JtlParseException`                                                                                   |
-| `listener.core` | `ColumnIndex` (13-column constants), `CellValueParser`, `TablePopulator` (row formatting + sorting), `TransactionFilter`, `SlaConfig`, `SlaRowRenderer`, `CsvExporter`, `ScenarioMetadata`                                    |
+| Package         | Responsibility                                                                                                                                                                                                                                             |
+|-----------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `parser`        | `JTLParser` (two-pass CSV parser), `JtlParserCore` (static utilities), `DelimiterResolver`, `TimestampFormatResolver`, `JtlParseException`                                                                                                                 |
+| `listener.core` | `ColumnIndex` (13-column constants), `CellValueParser`, `TablePopulator` (row formatting + sorting), `TransactionFilter`, `SlaConfig`, `SlaRowRenderer`, `CsvExporter`, `ScenarioMetadata`                                                                 |
 | `listener.gui`  | `ListenerGUI` (extends AbstractVisualizer), `ListenerCollector` (extends ResultCollector, sampleOccurred=no-op), `AggregateReportPanel` (~958 lines, known SRP debt), `ReportPanelBuilder`, `FilePanelCustomizer`, `AiReportLauncher`, `SimpleDocListener` |
-| `ai.prompt`     | `PromptLoader`, `PromptContent` (record), `PromptRequest` (record), `PromptBuilder` (pre-computed verdicts + classification)                                                                                                  |
-| `ai.provider`   | `AiProviderConfig`, `AiProviderRegistry` (7 providers + custom), `AiReportService` (OpenAI-compatible API), `SharedHttpClient` (singleton), `AiProviderException`, `AiServiceException`                                       |
-| `ai.report`     | `AiReportCoordinator` (orchestrator), `HtmlReportRenderer`, `HtmlPageBuilder`, `MarkdownSectionNormaliser`, `MarkdownUtils`                                                                                                   |
-| `cli`           | `Main` (exit codes 0-7), `CliArgs`, `CliReportPipeline`                                                                                                                                                                       |
+| `ai.prompt`     | `PromptLoader`, `PromptContent` (record), `PromptRequest` (record), `PromptBuilder` (pre-computed verdicts + classification)                                                                                                                               |
+| `ai.provider`   | `AiProviderConfig`, `AiProviderRegistry` (7 providers + custom), `AiReportService` (OpenAI-compatible API), `SharedHttpClient` (singleton), `AiProviderException`, `AiServiceException`                                                                    |
+| `ai.report`     | `AiReportCoordinator` (orchestrator), `HtmlReportRenderer`, `HtmlPageBuilder`, `MarkdownSectionNormaliser`, `MarkdownUtils`                                                                                                                                |
+| `cli`           | `Main` (exit codes 0-7), `CliArgs`, `CliReportPipeline`                                                                                                                                                                                                    |
 
 ### Key Design Decisions
 

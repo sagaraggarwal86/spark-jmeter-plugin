@@ -7,6 +7,7 @@ import java.util.Objects;
  *
  * <p>A threshold value of {@code -1} indicates that threshold is disabled.
  * Callers must validate raw input before calling {@link #from}.</p>
+ *
  * @since 4.6.0
  */
 public final class SlaConfig {

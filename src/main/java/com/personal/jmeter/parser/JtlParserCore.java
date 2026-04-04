@@ -1,5 +1,6 @@
 package com.personal.jmeter.parser;
 
+import com.personal.jmeter.listener.core.TransactionFilter;
 import org.apache.jmeter.samplers.SampleResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -499,16 +500,10 @@ final class JtlParserCore {
                                  boolean hasInclude, boolean hasExclude, boolean hasOffset) {
         String label = sr.getSampleLabel();
         if (hasInclude) {
-            boolean found = options.regExp
-                    ? label.matches(options.includeLabels)
-                    : label.contains(options.includeLabels);
-            if (!found) return false;
+            if (!TransactionFilter.matches(label, options.includeLabels, options.regExp)) return false;
         }
         if (hasExclude) {
-            boolean excluded = options.regExp
-                    ? label.matches(options.excludeLabels)
-                    : label.contains(options.excludeLabels);
-            if (excluded) return false;
+            if (TransactionFilter.matches(label, options.excludeLabels, options.regExp)) return false;
         }
         if (hasOffset) {
             long relativeSec = (sr.getTimeStamp() - options.minTimestamp) / 1000L;

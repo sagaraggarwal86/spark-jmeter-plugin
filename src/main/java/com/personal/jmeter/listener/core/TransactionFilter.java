@@ -15,6 +15,7 @@ import java.util.regex.PatternSyntaxException;
  *       they produce no matches. Compiled patterns are cached to avoid
  *       recompilation on every table row during live search.</li>
  * </ul>
+ *
  * @since 4.6.0
  */
 public final class TransactionFilter {

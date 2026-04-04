@@ -33,7 +33,7 @@ runtime overhead.
 | ⏱️ **Start / End Offset**      | Exclude ramp-up and ramp-down periods by entering a time window in seconds                       |
 | 📈 **Configurable Percentile** | Set any percentile value: 50th, 90th, 95th, 99th, or custom                                      |
 | 🔍 **Transaction Filter**      | Filter by transaction name with Include/Exclude mode, plain text or regex                        |
-| 👁️ **Column Visibility**      | Show or hide any column via a dropdown multi-select control                                       |
+| 👁️ **Column Visibility**      | Show or hide any column via a dropdown multi-select control                                      |
 | ✅ **Pass / Fail Counts**       | Dedicated columns for transactions passed and transactions failed                                |
 | 🕐 **Test Time Info**          | Start Date/Time, End Date/Time, and total Duration shown automatically                           |
 | 🔀 **Sortable Columns**        | Click any column header to sort ascending; click again for descending                            |
@@ -41,9 +41,9 @@ runtime overhead.
 | 💾 **CSV Export**              | Save all visible columns to a CSV file; SLA status columns (PASS/FAIL) included when configured  |
 | 🤖 **AI Performance Report**   | Generate a styled HTML report with deep-dive analysis, powered by any OpenAI-compatible provider |
 | 📊 **Chart Interval**          | Configure the time-bucket interval for performance charts (default: auto, or set custom)         |
-| 🔄 **Provider Reload**         | Reload the AI provider list from `ai-reporter.properties` without restarting JMeter             |
+| 🔄 **Provider Reload**         | Reload the AI provider list from `ai-reporter.properties` without restarting JMeter              |
 | 📐 **Delimiter Detection**     | Automatically reads the JTL delimiter from JMeter's properties files (`,`, `;`, `\t`, etc.)      |
-| 🕒 **Timestamp Format**        | Auto-detects epoch-ms and formatted timestamps (`yyyy/MM/dd HH:mm:ss`, `MM/dd/yyyy`, etc.)      |
+| 🕒 **Timestamp Format**        | Auto-detects epoch-ms and formatted timestamps (`yyyy/MM/dd HH:mm:ss`, `MM/dd/yyyy`, etc.)       |
 | 🚫 **No Live Metrics**         | Designed for post-test JTL analysis — no runtime overhead                                        |
 
 ---
@@ -216,10 +216,10 @@ computes the classification, verdict, or SLA outcomes itself.
 
 The HTML report includes two export buttons:
 
-| Button           | Output                                                                                   |
-|------------------|------------------------------------------------------------------------------------------|
+| Button           | Output                                                                                    |
+|------------------|-------------------------------------------------------------------------------------------|
 | **Export Excel** | One worksheet per report tab — analysis sections as prose, Transaction Metrics as a table |
-| **Export PDF**   | Opens the browser print dialog with all tabs expanded and charts visible                 |
+| **Export PDF**   | Opens the browser print dialog with all tabs expanded and charts visible                  |
 
 ### Truncation Handling
 
@@ -424,12 +424,12 @@ All `[CLI]` progress messages go to stderr so stdout stays clean for scripting.
 The parser is fully streaming — it never loads the entire file into memory. However, JTL files
 above ~500 MB require careful JVM configuration to avoid GC pressure.
 
-| JTL Size | Recommended JVM Heap | Approx Parse Time (SSD) |
-|----------|----------------------|-------------------------|
-| < 100 MB | Default (256 MB)     | < 2s                    |
-| 100 MB–500 MB | 512 MB          | 2–5s                    |
-| 500 MB–1 GB | `-Xmx1g`          | 5–10s                   |
-| 1–2 GB   | `-Xmx2g`             | 10–20s                  |
+| JTL Size      | Recommended JVM Heap | Approx Parse Time (SSD) |
+|---------------|----------------------|-------------------------|
+| < 100 MB      | Default (256 MB)     | < 2s                    |
+| 100 MB–500 MB | 512 MB               | 2–5s                    |
+| 500 MB–1 GB   | `-Xmx1g`             | 5–10s                   |
+| 1–2 GB        | `-Xmx2g`             | 10–20s                  |
 
 **GUI mode:** Set the JVM heap in `<JMETER_HOME>/bin/jmeter.bat` (Windows) or
 `<JMETER_HOME>/bin/jmeter.sh` (macOS/Linux):

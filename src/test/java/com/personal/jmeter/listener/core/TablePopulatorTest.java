@@ -66,6 +66,48 @@ class TablePopulatorTest {
     // Row structure
     // ─────────────────────────────────────────────────────────────
 
+    /**
+     * Builds a minimal headless {@link TablePopulator} using a real
+     * {@link DefaultTableModel} and {@link JTable}. Safe to use in a
+     * headless environment — no rendering or display is invoked.
+     */
+    private static TablePopulator buildPopulator(DefaultTableModel model) {
+        JTable table = new JTable(model);
+        int colCount = ColumnIndex.ALL_COLUMNS.length;
+        TableColumn[] allCols = new TableColumn[colCount];
+        JCheckBoxMenuItem[] menuItems = new JCheckBoxMenuItem[colCount];
+        for (int i = 0; i < colCount; i++) {
+            allCols[i] = new TableColumn(i);
+            menuItems[i] = new JCheckBoxMenuItem(ColumnIndex.ALL_COLUMNS[i], true);
+        }
+        return new TablePopulator(model, table, allCols, menuItems);
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // Count, passed, failed columns
+    // ─────────────────────────────────────────────────────────────
+
+    private static DefaultTableModel emptyModel() {
+        return new DefaultTableModel(ColumnIndex.ALL_COLUMNS, 0);
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // Response time columns
+    // ─────────────────────────────────────────────────────────────
+
+    private static SamplingStatCalculator calcFor(String label, long elapsed, boolean success) {
+        SamplingStatCalculator c = new SamplingStatCalculator(label);
+        SampleResult sr = new SampleResult();
+        sr.setStampAndTime(System.currentTimeMillis(), elapsed);
+        sr.setSuccessful(success);
+        c.addSample(sr);
+        return c;
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // Error rate and throughput columns
+    // ─────────────────────────────────────────────────────────────
+
     @Nested
     @DisplayName("Row structure")
     class RowStructureTests {
@@ -98,7 +140,7 @@ class TablePopulatorTest {
     }
 
     // ─────────────────────────────────────────────────────────────
-    // Count, passed, failed columns
+    // Percentile fraction variations
     // ─────────────────────────────────────────────────────────────
 
     @Nested
@@ -137,7 +179,7 @@ class TablePopulatorTest {
     }
 
     // ─────────────────────────────────────────────────────────────
-    // Response time columns
+    // Instance method tests (headless Swing)
     // ─────────────────────────────────────────────────────────────
 
     @Nested
@@ -188,10 +230,6 @@ class TablePopulatorTest {
         }
     }
 
-    // ─────────────────────────────────────────────────────────────
-    // Error rate and throughput columns
-    // ─────────────────────────────────────────────────────────────
-
     @Nested
     @DisplayName("Error rate and throughput columns")
     class ErrorAndThroughputTests {
@@ -238,10 +276,6 @@ class TablePopulatorTest {
         }
     }
 
-    // ─────────────────────────────────────────────────────────────
-    // Percentile fraction variations
-    // ─────────────────────────────────────────────────────────────
-
     @Nested
     @DisplayName("Percentile fraction variations")
     class PercentileFractionTests {
@@ -256,40 +290,6 @@ class TablePopulatorTest {
             assertFalse(rowP50[7].isBlank());
             assertFalse(rowP90[7].isBlank());
         }
-    }
-
-    // ─────────────────────────────────────────────────────────────
-    // Instance method tests (headless Swing)
-    // ─────────────────────────────────────────────────────────────
-
-    /**
-     * Builds a minimal headless {@link TablePopulator} using a real
-     * {@link DefaultTableModel} and {@link JTable}. Safe to use in a
-     * headless environment — no rendering or display is invoked.
-     */
-    private static TablePopulator buildPopulator(DefaultTableModel model) {
-        JTable table = new JTable(model);
-        int colCount = ColumnIndex.ALL_COLUMNS.length;
-        TableColumn[] allCols = new TableColumn[colCount];
-        JCheckBoxMenuItem[] menuItems = new JCheckBoxMenuItem[colCount];
-        for (int i = 0; i < colCount; i++) {
-            allCols[i] = new TableColumn(i);
-            menuItems[i] = new JCheckBoxMenuItem(ColumnIndex.ALL_COLUMNS[i], true);
-        }
-        return new TablePopulator(model, table, allCols, menuItems);
-    }
-
-    private static DefaultTableModel emptyModel() {
-        return new DefaultTableModel(ColumnIndex.ALL_COLUMNS, 0);
-    }
-
-    private static SamplingStatCalculator calcFor(String label, long elapsed, boolean success) {
-        SamplingStatCalculator c = new SamplingStatCalculator(label);
-        SampleResult sr = new SampleResult();
-        sr.setStampAndTime(System.currentTimeMillis(), elapsed);
-        sr.setSuccessful(success);
-        c.addSample(sr);
-        return c;
     }
 
     @Nested

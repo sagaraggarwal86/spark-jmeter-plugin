@@ -35,6 +35,7 @@ import java.util.*;
  * {@code breachedThresholds} values are always consistent with the SLA threshold
  * the user actually cares about — eliminating contradictory signals between
  * {@code anomalyTransactions} and the SLA evaluation in the system prompt.</p>
+ *
  * @since 4.6.0
  */
 public class PromptBuilder {
