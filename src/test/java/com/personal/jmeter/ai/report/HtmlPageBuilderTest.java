@@ -553,7 +553,8 @@ class HtmlPageBuilderTest {
             return new HtmlReportRenderer.RenderConfig(
                     "100", "Load Test", "Peak hour test",
                     "Thread Group 1", "01/01/25 09:00:00", "01/01/25 10:00:00",
-                    "1h 0m 0s", 90, "Groq (Free)", -1, -1, "pnn");
+                    "1h 0m 0s", 90, "Groq (Free)", -1, -1, "pnn",
+                    java.util.Collections.emptyList(), 0L, 0L, false);
         }
 
         private String sevenSectionBody() {
@@ -571,7 +572,7 @@ class HtmlPageBuilderTest {
         void tabBarHasCorrectButtonCount() {
             String metricsTable = "<div class=\"metrics-section\"><h2>Transaction Metrics</h2><table><tr><td>x</td></tr></table></div>";
             String chartsBlock = HtmlPageBuilder.buildChartsSection(null); // placeholder
-            String page = HtmlPageBuilder.buildPage(sevenSectionBody(), metricsTable, chartsBlock, minimalConfig());
+            String page = HtmlPageBuilder.buildPage(sevenSectionBody(), metricsTable, chartsBlock, minimalConfig(), "", "", "UNDECISIVE");
 
             // Expect 9 tabs: 7 AI + Metrics + Charts
             long tabCount = countOccurrences(page, "class=\"nav-item");
@@ -581,7 +582,7 @@ class HtmlPageBuilderTest {
         @Test
         @DisplayName("first tab button has active class on page load")
         void firstTabButtonIsActive() {
-            String page = HtmlPageBuilder.buildPage(sevenSectionBody(), "", "", minimalConfig());
+            String page = HtmlPageBuilder.buildPage(sevenSectionBody(), "", "", minimalConfig(), "", "", "UNDECISIVE");
             // First occurrence of tab-btn must carry the active class
             int firstBtn = page.indexOf("class=\"nav-item");
             assertTrue(page.substring(firstBtn, firstBtn + 30).contains("active"),
@@ -591,7 +592,7 @@ class HtmlPageBuilderTest {
         @Test
         @DisplayName("first tab panel has active class on page load")
         void firstTabPanelIsActive() {
-            String page = HtmlPageBuilder.buildPage(sevenSectionBody(), "", "", minimalConfig());
+            String page = HtmlPageBuilder.buildPage(sevenSectionBody(), "", "", minimalConfig(), "", "", "UNDECISIVE");
             int firstPanel = page.indexOf("class=\"panel");
             assertTrue(page.substring(firstPanel, firstPanel + 30).contains("active"),
                     "First tab panel must have the active class");
@@ -600,7 +601,7 @@ class HtmlPageBuilderTest {
         @Test
         @DisplayName("report header is outside all tab panels")
         void reportHeaderOutsideTabPanels() {
-            String page = HtmlPageBuilder.buildPage(sevenSectionBody(), "", "", minimalConfig());
+            String page = HtmlPageBuilder.buildPage(sevenSectionBody(), "", "", minimalConfig(), "", "", "UNDECISIVE");
             // Use the full HTML element — not just "report-header" which also appears
             // in the CSS <style> block earlier in the string, causing a false position.
             int headerStart = page.indexOf("<div class=\"rpt-header\">");
@@ -613,7 +614,7 @@ class HtmlPageBuilderTest {
         @Test
         @DisplayName("Chart.js CDN script is in the head element")
         void chartJsCdnInHead() {
-            String page = HtmlPageBuilder.buildPage(sevenSectionBody(), "", "", minimalConfig());
+            String page = HtmlPageBuilder.buildPage(sevenSectionBody(), "", "", minimalConfig(), "", "", "UNDECISIVE");
             int headEnd = page.indexOf("</head>");
             int chartJs = page.indexOf("Chart.js");
             assertTrue(chartJs < headEnd, "Chart.js CDN must be inside <head>");
@@ -622,25 +623,25 @@ class HtmlPageBuilderTest {
         @Test
         @DisplayName("SheetJS CDN script is in the head element")
         void sheetJsCdnInHead() {
-            String page = HtmlPageBuilder.buildPage(sevenSectionBody(), "", "", minimalConfig());
+            String page = HtmlPageBuilder.buildPage(sevenSectionBody(), "", "", minimalConfig(), "", "", "UNDECISIVE");
             int headEnd = page.indexOf("</head>");
             int sheetJs = page.indexOf("xlsx");
             assertTrue(sheetJs > 0 && sheetJs < headEnd, "SheetJS CDN must be inside <head>");
         }
 
         @Test
-        @DisplayName("export bar contains Excel button; PDF export button is not present")
+        @DisplayName("export bar contains Excel and PDF buttons")
         void exportBarContainsBothButtons() {
-            String page = HtmlPageBuilder.buildPage(sevenSectionBody(), "", "", minimalConfig());
+            String page = HtmlPageBuilder.buildPage(sevenSectionBody(), "", "", minimalConfig(), "", "", "UNDECISIVE");
             assertTrue(page.contains("header-actions"), "Export bar div must be present");
             assertTrue(page.contains("exportExcel()"), "Excel export button must be present");
-            assertFalse(page.contains("window.print()"), "PDF export button must not be present"); // CHANGED
+            assertTrue(page.contains("window.print()"), "PDF export button must be present");
         }
 
         @Test
         @DisplayName("each AI section appears inside its own tab panel")
         void aiSectionsInOwnPanels() {
-            String page = HtmlPageBuilder.buildPage(sevenSectionBody(), "", "", minimalConfig());
+            String page = HtmlPageBuilder.buildPage(sevenSectionBody(), "", "", minimalConfig(), "", "", "UNDECISIVE");
             // All 7 section h2 tags must be inside tab-panel divs
             assertTrue(page.contains("Executive Summary"), "Executive Summary section present");
             assertTrue(page.contains("Verdict"), "Verdict section present");
@@ -652,7 +653,7 @@ class HtmlPageBuilderTest {
         @Test
         @DisplayName("metrics tab is omitted when metricsTable is blank")
         void metricsTabOmittedWhenBlank() {
-            String page = HtmlPageBuilder.buildPage(sevenSectionBody(), "", "", minimalConfig());
+            String page = HtmlPageBuilder.buildPage(sevenSectionBody(), "", "", minimalConfig(), "", "", "UNDECISIVE");
             // 8 tabs: 7 AI + Charts (no metrics)
             long tabCount = countOccurrences(page, "class=\"nav-item");
             assertEquals(8, tabCount, "Metrics tab must be omitted when metricsTable is blank");
@@ -662,7 +663,7 @@ class HtmlPageBuilderTest {
         @DisplayName("metrics tab present when metricsTable is non-blank")
         void metricsTabPresentWhenNonBlank() {
             String metricsTable = "<div class=\"metrics-section\"><h2>Transaction Metrics</h2></div>";
-            String page = HtmlPageBuilder.buildPage(sevenSectionBody(), metricsTable, "", minimalConfig());
+            String page = HtmlPageBuilder.buildPage(sevenSectionBody(), metricsTable, "", minimalConfig(), "", "", "UNDECISIVE");
             long tabCount = countOccurrences(page, "class=\"nav-item");
             assertEquals(9, tabCount, "9 tabs expected with non-blank metricsTable");
             assertTrue(page.contains("Transaction Metrics"), "Metrics tab title must be present");
@@ -671,7 +672,7 @@ class HtmlPageBuilderTest {
         @Test
         @DisplayName("charts tab button carries data-charts=true attribute")
         void chartsTabButtonHasDataChartsAttribute() {
-            String page = HtmlPageBuilder.buildPage(sevenSectionBody(), "", "", minimalConfig());
+            String page = HtmlPageBuilder.buildPage(sevenSectionBody(), "", "", minimalConfig(), "", "", "UNDECISIVE");
             assertTrue(page.contains("el.querySelector('canvas')"),
                     "Charts panel activation must trigger Chart.js resize via canvas detection");
         }
@@ -684,7 +685,7 @@ class HtmlPageBuilderTest {
                     new JTLParser.TimeBucket(now, 250.0, 0.0, 10.0, 50.0),
                     new JTLParser.TimeBucket(now + 30_000, 300.0, 1.0, 12.0, 60.0));
             String chartsBlock = HtmlPageBuilder.buildChartsSection(buckets);
-            String page = HtmlPageBuilder.buildPage(sevenSectionBody(), "", chartsBlock, minimalConfig());
+            String page = HtmlPageBuilder.buildPage(sevenSectionBody(), "", chartsBlock, minimalConfig(), "", "", "UNDECISIVE");
 
             int chartScript = page.indexOf("timeChart(");
             assertTrue(chartScript > 0, "timeChart call must be present in the page");
@@ -701,7 +702,7 @@ class HtmlPageBuilderTest {
         @Test
         @DisplayName("tab switching JavaScript is present")
         void tabSwitchingJsPresent() {
-            String page = HtmlPageBuilder.buildPage(sevenSectionBody(), "", "", minimalConfig());
+            String page = HtmlPageBuilder.buildPage(sevenSectionBody(), "", "", minimalConfig(), "", "", "UNDECISIVE");
             assertTrue(page.contains("nav-item"), "Tab button class referenced in JS");
             assertTrue(page.contains("classList.remove('active')"), "Tab active-class removal must be present");
             assertTrue(page.contains("classList.add('active')"), "Tab active-class addition must be present");
@@ -710,7 +711,7 @@ class HtmlPageBuilderTest {
         @Test
         @DisplayName("page is a valid HTML document with DOCTYPE and closing tags")
         void validHtmlStructure() {
-            String page = HtmlPageBuilder.buildPage(sevenSectionBody(), "", "", minimalConfig());
+            String page = HtmlPageBuilder.buildPage(sevenSectionBody(), "", "", minimalConfig(), "", "", "UNDECISIVE");
             assertTrue(page.startsWith("<!DOCTYPE html>"), "Must start with DOCTYPE");
             assertTrue(page.contains("<html lang=\"en\">"), "Must have html element with lang");
             assertTrue(page.contains("</html>"), "Must have closing html tag");
@@ -723,25 +724,26 @@ class HtmlPageBuilderTest {
             String truncatedBody = "<h2>Executive Summary</h2><p>A</p>"
                     + "<h2>Bottleneck Analysis</h2><p>B</p>"
                     + "<h2>Error Analysis</h2><p>C</p>";
-            String page = HtmlPageBuilder.buildPage(truncatedBody, "", "", minimalConfig());
+            String page = HtmlPageBuilder.buildPage(truncatedBody, "", "", minimalConfig(), "", "", "UNDECISIVE");
             long tabCount = countOccurrences(page, "class=\"nav-item");
             assertEquals(4, tabCount, "3 AI sections + Charts tab = 4 tabs for truncated report");
         }
 
         @Test
-        @DisplayName("@media print CSS is not present — PDF export feature removed")
+        @DisplayName("@media print CSS hides sidebar and shows all panels")
         void mediaPrintShowsAllPanels() {
-            String page = HtmlPageBuilder.buildPage(sevenSectionBody(), "", "", minimalConfig());
-            assertFalse(page.contains("display: block !important"),
-                    "@media print must not be present"); // CHANGED
-            assertFalse(page.contains("@media print"),
-                    "@media print block must be absent"); // CHANGED
+            String page = HtmlPageBuilder.buildPage(sevenSectionBody(), "", "", minimalConfig(), "", "", "UNDECISIVE");
+            assertTrue(page.contains("@media print"), "@media print block must be present");
+            assertTrue(page.contains(".sidebar { display: none !important"),
+                    "Sidebar must be hidden in print");
+            assertTrue(page.contains(".panel { display: block !important"),
+                    "All panels must be visible in print");
         }
 
         @Test
         @DisplayName("window.jaarMeta script is injected with all metadata fields including providerName")
         void jaarMetaScriptInjected() {
-            String page = HtmlPageBuilder.buildPage(sevenSectionBody(), "", "", minimalConfig());
+            String page = HtmlPageBuilder.buildPage(sevenSectionBody(), "", "", minimalConfig(), "", "", "UNDECISIVE");
             assertTrue(page.contains("window.jaarMeta"), "jaarMeta object must be present");
             assertTrue(page.contains("scenarioName"), "scenarioName field must be present");
             assertTrue(page.contains("scenarioDesc"), "scenarioDesc field must be present");
@@ -758,7 +760,7 @@ class HtmlPageBuilderTest {
         @Test
         @DisplayName("window.jaarMeta script appears inside the head element")
         void jaarMetaInHead() {
-            String page = HtmlPageBuilder.buildPage(sevenSectionBody(), "", "", minimalConfig());
+            String page = HtmlPageBuilder.buildPage(sevenSectionBody(), "", "", minimalConfig(), "", "", "UNDECISIVE");
             int headEnd = page.indexOf("</head>");
             int metaIdx = page.indexOf("window.jaarMeta");
             assertTrue(metaIdx > 0 && metaIdx < headEnd,
@@ -788,8 +790,8 @@ class HtmlPageBuilderTest {
         @Test
         @DisplayName("Excel export JS writes referral message for Performance Charts sheet")
         void chartsSheetContainsReferralMessage() {
-            String page = HtmlPageBuilder.buildPage(sevenSectionBody(), "", "", minimalConfig());
-            assertTrue(page.contains("Please refer to the HTML report for interactive charts."),
+            String page = HtmlPageBuilder.buildPage(sevenSectionBody(), "", "", minimalConfig(), "", "", "UNDECISIVE");
+            assertTrue(page.contains("Refer to the HTML report or use Export PDF for interactive charts."),
                     "Excel export JS must write the HTML report referral message for the charts sheet");
         }
 

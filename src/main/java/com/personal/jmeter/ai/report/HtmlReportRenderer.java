@@ -10,7 +10,9 @@ import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 /**
@@ -27,7 +29,7 @@ import java.util.Objects;
  *       only the active panel is displayed (via {@link HtmlPageBuilder})</li>
  *   <li>Transaction Metrics table — built here, rendered as a dedicated panel</li>
  *   <li>Performance Charts — Chart.js 2-column grid; inserted before Verdict
- *       (via {@link HtmlPageBuilder})</li> // CHANGED — footer removed; charts no longer last
+ *       (via {@link HtmlPageBuilder})</li>
  * </ol>
  *
  * <p>{@link #buildTransactionMetricsSection(List)} and {@link #escapeHtml(String)}
@@ -161,6 +163,96 @@ public class HtmlReportRenderer {
     }
 
     /**
+     * Builds a compact HTML table showing the top error types by frequency.
+     * Returns empty string when the error list is empty.
+     */
+    static String buildErrorBreakdownHtml(List<Map<String, Object>> errorTypeSummary) {
+        if (errorTypeSummary == null || errorTypeSummary.isEmpty()) return "";
+
+        long totalErrors = errorTypeSummary.stream()
+                .mapToLong(e -> ((Number) e.getOrDefault("count", 0L)).longValue())
+                .sum();
+        if (totalErrors == 0) return "";
+
+        StringBuilder sb = new StringBuilder(512);
+        sb.append("<div class=\"error-breakdown\">\n")
+                .append("  <h3>Error Breakdown</h3>\n")
+                .append("  <table class=\"data-table\">\n")
+                .append("    <thead><tr>\n")
+                .append("      <th>Status Code</th><th>Message</th><th>Count</th><th>% of Errors</th>\n")
+                .append("    </tr></thead>\n")
+                .append("    <tbody>\n");
+
+        for (Map<String, Object> entry : errorTypeSummary) {
+            String code = escapeHtml(String.valueOf(entry.getOrDefault("responseCode", "")));
+            String msg = escapeHtml(String.valueOf(entry.getOrDefault("responseMessage", "")));
+            long count = ((Number) entry.getOrDefault("count", 0L)).longValue();
+            double pct = totalErrors > 0 ? (double) count / totalErrors * 100.0 : 0.0;
+            sb.append("    <tr>")
+                    .append("<td>").append(code).append(TD_CLOSE)
+                    .append("<td>").append(msg).append(TD_CLOSE)
+                    .append("<td class=\"num\">").append(count).append(TD_CLOSE)
+                    .append("<td class=\"num\">").append(String.format("%.1f%%", pct)).append(TD_CLOSE)
+                    .append("</tr>\n");
+        }
+
+        sb.append("    </tbody>\n")
+                .append("  </table>\n")
+                .append("</div>\n");
+        return sb.toString();
+    }
+
+    /**
+     * Builds a 3-card KPI panel showing Avg Latency, Avg Connect, and
+     * Avg Server Processing time with informational tooltips.
+     * Returns empty string when latency data is absent.
+     */
+    static String buildLatencyPanelHtml(long avgLatencyMs, long avgConnectMs,
+                                        boolean latencyPresent) {
+        if (!latencyPresent) return "";
+
+        long serverProcessingMs = Math.max(0, avgLatencyMs - avgConnectMs);
+
+        StringBuilder sb = new StringBuilder(512);
+        sb.append("<div class=\"latency-panel\">\n")
+                .append("  <h3>Network &amp; Server Timing</h3>\n")
+                .append("  <div class=\"latency-cards\">\n");
+
+        appendLatencyCard(sb, "Avg Latency (TTFB)", avgLatencyMs,
+                "Time to First Byte — time from request sent to first byte received. "
+                        + "Includes DNS, TCP, TLS handshake, and server processing. "
+                        + "High values indicate network or server-side delays.");
+
+        appendLatencyCard(sb, "Avg Connect Time", avgConnectMs,
+                "Time to establish TCP connection (includes DNS + TLS if applicable). "
+                        + "High values suggest network latency, DNS resolution issues, "
+                        + "or TLS negotiation overhead.");
+
+        appendLatencyCard(sb, "Avg Server Processing", serverProcessingMs,
+                "Latency minus Connect — time the server spent processing the request "
+                        + "after connection was established. High values point to slow backend "
+                        + "logic, database queries, or resource contention.");
+
+        sb.append("  </div>\n")
+                .append("</div>\n");
+        return sb.toString();
+    }
+
+    private static void appendLatencyCard(StringBuilder sb, String label, long valueMs,
+                                          String tooltip) {
+        sb.append("    <div class=\"latency-card\" title=\"")
+                .append(escapeHtml(tooltip)).append("\">\n")
+                .append("      <div class=\"latency-label\">").append(escapeHtml(label))
+                .append(" <span class=\"info-icon\">\u24D8</span></div>\n")
+                .append("      <div class=\"latency-value\">").append(valueMs).append(" ms</div>\n")
+                .append("    </div>\n");
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // Utility (package-private for HtmlPageBuilder and tests)
+    // ─────────────────────────────────────────────────────────────
+
+    /**
      * Renders the full AI report to an HTML file at the specified output path.
      * No Swing dialog is shown — suitable for headless / CLI invocation.
      *
@@ -169,6 +261,7 @@ public class HtmlReportRenderer {
      * @param config          scenario metadata; must not be null
      * @param tableRows       visible table rows from the plugin (TOTAL excluded)
      * @param timeBuckets     time buckets from the JTL parser
+     * @param verdict         extracted AI verdict ("PASS", "FAIL", "UNDECISIVE"); may be null
      * @return absolute path of the written HTML file (same as {@code outputPath})
      * @throws IOException if the file cannot be written
      */
@@ -176,29 +269,44 @@ public class HtmlReportRenderer {
                                String outputPath,
                                RenderConfig config,
                                List<String[]> tableRows,
-                               List<JTLParser.TimeBucket> timeBuckets) throws IOException {
+                               List<JTLParser.TimeBucket> timeBuckets,
+                               String verdict) throws IOException {
         Objects.requireNonNull(markdownContent, "markdownContent must not be null");
         Objects.requireNonNull(outputPath, "outputPath must not be null");
         Objects.requireNonNull(config, "config must not be null");
 
         log.info("renderToFile: generating HTML report. outputPath={}", outputPath);
 
-        String page = buildFullPage(markdownContent, config, tableRows, timeBuckets);
+        String safeVerdict = verdict != null ? verdict : "UNDECISIVE";
+        String page = buildFullPage(markdownContent, config, tableRows, timeBuckets, safeVerdict);
         writeReport(page, Path.of(outputPath));
         log.info("renderToFile: HTML report written. outputPath={}", outputPath);
         return outputPath;
     }
 
+    // ─────────────────────────────────────────────────────────────
+    // Path helpers
+    // ─────────────────────────────────────────────────────────────
+
     private String buildFullPage(String markdownContent, RenderConfig config,
                                  List<String[]> tableRows,
-                                 List<JTLParser.TimeBucket> timeBuckets) {
+                                 List<JTLParser.TimeBucket> timeBuckets,
+                                 String verdict) {
         String htmlBody = HtmlPageBuilder.markdownToHtml(markdownContent);
         String metricsTable = buildTransactionMetricsSection(
                 tableRows, config.percentile,
                 config.errorSlaThreshold, config.rtSlaThresholdMs, config.rtSlaMetric);
         String chartsBlock = HtmlPageBuilder.buildChartsSection(timeBuckets);
-        return HtmlPageBuilder.buildPage(htmlBody, metricsTable, chartsBlock, config);
+        String errorBreakdown = buildErrorBreakdownHtml(config.errorTypeSummary);
+        String latencyPanel = buildLatencyPanelHtml(
+                config.avgLatencyMs, config.avgConnectMs, config.latencyPresent);
+        return HtmlPageBuilder.buildPage(htmlBody, metricsTable, chartsBlock, config,
+                errorBreakdown, latencyPanel, verdict);
     }
+
+    // ─────────────────────────────────────────────────────────────
+    // Error breakdown table (Java-computed, prepended to Error Analysis)
+    // ─────────────────────────────────────────────────────────────
 
     /**
      * Convenience overload used by tests — defaults percentile to 90.
@@ -211,7 +319,7 @@ public class HtmlReportRenderer {
     }
 
     // ─────────────────────────────────────────────────────────────
-    // Utility (package-private for HtmlPageBuilder and tests)
+    // Latency breakdown panel (Java-computed, prepended to Diagnostics)
     // ─────────────────────────────────────────────────────────────
 
     /**
@@ -227,10 +335,6 @@ public class HtmlReportRenderer {
                 -1, -1, "pnn");
     }
 
-    // ─────────────────────────────────────────────────────────────
-    // Path helpers
-    // ─────────────────────────────────────────────────────────────
-
     /**
      * Builds the Transaction Metrics HTML section with optional SLA status columns.
      *
@@ -241,7 +345,7 @@ public class HtmlReportRenderer {
      *
      * <p>When <em>neither</em> SLA is configured, both SLA columns are hidden entirely
      * and a footnote is appended after the table: "SLA Columns Hidden — No SLA
-     * Thresholds Were Configured For This Run."</p> // CHANGED
+     * Thresholds Were Configured For This Run."</p>
      *
      * <p>All comparisons are performed here in Java — no model arithmetic is involved.</p>
      *
@@ -259,12 +363,12 @@ public class HtmlReportRenderer {
 
         boolean hasErrorSla = errorSlaThreshold >= 0;
         boolean hasRtSla = rtSlaThresholdMs >= 0;
-        boolean hasSla = hasErrorSla || hasRtSla; // CHANGED — gate for SLA column rendering
+        boolean hasSla = hasErrorSla || hasRtSla;
 
         // ── Column headers ────────────────────────────────────────────────────
         String[] baseHeaders = buildTableHeaders(percentile);
         // Error SLA column header: "Error% SLA (≤N%)" or "Error% SLA"
-        boolean useAvg = "avg".equalsIgnoreCase(rtSlaMetric); // CHANGED — moved before SLA header construction
+        boolean useAvg = "avg".equalsIgnoreCase(rtSlaMetric);
         String errorSlaHeader = hasErrorSla
                 ? "Error% SLA (\u2264" + formatThreshold(errorSlaThreshold) + "%)"
                 : "Error% SLA";
@@ -276,9 +380,8 @@ public class HtmlReportRenderer {
         StringBuilder sb = new StringBuilder(512 + rows.size() * 200);
         sb.append("<div class=\"metrics-section\">\n")
                 .append("  <h2>Transaction Metrics</h2>\n")
-                // CHANGED — toolbar: search input + page-size dropdown
                 .append("  <div class=\"metrics-toolbar\">\n")
-                .append("    <input type=\"text\" id=\"metricsSearch\" placeholder=\"Search transactions\u2026\">\n")
+                .append("    <input type=\"text\" id=\"metricsSearch\" placeholder=\"Search transaction names\u2026\">\n")
                 .append("    <div class=\"metrics-toolbar-right\">\n")
                 .append("      <label>Show\n")
                 .append("        <select id=\"metricsPageSize\">\n")
@@ -290,14 +393,14 @@ public class HtmlReportRenderer {
                 .append("      </label>\n")
                 .append("    </div>\n")
                 .append("  </div>\n")
+                .append("  <div class=\"sort-hint\" id=\"sortHint\">Click column headers to sort</div>\n")
                 .append("  <div class=\"tbl-wrap\">\n")
-                .append("  <table id=\"metricsTable\">\n") // CHANGED — id for JS hooks
+                .append("  <table id=\"metricsTable\">\n")
                 .append("    <thead><tr>\n");
 
         for (String h : baseHeaders) {
             sb.append("      <th>").append(escapeHtml(h)).append("</th>\n");
         }
-        // CHANGED — SLA column headers only when at least one SLA is configured
         if (hasSla) {
             sb.append("      <th>").append(escapeHtml(errorSlaHeader)).append("</th>\n");
             sb.append("      <th>").append(escapeHtml(rtSlaHeader)).append("</th>\n");
@@ -323,7 +426,6 @@ public class HtmlReportRenderer {
                         .append(escapeHtml(cell))
                         .append(TD_CLOSE).append("\n");
             }
-            // CHANGED — SLA cells only when at least one SLA is configured
             if (hasSla) {
                 // Error SLA column
                 sb.append("      ").append(buildSlaCell(
@@ -339,7 +441,6 @@ public class HtmlReportRenderer {
             sb.append("    </tr>\n");
         }
         sb.append("    </tbody>\n").append("  </table>\n").append("  </div>\n");
-        // CHANGED — pagination controls below table
         sb.append("  <div class=\"metrics-paging\">\n")
                 .append("    <span id=\"metricsInfo\"></span>\n")
                 .append("    <div id=\"metricsPages\"></div>\n")
@@ -461,6 +562,25 @@ public class HtmlReportRenderer {
          * {@code "pnn"} for Nth-percentile. Ignored when {@link #rtSlaThresholdMs} is -1.
          */
         public final String rtSlaMetric;
+        /**
+         * Top-5 error types by frequency. Each map contains "responseCode",
+         * "responseMessage", and "count". Empty list when no errors occurred.
+         */
+        public final List<Map<String, Object>> errorTypeSummary;
+        /**
+         * Average Latency (TTFB) in milliseconds across all samples.
+         * Zero when {@link #latencyPresent} is false.
+         */
+        public final long avgLatencyMs;
+        /**
+         * Average Connect time in milliseconds across all samples.
+         * Zero when {@link #latencyPresent} is false.
+         */
+        public final long avgConnectMs;
+        /**
+         * {@code true} when at least one sample had a non-zero Latency value.
+         */
+        public final boolean latencyPresent;
 
         /**
          * Constructs a render configuration.
@@ -477,12 +597,18 @@ public class HtmlReportRenderer {
          * @param errorSlaThreshold   error-rate SLA threshold (%); -1 = not configured
          * @param rtSlaThresholdMs    response-time SLA threshold (ms); -1 = not configured
          * @param rtSlaMetric         {@code "avg"} or {@code "pnn"} — which RT column to check
+         * @param errorTypeSummary    top-5 error types (null → empty list)
+         * @param avgLatencyMs        average Latency (TTFB) ms; 0 if absent
+         * @param avgConnectMs        average Connect ms; 0 if absent
+         * @param latencyPresent      true when at least one non-zero Latency value exists
          */
         public RenderConfig(String users, String scenarioName, String scenarioDesc,
                             String threadGroupName, String startTime, String endTime,
                             String duration, int percentile, String providerDisplayName,
                             double errorSlaThreshold, long rtSlaThresholdMs,
-                            String rtSlaMetric) {
+                            String rtSlaMetric,
+                            List<Map<String, Object>> errorTypeSummary,
+                            long avgLatencyMs, long avgConnectMs, boolean latencyPresent) {
             this.users = Objects.requireNonNullElse(users, "");
             this.scenarioName = Objects.requireNonNullElse(scenarioName, "");
             this.scenarioDesc = Objects.requireNonNullElse(scenarioDesc, "");
@@ -495,6 +621,10 @@ public class HtmlReportRenderer {
             this.errorSlaThreshold = errorSlaThreshold;
             this.rtSlaThresholdMs = rtSlaThresholdMs;
             this.rtSlaMetric = Objects.requireNonNullElse(rtSlaMetric, "pnn");
+            this.errorTypeSummary = errorTypeSummary != null ? errorTypeSummary : Collections.emptyList();
+            this.avgLatencyMs = avgLatencyMs;
+            this.avgConnectMs = avgConnectMs;
+            this.latencyPresent = latencyPresent;
         }
     }
 }
