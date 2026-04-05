@@ -24,8 +24,6 @@ import java.util.*;
  *   <li>{@code anomalyTransactions} — transactions breaching at least one threshold</li>
  *   <li>{@code errorEndpoints}      — transactions with any errors</li>
  *   <li>{@code slowestEndpoints}    — threshold-based slowest transactions (label + Pnn value)</li>
- *   <li>{@code allTransactionStats} — compact per-label RT/error lookup for SLA evaluation</li>
- *   <li>{@code tpsSeries}           — compact TPS time-series for plateau assessment</li>
  * </ul>
  *
  * <h3>Anomaly error threshold resolution</h3>
@@ -633,43 +631,7 @@ public class PromptBuilder {
     }
 
     // ─────────────────────────────────────────────────────────────
-    // JSON summary — single-pass implementation
-    // ─────────────────────────────────────────────────────────────
-
-    /**
-     * Builds a compact TPS time-series from the parsed time buckets.
-     *
-     * <p>Each entry contains only two fields:
-     * <ul>
-     *   <li>{@code t} — epoch milliseconds (bucket start time)</li>
-     *   <li>{@code tps} — transactions per second for that bucket</li>
-     * </ul>
-     * Other bucket fields (avgResponseMs, errorPct, kbps) are omitted —
-     * they are already represented in {@code globalStats} and
-     * {@code allTransactionStats}. The reduced payload keeps token cost
-     * at approximately 3,150 tokens for a 3-hour test at 30-second buckets.</p>
-     *
-     * <p>Returns an empty list when {@code timeBuckets} is null or empty,
-     * signalling the prompt to apply the DEFAULT classification rule.</p>
-     *
-     * @param timeBuckets ordered list of time buckets from the JTL parser
-     * @return compact list of {@code {t, tps}} maps; empty list if no data
-     */
-    private static List<Map<String, Object>> buildTpsSeries(
-            List<JTLParser.TimeBucket> timeBuckets) {
-        if (timeBuckets == null || timeBuckets.isEmpty()) return Collections.emptyList();
-        List<Map<String, Object>> series = new ArrayList<>(timeBuckets.size());
-        for (JTLParser.TimeBucket b : timeBuckets) {
-            Map<String, Object> entry = new LinkedHashMap<>();
-            entry.put("t", b.epochMs);
-            entry.put("tps", round2(b.tps));
-            series.add(entry);
-        }
-        return series;
-    }
-
-    // ─────────────────────────────────────────────────────────────
-    // Global stats — reads from the TOTAL row
+    // Breach list / Global stats helpers
     // ─────────────────────────────────────────────────────────────
 
     private static List<String> buildBreachList(double avg, double pVal, double errPct,
@@ -982,16 +944,6 @@ public class PromptBuilder {
         summary.put("errorEndpoints", cappedErrors);
         summary.put("errorTypeSummary", errorTypeSummary);
         summary.put("slowestEndpoints", slowest);
-        // allTransactionStats: compact per-label lookup table (label, avgMs, pnnMs,
-        // errorRatePct) enabling per-transaction RT SLA evaluation in the AI prompt.
-        // Sorted by pnnMs descending so the AI can scan from worst to best.
-        allStats.sort((a, b) -> Double.compare(asDouble(b.get("pnnMs")), asDouble(a.get("pnnMs"))));
-        summary.put("allTransactionStats", allStats);
-        // tpsSeries: compact TPS time-series enabling genuine plateau assessment.
-        // Only epochMs and tps are included — other bucket fields are redundant
-        // with globalStats and allTransactionStats. Null/empty = absent, and the
-        // prompt falls back to the DEFAULT rule (no plateau assertion).
-        summary.put("tpsSeries", buildTpsSeries(timeBuckets));
         // rtSlaSummary: pre-computed RT SLA verdict — Java does the arithmetic
         // so the AI never needs to compare observedMs against thresholdMs itself.
         // This eliminates model-level numeric comparison errors entirely.

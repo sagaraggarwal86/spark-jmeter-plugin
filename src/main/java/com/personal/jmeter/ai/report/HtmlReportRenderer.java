@@ -162,17 +162,24 @@ public class HtmlReportRenderer {
         return headers;
     }
 
+    private static final String NO_ERROR_CARD =
+            "<div class=\"no-err\">\n"
+                    + "  <div class=\"no-err-icon\">&#10003;</div>\n"
+                    + "  <div class=\"no-err-text\">Zero errors recorded \u2014 all requests completed successfully.</div>\n"
+                    + "</div>\n";
+
     /**
      * Builds a compact HTML table showing the top error types by frequency.
-     * Returns empty string when the error list is empty.
+     * Returns a success card when there are no errors, or an HTML table
+     * of error types otherwise.
      */
     static String buildErrorBreakdownHtml(List<Map<String, Object>> errorTypeSummary) {
-        if (errorTypeSummary == null || errorTypeSummary.isEmpty()) return "";
+        if (errorTypeSummary == null || errorTypeSummary.isEmpty()) return NO_ERROR_CARD;
 
         long totalErrors = errorTypeSummary.stream()
                 .mapToLong(e -> ((Number) e.getOrDefault("count", 0L)).longValue())
                 .sum();
-        if (totalErrors == 0) return "";
+        if (totalErrors == 0) return NO_ERROR_CARD;
 
         StringBuilder sb = new StringBuilder(512);
         sb.append("<div class=\"error-breakdown\">\n")

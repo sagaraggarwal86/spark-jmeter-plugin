@@ -38,6 +38,8 @@ final class HtmlPageBuilder {
 
     private static final DateTimeFormatter CHART_TIME_FMT =
             DateTimeFormatter.ofPattern("HH:mm:ss");
+    private static final DateTimeFormatter FOOTER_TIME_FMT =
+            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     /**
      * Pattern for extracting the text content of an {@code <h2>} tag.
@@ -161,9 +163,21 @@ final class HtmlPageBuilder {
         StringBuilder sidebar = new StringBuilder("<nav class=\"sidebar\">\n");
         for (int i = 0; i < sections.size(); i++) {
             String title = sections.get(i)[0];
+            String titleLower = title.toLowerCase(Locale.ROOT);
+            String status = "";
+            if (titleLower.contains("verdict") && !"UNDECISIVE".equals(verdict)) {
+                status = "PASS".equals(verdict) ? "pass" : "fail";
+            } else if (titleLower.contains("error")
+                    && config.errorTypeSummary != null && !config.errorTypeSummary.isEmpty()) {
+                status = "warn";
+            }
             sidebar.append("  <button class=\"nav-item")
                     .append(i == 0 ? " active" : "")
-                    .append("\" data-panel=\"panel-").append(i).append("\">")
+                    .append("\" data-panel=\"panel-").append(i).append("\"");
+            if (!status.isEmpty()) {
+                sidebar.append(" data-status=\"").append(status).append("\"");
+            }
+            sidebar.append(">")
                     .append(HtmlReportRenderer.escapeHtml(title))
                     .append("</button>\n");
         }
@@ -218,6 +232,9 @@ final class HtmlPageBuilder {
                 .append("      </div>\n")
                 .append("    </div>\n")
                 .append("  </div>\n")
+                .append("  <div class=\"footer-rpt\">Report generated on ")
+                .append(LocalDateTime.now().format(FOOTER_TIME_FMT))
+                .append(" using ").append(providerDisplay).append("</div>\n")
                 .append("</div>\n")
                 .append(chartsScript)   // Chart.js init OUTSIDE panels — avoids 0x0 canvas bug
                 .append(buildTabJs())   // sidebar switching + Excel export
@@ -494,9 +511,9 @@ final class HtmlPageBuilder {
         // Replacement uses inline styles so the styling is self-contained within the
         // AI-generated panel content — no dependency on external CSS class names.
         html = html.replaceAll("\\bPASS\\b",
-                "<span style=\"color:#276749;font-weight:700\">PASS</span>");
+                "<span style=\"color:var(--color-success);font-weight:700\">PASS</span>");
         html = html.replaceAll("\\bFAIL\\b",
-                "<span style=\"color:#c53030;font-weight:700\">FAIL</span>");
+                "<span style=\"color:var(--color-danger);font-weight:700\">FAIL</span>");
         // Bold the four exact classification tokens. Literal alternation — no
         // generic pattern — so only the documented labels are ever matched.
         html = html.replaceAll(
@@ -784,8 +801,23 @@ final class HtmlPageBuilder {
                 .append("        ]);\n")
                 .append("        ws['!cols'] = [{wch: 65}];\n")
                 .append("      } else if (panel.querySelector('table')) {\n")
-                .append("        try { ws = XLSX.utils.table_to_sheet(panel.querySelector('table')); }\n")
-                .append("        catch(ex) { ws = XLSX.utils.aoa_to_sheet([['Table export failed: ' + ex.message]]); }\n")
+                .append("        try {\n")
+                .append("          var tables = panel.querySelectorAll('table');\n")
+                .append("          if (tables.length === 1) {\n")
+                .append("            ws = XLSX.utils.table_to_sheet(tables[0]);\n")
+                .append("          } else {\n")
+                .append("            var aoa = [];\n")
+                .append("            tables.forEach(function(tbl, idx) {\n")
+                .append("              if (idx > 0) aoa.push([]);\n")
+                .append("              tbl.querySelectorAll('tr').forEach(function(tr) {\n")
+                .append("                var cells = [];\n")
+                .append("                tr.querySelectorAll('th, td').forEach(function(c) { cells.push(c.textContent.trim()); });\n")
+                .append("                aoa.push(cells);\n")
+                .append("              });\n")
+                .append("            });\n")
+                .append("            ws = XLSX.utils.aoa_to_sheet(aoa);\n")
+                .append("          }\n")
+                .append("        } catch(ex) { ws = XLSX.utils.aoa_to_sheet([['Table export failed: ' + ex.message]]); }\n")
                 .append("      } else {\n")
                 .append("        var text = panel.innerText || '';\n")
                 .append("        var rows = text.split('\\n')\n")
@@ -954,15 +986,26 @@ final class HtmlPageBuilder {
                 + "(function() {\n"
                 + "  var rpt = document.querySelector('.rpt');\n"
                 + "  var btn = document.getElementById('darkToggle');\n"
+                + "  function updateChartGrids(isDark) {\n"
+                + "    if (typeof Chart === 'undefined') return;\n"
+                + "    var g = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)';\n"
+                + "    Object.values(Chart.instances).forEach(function(c) {\n"
+                + "      if (c.options.scales && c.options.scales.x) c.options.scales.x.grid.color = g;\n"
+                + "      if (c.options.scales && c.options.scales.y) c.options.scales.y.grid.color = g;\n"
+                + "      c.update('none');\n"
+                + "    });\n"
+                + "  }\n"
                 + "  if (localStorage.getItem('jaar-dark') === '1') {\n"
                 + "    rpt.classList.add('dark');\n"
                 + "    btn.innerHTML = '&#9728;&nbsp; Light Mode';\n"
+                + "    updateChartGrids(true);\n"
                 + "  }\n"
                 + "  window.toggleDark = function() {\n"
                 + "    rpt.classList.toggle('dark');\n"
                 + "    var isDark = rpt.classList.contains('dark');\n"
                 + "    btn.innerHTML = isDark ? '&#9728;&nbsp; Light Mode' : '&#127769;&nbsp; Dark Mode';\n"
                 + "    localStorage.setItem('jaar-dark', isDark ? '1' : '0');\n"
+                + "    updateChartGrids(isDark);\n"
                 + "  };\n"
                 + "})();\n"
                 + "</script>\n";
@@ -1057,6 +1100,9 @@ final class HtmlPageBuilder {
                 + "      --color-background-tertiary:  #f0f4f8;\n"
                 + "      --color-border-secondary:     #cbd5e0;\n"
                 + "      --color-border-tertiary:      #e2e8f0;\n"
+                + "      --color-accent:               #3182ce;\n"
+                + "      --color-success:              #276749;\n"
+                + "      --color-danger:               #c53030;\n"
                 + "    }\n"
                 + "    .dark {\n"
                 + "      --color-text-primary:         #e2e8f0;\n"
@@ -1067,6 +1113,9 @@ final class HtmlPageBuilder {
                 + "      --color-background-tertiary:  #171923;\n"
                 + "      --color-border-secondary:     #4a5568;\n"
                 + "      --color-border-tertiary:      #2d3748;\n"
+                + "      --color-accent:               #63b3ed;\n"
+                + "      --color-success:              #68d391;\n"
+                + "      --color-danger:               #fc8181;\n"
                 + "    }\n"
                 + "    .dark .rpt-header { background: #0d1b2a; }\n"
                 + "    .dark .sidebar { background: #171923; border-right-color: #2d3748; }\n"
@@ -1148,7 +1197,7 @@ final class HtmlPageBuilder {
                 // ── Typography ───────────────────────────────────────────────
                 + "    h2 {\n"
                 + "      font-size: 16px; font-weight: 600; color: var(--color-text-primary);\n"
-                + "      border-left: 3px solid #3182ce; padding-left: 11px; margin: 0 0 16px;\n"
+                + "      border-left: 3px solid var(--color-accent); padding-left: 11px; margin: 0 0 16px;\n"
                 + "    }\n"
                 + "    h3 { font-size: 13px; font-weight: 600; color: #2d3748; margin: 18px 0 8px; }\n"
                 + "    p  { margin-bottom: 12px; font-size: 13px; color: var(--color-text-primary); }\n"
@@ -1162,8 +1211,8 @@ final class HtmlPageBuilder {
                 + "    }\n"
                 + "    td { padding: 7px 12px; border-bottom: 0.5px solid var(--color-border-tertiary); white-space: nowrap; }\n"
                 + "    td.num { text-align: right; font-variant-numeric: tabular-nums; }\n"
-                + "    td.sla-pass { text-align: center; font-weight: 600; color: #276749; }\n"
-                + "    td.sla-fail { text-align: center; font-weight: 600; color: #c53030; }\n"
+                + "    td.sla-pass { text-align: center; font-weight: 600; color: var(--color-success); }\n"
+                + "    td.sla-fail { text-align: center; font-weight: 600; color: var(--color-danger); }\n"
                 + "    td.sla-na   { text-align: center; color: #a0aec0; }\n"
                 + "    tr:last-child td  { border-bottom: none; }\n"
                 + "    tr:nth-child(even) td { background: var(--color-background-secondary); }\n"
@@ -1187,8 +1236,8 @@ final class HtmlPageBuilder {
                 + "    .kpi { background: var(--color-background-secondary); border-radius: 8px; padding: 14px 16px; border: 1px solid var(--color-border-tertiary); }\n"
                 + "    .kpi-label { font-size: 11px; color: var(--color-text-secondary); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.4px; }\n"
                 + "    .kpi-value { font-size: 20px; font-weight: 500; color: var(--color-text-primary); line-height: 1.2; }\n"
-                + "    .kpi-value.pass { color: #276749; font-weight: 700; }\n"
-                + "    .kpi-value.fail { color: #c53030; font-weight: 700; }\n"
+                + "    .kpi-value.pass { color: var(--color-success); font-weight: 700; }\n"
+                + "    .kpi-value.fail { color: var(--color-danger); font-weight: 700; }\n"
                 // ── Verdict banner ────────────────────────────────────────────
                 + "    .verdict-banner {\n"
                 + "      display: flex; align-items: center; gap: 20px;\n"
@@ -1196,8 +1245,8 @@ final class HtmlPageBuilder {
                 + "      border-radius: 10px; padding: 18px 22px; margin-bottom: 24px;\n"
                 + "    }\n"
                 + "    .verdict-banner.fail { background: #fff5f5; border-color: #feb2b2; }\n"
-                + "    .verdict-badge-sm     { font-size: 26px; font-weight: 700; color: #276749; flex-shrink: 0; }\n"
-                + "    .verdict-badge-sm.fail { color: #c53030; }\n"
+                + "    .verdict-badge-sm     { font-size: 26px; font-weight: 700; color: var(--color-success); flex-shrink: 0; }\n"
+                + "    .verdict-badge-sm.fail { color: var(--color-danger); }\n"
                 + "    .verdict-desc  { font-size: 13px; color: #22543d; line-height: 1.6; }\n"
                 + "    .verdict-desc strong { font-weight: 600; }\n"
                 // ── No-error box ──────────────────────────────────────────────
@@ -1213,8 +1262,8 @@ final class HtmlPageBuilder {
                 + "    }\n"
                 + "    .no-err-text { font-size: 13px; color: #22543d; font-weight: 500; }\n"
                 // ── Verdict panel (large stamp) ───────────────────────────────
-                + "    .verdict-pass { font-size: 64px; font-weight: 700; color: #276749; line-height: 1; margin-bottom: 8px; }\n"
-                + "    .verdict-fail { font-size: 64px; font-weight: 700; color: #c53030; line-height: 1; margin-bottom: 8px; }\n"
+                + "    .verdict-pass { font-size: 64px; font-weight: 700; color: var(--color-success); line-height: 1; margin-bottom: 8px; }\n"
+                + "    .verdict-fail { font-size: 64px; font-weight: 700; color: var(--color-danger); line-height: 1; margin-bottom: 8px; }\n"
                 // ── Error breakdown table ────────────────────────────────────
                 + "    .error-breakdown { margin: 20px 0 24px; }\n"
                 + "    .error-breakdown h3 { font-size: 14px; font-weight: 600; margin: 0 0 8px; color: var(--color-text-primary); }\n"
@@ -1248,7 +1297,7 @@ final class HtmlPageBuilder {
                 + "      border: 1px solid var(--color-border-secondary); border-radius: 5px;\n"
                 + "      font-size: 12px; font-family: inherit; outline: none;\n"
                 + "    }\n"
-                + "    #metricsSearch:focus { border-color: #3182ce; box-shadow: 0 0 0 2px rgba(49,130,206,0.2); }\n"
+                + "    #metricsSearch:focus { border-color: var(--color-accent); box-shadow: 0 0 0 2px rgba(49,130,206,0.2); }\n"
                 + "    #metricsPageSize {\n"
                 + "      padding: 4px 6px; border: 1px solid var(--color-border-secondary);\n"
                 + "      border-radius: 4px; font-size: 12px; font-family: inherit; margin: 0 4px;\n"
@@ -1304,6 +1353,10 @@ final class HtmlPageBuilder {
                 + "    .hv-fail { background: rgba(245,101,101,0.2); color: #fed7d7; }\n"
                 // ── Sort hint ─────────────────────────────────────────────────
                 + "    .sort-hint { font-size: 11px; color: var(--color-text-tertiary); margin-bottom: 6px; }\n"
+                + "    .nav-item[data-status=\"pass\"]:not(.active) { color: var(--color-success); }\n"
+                + "    .nav-item[data-status=\"fail\"]:not(.active) { color: var(--color-danger); }\n"
+                + "    .nav-item[data-status=\"warn\"]:not(.active) { color: #b7791f; }\n"
+                + "    .dark .nav-item[data-status=\"warn\"]:not(.active) { color: #f6e05e; }\n"
                 // ── Print styles ──────────────────────────────────────────────
                 + "    @media print {\n"
                 + "      .sidebar { display: none !important; }\n"
@@ -1312,6 +1365,7 @@ final class HtmlPageBuilder {
                 + "      .charts-grid { grid-template-columns: 1fr !important; }\n"
                 + "      .body-row { display: block !important; }\n"
                 + "      .metrics-toolbar, .metrics-paging { display: none !important; }\n"
+                + "      #metricsTable tbody tr { display: table-row !important; }\n"
                 + "    }\n"
                 + "  </style>\n";
     }
