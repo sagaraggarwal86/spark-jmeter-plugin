@@ -25,7 +25,7 @@ import java.util.regex.Pattern;
  * <ul>
  *   <li>Up to 9 clickable tabs — Executive Summary, Transaction Metrics,
  *       5 AI analysis sections, Performance Charts, Verdict
- *       (metrics tab omitted when empty)</li> // CHANGED
+ *       (metrics tab omitted when empty)</li>
  *   <li>Export buttons — "Export Excel" (SheetJS, one sheet per tab) and
  *       "Export PDF" (browser print dialog)</li>
  *   <li>Chart.js initialisation outside the Charts tab panel to avoid the
@@ -76,28 +76,31 @@ final class HtmlPageBuilder {
      * Error Analysis → Advanced Web Diagnostics → Root Cause Hypotheses →
      * Recommendations → Performance Charts → Verdict. Transaction Metrics is
      * inserted at index 1 (after Executive Summary); Performance Charts is
-     * inserted before Verdict (the last AI section).</p> // CHANGED
+     * inserted before Verdict (the last AI section).</p>
      *
      * <p>The Chart.js initialisation {@code <script>} block is placed
      * <em>outside</em> its panel so Chart.js instances are created on page
      * load even when the Charts panel is hidden. On panel activation a resize
      * call corrects the 0×0 canvas dimensions.</p>
      *
-     * @param htmlBody     the AI-generated analysis converted from Markdown
-     * @param metricsTable the Transaction Metrics HTML section (may be empty)
-     * @param chartsBlock  the Performance Charts HTML section (may be empty)
-     * @param config       scenario metadata
+     * @param htmlBody       the AI-generated analysis converted from Markdown
+     * @param metricsTable   the Transaction Metrics HTML section (may be empty)
+     * @param chartsBlock    the Performance Charts HTML section (may be empty)
+     * @param config         scenario metadata
+     * @param errorBreakdown Java-computed error breakdown table HTML (may be empty)
+     * @param latencyPanel   Java-computed latency KPI panel HTML (may be empty)
+     * @param verdict        extracted AI verdict ("PASS", "FAIL", "UNDECISIVE")
      * @return complete HTML document as a string
      */
     static String buildPage(String htmlBody, String metricsTable,
-                            String chartsBlock, HtmlReportRenderer.RenderConfig config) {
+                            String chartsBlock, HtmlReportRenderer.RenderConfig config,
+                            String errorBreakdown, String latencyPanel,
+                            String verdict) {
 
-        // ── Provider display name (HTML-escaped, used in header and footer) ── // CHANGED
         String runDateTime = buildRunDateTime(config.startTime, config.endTime);
         String providerDisplay = HtmlReportRenderer.escapeHtml(
                 config.providerDisplayName.isBlank() ? "AI" : config.providerDisplayName);
 
-        // ── Metadata grid — CSS grid of span pairs, not an HTML table ────────── // CHANGED
         StringBuilder metaGrid = new StringBuilder("<div class=\"meta-grid\">\n");
         appendMetaRow(metaGrid, "Scenario Name", config.scenarioName, false);
         appendMetaRow(metaGrid, "Scenario Description", config.scenarioDesc, false);
@@ -109,29 +112,52 @@ final class HtmlPageBuilder {
         // ── Section list ─────────────────────────────────────────────────────
         // AI sections split from htmlBody at <h2> boundaries (typically 7:
         // Executive Summary, Bottleneck, Error, Diagnostics, RCA, Recommendations, Verdict)
-        // CHANGED — style standalone PASS/FAIL tokens before splitting into panels
         String styledBody = styleVerdictTokens(htmlBody != null ? htmlBody : "");
         List<String[]> sections = splitAtH2(styledBody);
 
-        // CHANGED — Transaction Metrics: insert at index 1 (after Executive Summary)
+        // Transaction Metrics: insert at index 1 (after Executive Summary)
         // so the data table is immediately accessible after the summary overview.
         // When splitAtH2 returns 0 or 1 sections (truncated AI), appends at end.
         String safeMetrics = metricsTable != null ? metricsTable : "";
         if (!safeMetrics.isBlank()) {
-            int metricsInsertIdx = Math.min(1, sections.size()); // CHANGED
-            sections.add(metricsInsertIdx, new String[]{"Transaction Metrics", safeMetrics}); // CHANGED
+            int metricsInsertIdx = Math.min(1, sections.size());
+            sections.add(metricsInsertIdx, new String[]{"Transaction Metrics", safeMetrics});
         }
 
-        // CHANGED — Performance Charts: insert before the last section (Verdict).
+        // Warn when AI response appears truncated (fewer than 5 sections expected)
+        if (sections.size() > 0 && sections.size() < 5) {
+            String warn = "<div class=\"ai-notice\">"
+                    + "&#9888; AI analysis appears incomplete \u2014 some sections may be missing. "
+                    + "Consider increasing <code>max.tokens</code> in ai-reporter.properties.</div>\n";
+            sections.get(0)[1] = warn + sections.get(0)[1];
+        }
+
+        // Prepend Java-computed data blocks to their matching AI sections.
+        // Error breakdown → "Error Analysis"; Latency panel → "Advanced Web Diagnostics".
+        String safeErrorBreakdown = errorBreakdown != null ? errorBreakdown : "";
+        String safeLatencyPanel = latencyPanel != null ? latencyPanel : "";
+        if (!safeErrorBreakdown.isBlank() || !safeLatencyPanel.isBlank()) {
+            for (String[] section : sections) {
+                String title = section[0].toLowerCase(Locale.ROOT);
+                if (!safeErrorBreakdown.isBlank() && title.contains("error")) {
+                    section[1] = injectAfterH2(section[1], safeErrorBreakdown);
+                }
+                if (!safeLatencyPanel.isBlank() && title.contains("diagnostics")) {
+                    section[1] = injectAfterH2(section[1], safeLatencyPanel);
+                }
+            }
+        }
+
+        // Performance Charts: insert before the last section (Verdict).
         // Split the Chart.js <script> block out of the panel so instances are
         // created on page load regardless of which panel is initially visible.
         String[] chartsParts = splitChartsBlock(chartsBlock != null ? chartsBlock : "");
         String chartsContent = chartsParts[0]; // <div class="charts-section">…canvases…</div>
         String chartsScript = chartsParts[1]; // <script>(function(){…})();</script>
-        int chartsInsertIdx = Math.max(0, sections.size() - 1); // CHANGED — before Verdict (last AI section)
-        sections.add(chartsInsertIdx, new String[]{"Performance Charts", chartsContent}); // CHANGED
+        int chartsInsertIdx = Math.max(0, sections.size() - 1);
+        sections.add(chartsInsertIdx, new String[]{"Performance Charts", chartsContent});
 
-        // ── Sidebar navigation ───────────────────────────────────────────────── // CHANGED
+        // ── Sidebar navigation ──────────────────────────────────────────────────
         StringBuilder sidebar = new StringBuilder("<nav class=\"sidebar\">\n");
         for (int i = 0; i < sections.size(); i++) {
             String title = sections.get(i)[0];
@@ -143,7 +169,7 @@ final class HtmlPageBuilder {
         }
         sidebar.append("</nav>\n");
 
-        // ── Panels ───────────────────────────────────────────────────────────── // CHANGED
+        // ── Panels ──────────────────────────────────────────────────────────────
         // class="panel", id="panel-{i}", data-title for Excel export sheet naming.
         // No ai-notice div — AI notice is in the header .sub line only.
         StringBuilder panels = new StringBuilder();
@@ -158,8 +184,6 @@ final class HtmlPageBuilder {
                     .append("\n</div>\n");
         }
 
-        // CHANGED — footer removed; header .sub line already carries the AI disclaimer
-
         return new StringBuilder(12288)
                 .append("<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n")
                 .append("  <meta charset=\"UTF-8\">\n")
@@ -170,18 +194,20 @@ final class HtmlPageBuilder {
                 .append(buildCss())
                 .append(buildMetaScript(config, runDateTime)) // window.jaarMeta for Test Info sheet
                 .append("</head>\n<body>\n")
-                // ── Outer wrapper ────────────────────────────────────────────────── // CHANGED
+                // ── Outer wrapper ──────────────────────────────────────────────────
                 .append("<div class=\"rpt\">\n")
                 .append("  <div class=\"rpt-header\">\n")
                 .append("    <div>\n")
                 .append("      <h1>JMeter AI Performance Report</h1>\n")
                 .append("      <div class=\"sub\">Generated by JAAR Plugin using ").append(providerDisplay)
                 .append(" &nbsp;|&nbsp; &#9888; AI-Generated Analysis &mdash; Validate Before Use.</div>\n")
+                .append(buildVerdictBadge(verdict))
                 .append("      ").append(metaGrid)
                 .append("    </div>\n")
                 .append("    <div class=\"header-actions\">\n")
                 .append("      <button class=\"exp-btn\" onclick=\"exportExcel()\">&#x1F4E5;&nbsp; Export Excel</button>\n")
-                .append("      <button class=\"exp-btn\" id=\"darkToggle\" onclick=\"toggleDark()\">&#x1F319;&nbsp; Dark Mode</button>\n") // CHANGED
+                .append("      <button class=\"exp-btn\" onclick=\"window.print()\">&#x1F4C4;&nbsp; Export PDF</button>\n")
+                .append("      <button class=\"exp-btn\" id=\"darkToggle\" onclick=\"toggleDark()\">&#x1F319;&nbsp; Dark Mode</button>\n")
                 .append("    </div>\n")
                 .append("  </div>\n")
                 .append("  <div class=\"body-row\">\n")
@@ -190,13 +216,13 @@ final class HtmlPageBuilder {
                 .append("      <div class=\"content-area\">\n")
                 .append(panels)
                 .append("      </div>\n")
-                .append("    </div>\n") // CHANGED — footer removed
+                .append("    </div>\n")
                 .append("  </div>\n")
                 .append("</div>\n")
                 .append(chartsScript)   // Chart.js init OUTSIDE panels — avoids 0x0 canvas bug
                 .append(buildTabJs())   // sidebar switching + Excel export
                 .append(buildMetricsJs()) // metrics table: search, pagination, column sort
-                .append(buildDarkModeJs()) // CHANGED — dark mode toggle
+                .append(buildDarkModeJs())
                 .append("</body>\n</html>\n")
                 .toString();
     }
@@ -300,7 +326,6 @@ final class HtmlPageBuilder {
      */
     static String buildChartsSection(List<JTLParser.TimeBucket> timeBuckets) {
         if (timeBuckets == null || timeBuckets.isEmpty()) {
-            // CHANGED — new message format with reason + remedy
             return buildChartsUnavailableSection(
                     "No time-series data is available for this report. "
                             + "This typically occurs when the test duration is shorter than the "
@@ -309,7 +334,6 @@ final class HtmlPageBuilder {
                     "Try reducing --start-offset or running a longer test.");
         }
         if (timeBuckets.size() < 2) {
-            // CHANGED — specific one-bucket reason and remedy per spec
             return buildChartsUnavailableSection(
                     "Only One Time Bucket Was Captured.",
                     "To Generate Charts: Set <code>Chart Interval (s)</code> &gt; 0 In The JAAR Plugin,"
@@ -356,10 +380,8 @@ final class HtmlPageBuilder {
         return new StringBuilder(2048)
                 .append("<div class=\"charts-section\">\n")
                 .append("  <h2>Performance Charts Over Time</h2>\n")
-                // CHANGED — removed "a" before interval count; matches spec exactly
                 .append("  <p class=\"charts-note\">Each point represents ")
                 .append(intervalSeconds).append("-second interval.</p>\n")
-                // CHANGED — 2-column charts-grid wrapper
                 .append("  <div class=\"charts-grid\">\n")
                 .append(chartBox("chartAvgRt", "Average Response Time Over Time (ms)"))
                 .append(chartBox("chartErrPct", "Error Rate Over Time (%)"))
@@ -371,9 +393,9 @@ final class HtmlPageBuilder {
                 .append("  var labels = ").append(labels).append(";\n")
                 .append(buildTimeSeriesChartFn())
                 .append("  timeChart('chartAvgRt',  ").append(avgArr).append(", 'Avg Response Time', 'ms',    'rgba(49,130,206,1)');\n")
-                .append("  timeChart('chartErrPct', ").append(errArr).append(", 'Error Rate',        '%',     'rgba(229,62,62,1)');\n")
-                .append("  timeChart('chartTps',    ").append(tpsArr).append(", 'Throughput',        'req/s', 'rgba(72,187,120,1)');\n")
-                .append("  timeChart('chartKb',     ").append(kbArr).append(",  'Bandwidth',         'KB/s',  'rgba(159,122,234,1)');\n")
+                .append("  timeChart('chartErrPct', ").append(errArr).append(", 'Error Rate',        '%',     'rgba(229,62,62,1)',   [6,3]);\n")
+                .append("  timeChart('chartTps',    ").append(tpsArr).append(", 'Throughput',        'req/s', 'rgba(72,187,120,1)',  [2,2]);\n")
+                .append("  timeChart('chartKb',     ").append(kbArr).append(",  'Bandwidth',         'KB/s',  'rgba(159,122,234,1)', [1,3]);\n")
                 .append("})();\n</script>\n")
                 .toString();
     }
@@ -384,13 +406,13 @@ final class HtmlPageBuilder {
      * <p>Emits a {@code .charts-warn} div containing a bold title, the plain-text
      * {@code reason}, and a {@code remedy} string that may include trusted HTML
      * (e.g. {@code <code>} tags). The reason is HTML-escaped; the remedy is
-     * emitted verbatim and must be safe at the call site.</p> // CHANGED
+     * emitted verbatim and must be safe at the call site.</p>
      *
      * @param reason plain-text explanation of why data is unavailable (will be HTML-escaped)
      * @param remedy HTML remedy string shown after the reason (emitted verbatim)
      * @return HTML string for the placeholder charts section
      */
-    private static String buildChartsUnavailableSection(String reason, String remedy) { // CHANGED
+    private static String buildChartsUnavailableSection(String reason, String remedy) {
         return "<div class=\"charts-section\">\n"
                 + "  <h2>Performance Charts Over Time</h2>\n"
                 + "  <div class=\"charts-warn\">\n"
@@ -433,39 +455,53 @@ final class HtmlPageBuilder {
     }
 
     // ─────────────────────────────────────────────────────────────
-    // Verdict token styling                                        // CHANGED
+    // Verdict token styling
     // ─────────────────────────────────────────────────────────────
+
+    /**
+     * Builds a small verdict badge for the report header.
+     * Shows checkmark + PASS (green) or X + FAIL (red). Hidden for UNDECISIVE.
+     */
+    private static String buildVerdictBadge(String verdict) {
+        if (verdict == null || "UNDECISIVE".equals(verdict)) return "";
+        boolean pass = "PASS".equals(verdict);
+        return "      <div class=\"header-verdict " + (pass ? "hv-pass" : "hv-fail") + "\">"
+                + (pass ? "&#10003; " : "&#10007; ") + HtmlReportRenderer.escapeHtml(verdict)
+                + "</div>\n";
+    }
+
+    /**
+     * Injects {@code blockHtml} immediately after the first {@code </h2>} tag
+     * so Java-computed data appears between the heading and the AI prose.
+     */
+    private static String injectAfterH2(String sectionHtml, String blockHtml) {
+        int h2Close = sectionHtml.indexOf("</h2>");
+        if (h2Close < 0) return blockHtml + sectionHtml;
+        int insertAt = h2Close + "</h2>".length();
+        return sectionHtml.substring(0, insertAt) + "\n" + blockHtml + sectionHtml.substring(insertAt);
+    }
 
     /**
      * Post-processes AI-generated HTML to style standalone {@code PASS} and
      * {@code FAIL} verdict tokens with colour and bold weight.
      *
-     * <p>Wraps whole-word occurrences of {@code PASS} in a green bold
-     * {@code <span>} and {@code FAIL} in a red bold {@code <span>}.
-     * Only matches uppercase tokens at word boundaries — will not affect
-     * words like "bypass" or "failing".</p>
-     *
-     * <p>Applied to the AI-generated HTML body before {@link #splitAtH2}
-     * so that both the Executive Summary and Verdict panels display the
-     * verdict token in the correct colour.</p>
-     *
      * @param html AI-generated HTML from {@link #markdownToHtml}; may be null or blank
      * @return HTML with PASS/FAIL tokens styled; input returned unchanged if null or blank
      */
-    static String styleVerdictTokens(String html) { // CHANGED
+    static String styleVerdictTokens(String html) {
         if (html == null || html.isBlank()) return html;
         // Word-boundary match ensures "bypass", "PASSED", "FAILING" are not affected.
         // Replacement uses inline styles so the styling is self-contained within the
         // AI-generated panel content — no dependency on external CSS class names.
         html = html.replaceAll("\\bPASS\\b",
-                "<span style=\"color:#276749;font-weight:700\">PASS</span>"); // CHANGED
+                "<span style=\"color:#276749;font-weight:700\">PASS</span>");
         html = html.replaceAll("\\bFAIL\\b",
-                "<span style=\"color:#c53030;font-weight:700\">FAIL</span>"); // CHANGED
+                "<span style=\"color:#c53030;font-weight:700\">FAIL</span>");
         // Bold the four exact classification tokens. Literal alternation — no
         // generic pattern — so only the documented labels are ever matched.
         html = html.replaceAll(
                 "\\b(THROUGHPUT-BOUND|LATENCY-BOUND|ERROR-BOUND|CAPACITY-WALL)\\b",
-                "<strong>$1</strong>"); // CHANGED
+                "<strong>$1</strong>");
         return html;
     }
 
@@ -529,7 +565,7 @@ final class HtmlPageBuilder {
     }
 
     private static String renderPipeTable(List<String[]> tableLines) {
-        StringBuilder sb = new StringBuilder("<div class=\"tbl-wrap\"><table>\n<thead>\n<tr>"); // CHANGED — tbl-wrap for horizontal scroll
+        StringBuilder sb = new StringBuilder("<div class=\"tbl-wrap\"><table>\n<thead>\n<tr>");
         for (String cell : tableLines.get(0)) {
             sb.append("<th>").append(HtmlReportRenderer.escapeHtml(cell.trim())).append("</th>");
         }
@@ -541,7 +577,7 @@ final class HtmlPageBuilder {
             }
             sb.append("</tr>\n");
         }
-        return sb.append("</tbody>\n</table></div>\n").toString(); // CHANGED
+        return sb.append("</tbody>\n</table></div>\n").toString();
     }
 
     /**
@@ -610,8 +646,8 @@ final class HtmlPageBuilder {
      * @param label     visible label text (not escaped — must be a literal constant)
      * @param value     metadata value; skipped when null or blank
      * @param boldValue when {@code true}, emits {@code style="font-weight:700"} on the value span
-     */ // CHANGED
-    private static void appendMetaRow(StringBuilder sb, String label, String value, boolean boldValue) { // CHANGED
+     */
+    private static void appendMetaRow(StringBuilder sb, String label, String value, boolean boldValue) {
         if (value == null || value.isBlank()) return;
         sb.append("  <span class=\"ml\">").append(label).append("</span>")
                 .append("<span class=\"mv\"");
@@ -630,14 +666,17 @@ final class HtmlPageBuilder {
 
     private static String buildTimeSeriesChartFn() {
         return new StringBuilder(1024)
-                .append("  function timeChart(id, data, label, unit, color) {\n")
+                .append("  function timeChart(id, data, label, unit, color, dash) {\n")
+                .append("    var gridColor = document.querySelector('.rpt.dark')\n")
+                .append("      ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)';\n")
                 .append("    new Chart(document.getElementById(id), {\n")
                 .append("      type: 'line',\n")
                 .append("      data: { labels: labels, datasets: [{\n")
                 .append("        label: label, data: data, borderColor: color,\n")
                 .append("        backgroundColor: color.replace('1)', '0.10)'),\n")
                 .append("        borderWidth: 2, pointRadius: 3, pointHoverRadius: 6,\n")
-                .append("        fill: true, tension: 0.25, spanGaps: false\n")
+                .append("        fill: true, tension: 0.25, spanGaps: false,\n")
+                .append("        borderDash: dash || []\n")
                 .append("      }]},\n")
                 .append("      options: {\n")
                 .append("        responsive: true, maintainAspectRatio: false,\n")
@@ -657,11 +696,11 @@ final class HtmlPageBuilder {
                 .append("                   return undefined;\n")
                 .append("                 }\n")
                 .append("               },\n")
-                .append("               grid: { color: 'rgba(0,0,0,0.04)' } },\n")
+                .append("               grid: { color: gridColor } },\n")
                 .append("          y: { beginAtZero: true,\n")
                 .append("               title: { display: true, text: unit, font: { size: 11 } },\n")
                 .append("               ticks: { font: { size: 11 } },\n")
-                .append("               grid: { color: 'rgba(0,0,0,0.04)' } }\n")
+                .append("               grid: { color: gridColor } }\n")
                 .append("        }\n")
                 .append("      }\n")
                 .append("    });\n")
@@ -672,7 +711,7 @@ final class HtmlPageBuilder {
     /**
      * Builds the inline JavaScript for sidebar navigation and Excel export.
      *
-     * <h4>Sidebar navigation</h4> // CHANGED
+     * <h4>Sidebar navigation</h4>
      * <p>Each nav button stores the target panel's {@code id} in {@code data-panel}.
      * On click, all active classes are cleared and reapplied to the clicked button
      * and its panel. When the activated panel contains a {@code <canvas>} element,
@@ -688,10 +727,10 @@ final class HtmlPageBuilder {
      *
      * @return self-executing {@code <script>} block string
      */
-    private static String buildTabJs() { // CHANGED
+    private static String buildTabJs() {
         return new StringBuilder(2048)
                 .append("<script>\n(function() {\n")
-                // ── Sidebar switching ─────────────────────────────────────────── // CHANGED
+                // ── Sidebar switching ────────────────────────────────────────────
                 .append("  document.querySelectorAll('.nav-item').forEach(function(btn) {\n")
                 .append("    btn.addEventListener('click', function() {\n")
                 .append("      document.querySelectorAll('.nav-item').forEach(function(b) { b.classList.remove('active'); });\n")
@@ -699,9 +738,16 @@ final class HtmlPageBuilder {
                 .append("      btn.classList.add('active');\n")
                 .append("      var el = document.getElementById(btn.dataset.panel);\n")
                 .append("      if (el) el.classList.add('active');\n")
-                // Chart resize: keyed on canvas presence, not data-charts attribute // CHANGED
-                .append("      if (el && el.querySelector('canvas') && typeof Chart !== 'undefined') {\n")
-                .append("        Object.values(Chart.instances).forEach(function(inst) { inst.resize(); });\n")
+                // Chart resize: keyed on canvas presence, not data-charts attribute
+                .append("      if (el && el.querySelector('canvas')) {\n")
+                .append("        if (typeof Chart !== 'undefined') {\n")
+                .append("          Object.values(Chart.instances).forEach(function(inst) { inst.resize(); });\n")
+                .append("        } else {\n")
+                .append("          el.querySelectorAll('.chart-canvas-wrap').forEach(function(w) {\n")
+                .append("            w.innerHTML = '<p style=\"color:var(--color-text-secondary);font-size:12px;padding:20px\">")
+                .append("Charts unavailable \\u2014 Chart.js library could not be loaded. Check your internet connection.</p>';\n")
+                .append("          });\n")
+                .append("        }\n")
                 .append("      }\n")
                 .append("    });\n")
                 .append("  });\n\n")
@@ -725,7 +771,7 @@ final class HtmlPageBuilder {
                 .append("    var wsInfo = XLSX.utils.aoa_to_sheet(infoRows);\n")
                 .append("    wsInfo['!cols'] = [{wch: 25}, {wch: 80}];\n")
                 .append("    XLSX.utils.book_append_sheet(wb, wsInfo, 'Test Info');\n")
-                // ── Sheets 2–N: one per panel ─────────────────────────────────── // CHANGED
+                // ── Sheets 2–N: one per panel ────────────────────────────────────
                 .append("    document.querySelectorAll('.panel').forEach(function(panel) {\n")
                 .append("      var title = panel.dataset.title || 'Sheet';\n")
                 .append("      var sheetName = title.substring(0, 31);\n")
@@ -734,11 +780,12 @@ final class HtmlPageBuilder {
                 .append("      if (panel.querySelector('canvas')) {\n")
                 .append("        ws = XLSX.utils.aoa_to_sheet([\n")
                 .append("          ['Performance charts are not available in Excel export.'],\n")
-                .append("          ['Please refer to the HTML report for interactive charts.']\n")
+                .append("          ['Refer to the HTML report or use Export PDF for interactive charts.']\n")
                 .append("        ]);\n")
                 .append("        ws['!cols'] = [{wch: 65}];\n")
                 .append("      } else if (panel.querySelector('table')) {\n")
-                .append("        ws = XLSX.utils.table_to_sheet(panel.querySelector('table'));\n")
+                .append("        try { ws = XLSX.utils.table_to_sheet(panel.querySelector('table')); }\n")
+                .append("        catch(ex) { ws = XLSX.utils.aoa_to_sheet([['Table export failed: ' + ex.message]]); }\n")
                 .append("      } else {\n")
                 .append("        var text = panel.innerText || '';\n")
                 .append("        var rows = text.split('\\n')\n")
@@ -784,7 +831,7 @@ final class HtmlPageBuilder {
      *
      * @return self-executing {@code <script>} block string
      */
-    private static String buildMetricsJs() { // CHANGED
+    private static String buildMetricsJs() {
         return new StringBuilder(3072)
                 .append("<script>\n(function() {\n")
                 .append("  var tbl = document.getElementById('metricsTable');\n")
@@ -795,7 +842,9 @@ final class HtmlPageBuilder {
                 .append("  var pageSel = document.getElementById('metricsPageSize');\n")
                 .append("  var info = document.getElementById('metricsInfo');\n")
                 .append("  var pgDiv = document.getElementById('metricsPages');\n")
-                .append("  var curPage = 1, pgSize = parseInt(pageSel.value, 10);\n\n")
+                .append("  var curPage = 1, pgSize = parseInt(pageSel.value, 10);\n")
+                .append("  var totalRowCount = allRows.length;\n")
+                .append("  var debounceTimer = null;\n\n")
                 // ── visible rows (excluding search-hidden) ────────────────────
                 .append("  function vis() {\n")
                 .append("    return allRows.filter(function(r) { return r.dataset.hide !== '1'; });\n")
@@ -809,8 +858,10 @@ final class HtmlPageBuilder {
                 .append("    allRows.forEach(function(r) { r.style.display = 'none'; });\n")
                 .append("    for (var i = s; i < e; i++) v[i].style.display = '';\n")
                 // info label
-                .append("    info.textContent = total === 0 ? 'No matching transactions'\n")
+                .append("    var infoText = total === 0 ? 'No matching transactions'\n")
                 .append("      : 'Showing ' + (s + 1) + '\\u2013' + e + ' of ' + total + ' transactions';\n")
+                .append("    if (total < totalRowCount) infoText += ' (filtered from ' + totalRowCount + ' total)';\n")
+                .append("    info.textContent = infoText;\n")
                 // page buttons
                 .append("    pgDiv.innerHTML = '';\n")
                 // prev
@@ -848,12 +899,16 @@ final class HtmlPageBuilder {
                 .append("  }\n\n")
                 // ── search: filter by transaction name ────────────────────────
                 .append("  searchIn.addEventListener('input', function() {\n")
-                .append("    var q = this.value.toLowerCase();\n")
-                .append("    allRows.forEach(function(r) {\n")
-                .append("      var tx = r.cells[0] ? r.cells[0].textContent.toLowerCase() : '';\n")
-                .append("      r.dataset.hide = tx.indexOf(q) === -1 ? '1' : '';\n")
-                .append("    });\n")
-                .append("    curPage = 1; render();\n")
+                .append("    clearTimeout(debounceTimer);\n")
+                .append("    var self = this;\n")
+                .append("    debounceTimer = setTimeout(function() {\n")
+                .append("      var q = self.value.toLowerCase();\n")
+                .append("      allRows.forEach(function(r) {\n")
+                .append("        var tx = r.cells[0] ? r.cells[0].textContent.toLowerCase() : '';\n")
+                .append("        r.dataset.hide = tx.indexOf(q) === -1 ? '1' : '';\n")
+                .append("      });\n")
+                .append("      curPage = 1; render();\n")
+                .append("    }, 200);\n")
                 .append("  });\n\n")
                 // ── page-size change ──────────────────────────────────────────
                 .append("  pageSel.addEventListener('change', function() {\n")
@@ -866,6 +921,7 @@ final class HtmlPageBuilder {
                 .append("      var asc = !th.classList.contains('sort-asc');\n")
                 .append("      ths.forEach(function(h) { h.classList.remove('sort-asc','sort-desc'); });\n")
                 .append("      th.classList.add(asc ? 'sort-asc' : 'sort-desc');\n")
+                .append("      var hint = document.getElementById('sortHint'); if (hint) hint.style.display = 'none';\n")
                 .append("      allRows.sort(function(a, b) {\n")
                 .append("        var at = a.cells[col] ? a.cells[col].textContent.trim() : '';\n")
                 .append("        var bt = b.cells[col] ? b.cells[col].textContent.trim() : '';\n")
@@ -893,15 +949,22 @@ final class HtmlPageBuilder {
      *
      * @return self-executing {@code <script>} block string
      */
-    private static String buildDarkModeJs() { // CHANGED
+    private static String buildDarkModeJs() {
         return "<script>\n"
-                + "function toggleDark() {\n"
+                + "(function() {\n"
                 + "  var rpt = document.querySelector('.rpt');\n"
                 + "  var btn = document.getElementById('darkToggle');\n"
-                + "  rpt.classList.toggle('dark');\n"
-                + "  var isDark = rpt.classList.contains('dark');\n"
-                + "  btn.innerHTML = isDark ? '&#9728;&nbsp; Light Mode' : '&#127769;&nbsp; Dark Mode';\n"
-                + "}\n"
+                + "  if (localStorage.getItem('jaar-dark') === '1') {\n"
+                + "    rpt.classList.add('dark');\n"
+                + "    btn.innerHTML = '&#9728;&nbsp; Light Mode';\n"
+                + "  }\n"
+                + "  window.toggleDark = function() {\n"
+                + "    rpt.classList.toggle('dark');\n"
+                + "    var isDark = rpt.classList.contains('dark');\n"
+                + "    btn.innerHTML = isDark ? '&#9728;&nbsp; Light Mode' : '&#127769;&nbsp; Dark Mode';\n"
+                + "    localStorage.setItem('jaar-dark', isDark ? '1' : '0');\n"
+                + "  };\n"
+                + "})();\n"
                 + "</script>\n";
     }
 
@@ -982,7 +1045,7 @@ final class HtmlPageBuilder {
     }
 
     @SuppressWarnings("java:S5665") // CSS string — not a sensitive data concatenation
-    private static String buildCss() { // CHANGED — full CSS replacement
+    private static String buildCss() {
         return "  <style>\n"
                 // ── Custom properties ─────────────────────────────────────────
                 + "    :root {\n"
@@ -995,7 +1058,6 @@ final class HtmlPageBuilder {
                 + "      --color-border-secondary:     #cbd5e0;\n"
                 + "      --color-border-tertiary:      #e2e8f0;\n"
                 + "    }\n"
-                // CHANGED — dark mode palette override
                 + "    .dark {\n"
                 + "      --color-text-primary:         #e2e8f0;\n"
                 + "      --color-text-secondary:       #a0aec0;\n"
@@ -1026,6 +1088,10 @@ final class HtmlPageBuilder {
                 + "    .dark .no-err-text { color: #c6f6d5; }\n"
                 + "    .dark .ai-notice { background: #2d2a1a; border-color: #d69e2e; color: #fefcbf; }\n"
                 + "    .dark .kpi { background: #2d3748; border-color: #4a5568; }\n"
+                + "    .dark h3 { color: var(--color-text-primary); }\n"
+                + "    .dark #metricsSearch { background: #2d3748; color: #e2e8f0; border-color: #4a5568; }\n"
+                + "    .dark #metricsPageSize { background: #2d3748; color: #e2e8f0; border-color: #4a5568; }\n"
+                + "    .dark #metricsPages button.active { background: #63b3ed; color: #1a202c; border-color: #63b3ed; }\n"
                 // ── Reset ─────────────────────────────────────────────────────
                 + "    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }\n"
                 + "    html, body { height: 100%; }\n"
@@ -1149,9 +1215,30 @@ final class HtmlPageBuilder {
                 // ── Verdict panel (large stamp) ───────────────────────────────
                 + "    .verdict-pass { font-size: 64px; font-weight: 700; color: #276749; line-height: 1; margin-bottom: 8px; }\n"
                 + "    .verdict-fail { font-size: 64px; font-weight: 700; color: #c53030; line-height: 1; margin-bottom: 8px; }\n"
+                // ── Error breakdown table ────────────────────────────────────
+                + "    .error-breakdown { margin: 20px 0 24px; }\n"
+                + "    .error-breakdown h3 { font-size: 14px; font-weight: 600; margin: 0 0 8px; color: var(--color-text-primary); }\n"
+                + "    .data-table { width: 100%; border-collapse: collapse; font-size: 12px; }\n"
+                + "    .data-table th { text-align: left; padding: 6px 10px; background: var(--color-background-secondary);\n"
+                + "      border-bottom: 2px solid var(--color-border-secondary); font-weight: 600; font-size: 11px;\n"
+                + "      color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.3px; }\n"
+                + "    .data-table td { padding: 5px 10px; border-bottom: 1px solid var(--color-border-secondary); }\n"
+                + "    .data-table .num { text-align: right; font-variant-numeric: tabular-nums; }\n"
+                // ── Latency panel ────────────────────────────────────────────
+                + "    .latency-panel { margin: 20px 0 24px; }\n"
+                + "    .latency-panel h3 { font-size: 14px; font-weight: 600; margin: 0 0 10px; color: var(--color-text-primary); }\n"
+                + "    .latency-cards { display: flex; gap: 16px; flex-wrap: wrap; }\n"
+                + "    .latency-card {\n"
+                + "      flex: 1; min-width: 160px; padding: 16px; border-radius: 8px;\n"
+                + "      background: var(--color-background-secondary); border: 1px solid var(--color-border-secondary);\n"
+                + "      cursor: help;\n"
+                + "    }\n"
+                + "    .latency-label { font-size: 11px; font-weight: 600; color: var(--color-text-secondary);\n"
+                + "      text-transform: uppercase; letter-spacing: 0.3px; margin-bottom: 6px; }\n"
+                + "    .latency-value { font-size: 28px; font-weight: 700; color: var(--color-text-primary); }\n"
+                + "    .info-icon { font-size: 12px; opacity: 0.5; vertical-align: middle; }\n"
                 // ── Section-specific ─────────────────────────────────────────
                 + "    .metrics-section { margin: 40px 0 0; }\n"
-                // CHANGED — toolbar: search + page-size dropdown
                 + "    .metrics-toolbar {\n"
                 + "      display: flex; align-items: center; justify-content: space-between;\n"
                 + "      gap: 12px; margin-bottom: 10px;\n"
@@ -1167,7 +1254,6 @@ final class HtmlPageBuilder {
                 + "      border-radius: 4px; font-size: 12px; font-family: inherit; margin: 0 4px;\n"
                 + "    }\n"
                 + "    .metrics-toolbar-right label { font-size: 12px; color: var(--color-text-secondary); }\n"
-                // CHANGED — pagination controls
                 + "    .metrics-paging {\n"
                 + "      display: flex; align-items: center; justify-content: space-between;\n"
                 + "      margin-top: 10px; font-size: 12px; color: var(--color-text-secondary);\n"
@@ -1184,7 +1270,6 @@ final class HtmlPageBuilder {
                 + "      background: #1a365d; color: white; border-color: #1a365d;\n"
                 + "    }\n"
                 + "    #metricsPages button:disabled { opacity: 0.4; cursor: default; }\n"
-                // CHANGED — sortable column indicators (metrics table only)
                 + "    #metricsTable th { cursor: pointer; user-select: none; }\n"
                 + "    #metricsTable th::after {\n"
                 + "      content: ' \\21C5'; font-size: 9px; opacity: 0.35;\n"
@@ -1209,6 +1294,24 @@ final class HtmlPageBuilder {
                 + "      font-size: 11px; color: var(--color-text-tertiary); padding: 12px 32px;\n"
                 + "      border-top: 1px solid var(--color-border-tertiary);\n"
                 + "      background: var(--color-background-primary); flex-shrink: 0;\n"
+                + "    }\n"
+                // ── Header verdict badge ───────────────────────────────────
+                + "    .header-verdict {\n"
+                + "      display: inline-block; padding: 4px 14px; border-radius: 4px;\n"
+                + "      font-size: 14px; font-weight: 700; letter-spacing: 0.5px; margin: 8px 0 4px;\n"
+                + "    }\n"
+                + "    .hv-pass { background: rgba(72,187,120,0.2); color: #c6f6d5; }\n"
+                + "    .hv-fail { background: rgba(245,101,101,0.2); color: #fed7d7; }\n"
+                // ── Sort hint ─────────────────────────────────────────────────
+                + "    .sort-hint { font-size: 11px; color: var(--color-text-tertiary); margin-bottom: 6px; }\n"
+                // ── Print styles ──────────────────────────────────────────────
+                + "    @media print {\n"
+                + "      .sidebar { display: none !important; }\n"
+                + "      .header-actions { display: none !important; }\n"
+                + "      .panel { display: block !important; page-break-inside: avoid; }\n"
+                + "      .charts-grid { grid-template-columns: 1fr !important; }\n"
+                + "      .body-row { display: block !important; }\n"
+                + "      .metrics-toolbar, .metrics-paging { display: none !important; }\n"
                 + "    }\n"
                 + "  </style>\n";
     }

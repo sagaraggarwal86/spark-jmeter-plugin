@@ -249,7 +249,10 @@ public final class AiReportLauncher {
                 metadata.threadGroupName,
                 dataProvider.getStartTime(), dataProvider.getEndTime(),
                 dataProvider.getDuration(), percentile, providerConfig.displayName,
-                errorSla, rtSla, rtMetric);
+                errorSla, rtSla, rtMetric,
+                dataProvider.getErrorTypeSummary(),
+                dataProvider.getAvgLatencyMs(), dataProvider.getAvgConnectMs(),
+                dataProvider.isLatencyPresent());
 
         return new AiReportCoordinator.ReportContext(
                 dataProvider.getVisibleTableRows(),

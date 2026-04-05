@@ -127,7 +127,7 @@ final class CliReportPipeline {
         progress("Rendering HTML report...");
         HtmlReportRenderer.RenderConfig config = buildRenderConfig(result, timeCtx, provider);
         String outputPath = new HtmlReportRenderer().renderToFile(
-                strippedMarkdown, args.outputFile(), config, tableRows, result.timeBuckets);
+                strippedMarkdown, args.outputFile(), config, tableRows, result.timeBuckets, verdict);
         progress("Report saved to: " + outputPath);
 
         return new PipelineResult(outputPath, verdict);
@@ -274,7 +274,9 @@ final class CliReportPipeline {
                 timeCtx.duration(),
                 args.percentile(),
                 provider.displayName,
-                errorSla, rtSla, rtMetric);
+                errorSla, rtSla, rtMetric,
+                result.errorTypeSummary,
+                result.avgLatencyMs, result.avgConnectMs, result.latencyPresent);
     }
 
     // ─────────────────────────────────────────────────────────────
