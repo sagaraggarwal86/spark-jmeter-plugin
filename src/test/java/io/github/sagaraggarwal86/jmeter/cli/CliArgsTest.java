@@ -582,5 +582,71 @@ class CliArgsTest {
             });
             assertTrue(cli.hasAnySla());
         }
+
+        @Test
+        @DisplayName("error-sla negative value rejected")
+        void errorSlaNegativeRejected(@TempDir Path dir) throws IOException {
+            CliArgs cli = CliArgs.parse(new String[]{
+                    "--input", tempJtl(dir), "--error-sla", "-1"
+            });
+            assertTrue(cli.errors().stream().anyMatch(e -> e.contains("--error-sla")));
+        }
+
+        @Test
+        @DisplayName("rt-sla negative value rejected")
+        void rtSlaNegativeRejected(@TempDir Path dir) throws IOException {
+            CliArgs cli = CliArgs.parse(new String[]{
+                    "--input", tempJtl(dir), "--rt-sla", "-1"
+            });
+            assertTrue(cli.errors().stream().anyMatch(e -> e.contains("--rt-sla")));
+        }
+
+        @Test
+        @DisplayName("rt-sla zero value rejected")
+        void rtSlaZeroRejected(@TempDir Path dir) throws IOException {
+            CliArgs cli = CliArgs.parse(new String[]{
+                    "--input", tempJtl(dir), "--rt-sla", "0"
+            });
+            assertTrue(cli.errors().stream().anyMatch(e -> e.contains("--rt-sla")));
+        }
+
+        @Test
+        @DisplayName("exclude without search produces error")
+        void excludeWithoutSearchProducesError(@TempDir Path dir) throws IOException {
+            CliArgs cli = CliArgs.parse(new String[]{
+                    "--input", tempJtl(dir), "--exclude"
+            });
+            assertTrue(cli.errors().stream().anyMatch(e -> e.contains("--exclude")),
+                    "Expected --exclude error but got: " + cli.errors());
+        }
+
+        @Test
+        @DisplayName("virtual-users parsed correctly")
+        void virtualUsersParsed(@TempDir Path dir) throws IOException {
+            CliArgs cli = CliArgs.parse(new String[]{
+                    "--input", tempJtl(dir), "--virtual-users", "100"
+            });
+            assertTrue(cli.errors().isEmpty(), "Expected no errors but got: " + cli.errors());
+            assertEquals(100, cli.virtualUsers());
+        }
+
+        @Test
+        @DisplayName("search and exclude together accepted")
+        void searchAndExcludeAccepted(@TempDir Path dir) throws IOException {
+            CliArgs cli = CliArgs.parse(new String[]{
+                    "--input", tempJtl(dir), "--search", "Login", "--exclude"
+            });
+            assertTrue(cli.errors().isEmpty(), "Expected no errors but got: " + cli.errors());
+            assertTrue(cli.exclude());
+        }
+
+        @Test
+        @DisplayName("hasAnySla() returns false with no SLA set")
+        void hasAnySlaFalse(@TempDir Path dir) throws IOException {
+            CliArgs cli = CliArgs.parse(new String[]{
+                    "--input", tempJtl(dir)
+            });
+            assertFalse(cli.hasAnySla());
+        }
     }
 }

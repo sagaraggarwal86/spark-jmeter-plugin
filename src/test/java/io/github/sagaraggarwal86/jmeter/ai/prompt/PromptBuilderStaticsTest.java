@@ -1,10 +1,13 @@
 package io.github.sagaraggarwal86.jmeter.ai.prompt;
 
 import io.github.sagaraggarwal86.jmeter.parser.JTLParser;
+import org.apache.jmeter.util.JMeterUtils;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
+import java.net.URL;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -26,6 +29,16 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 @DisplayName("PromptBuilder — static analysis methods")
 class PromptBuilderStaticsTest {
+
+    @BeforeAll
+    static void initJMeter() {
+        System.setProperty("java.awt.headless", "true");
+        URL propsUrl = PromptBuilderStaticsTest.class.getClassLoader().getResource("jmeter.properties");
+        if (propsUrl != null) {
+            JMeterUtils.loadJMeterProperties(propsUrl.getFile());
+            JMeterUtils.initLocale();
+        }
+    }
 
     // ─────────────────────────────────────────────────────────────
     // buildClassificationSummary
@@ -288,6 +301,79 @@ class PromptBuilderStaticsTest {
         void nullInputsHandledSafely() {
             assertDoesNotThrow(() ->
                     PromptBuilder.buildOverallVerdictSummary(null, null, null, emptyGlobalStats()));
+        }
+
+        @Test
+        @DisplayName("both SLAs BREACH → reasoning mentions both")
+        void bothBreachReasoningMentionsBoth() {
+            Map<String, Object> result = PromptBuilder.buildOverallVerdictSummary(
+                    slaSummary("BREACH"), slaSummary("BREACH"),
+                    classification("THROUGHPUT-BOUND"), emptyGlobalStats());
+            assertEquals("FAIL", result.get("verdict"));
+            String reasoning = String.valueOf(result.get("reasoning"));
+            assertTrue(reasoning.contains("errorSlaSummary"));
+            assertTrue(reasoning.contains("rtSlaSummary"));
+        }
+
+        @Test
+        @DisplayName("no SLA + LATENCY-BOUND + avgMs==0 → PASS (p99 cannot exceed 5*0)")
+        void latencyBoundZeroAvgIsPass() {
+            Map<String, Object> stats = globalStats(0.0, 600.0, 0.5);
+            Map<String, Object> result = PromptBuilder.buildOverallVerdictSummary(
+                    noSlaSummary(), noSlaSummary(),
+                    classification("LATENCY-BOUND"), stats);
+            assertEquals("PASS", result.get("verdict"));
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // buildGlobalStats — basic validation
+    // ─────────────────────────────────────────────────────────────
+
+    @Nested
+    @DisplayName("buildGlobalStats")
+    class GlobalStatsTests {
+
+        @Test
+        @DisplayName("null TOTAL label → returns empty map")
+        void nullTotalReturnsEmpty() {
+            Map<String, org.apache.jmeter.visualizers.SamplingStatCalculator> results = new LinkedHashMap<>();
+            Map<String, Object> stats = PromptBuilder.buildGlobalStats(results, 90, 0.90,
+                    PromptBuilder.LatencyContext.ABSENT);
+            assertTrue(stats.isEmpty());
+        }
+
+        @Test
+        @DisplayName("TOTAL with zero count → returns empty map")
+        void zeroCountTotalReturnsEmpty() {
+            Map<String, org.apache.jmeter.visualizers.SamplingStatCalculator> results = new LinkedHashMap<>();
+            results.put("TOTAL", new org.apache.jmeter.visualizers.SamplingStatCalculator("TOTAL"));
+            Map<String, Object> stats = PromptBuilder.buildGlobalStats(results, 90, 0.90,
+                    PromptBuilder.LatencyContext.ABSENT);
+            assertTrue(stats.isEmpty());
+        }
+
+        @Test
+        @DisplayName("TOTAL with samples → contains expected keys")
+        void totalWithSamplesContainsKeys() {
+            org.apache.jmeter.visualizers.SamplingStatCalculator calc =
+                    new org.apache.jmeter.visualizers.SamplingStatCalculator("TOTAL");
+            org.apache.jmeter.samplers.SampleResult sr = new org.apache.jmeter.samplers.SampleResult();
+            sr.setStampAndTime(System.currentTimeMillis(), 200L);
+            sr.setSuccessful(true);
+            calc.addSample(sr);
+
+            Map<String, org.apache.jmeter.visualizers.SamplingStatCalculator> results = new LinkedHashMap<>();
+            results.put("TOTAL", calc);
+
+            Map<String, Object> stats = PromptBuilder.buildGlobalStats(results, 90, 0.90,
+                    PromptBuilder.LatencyContext.ABSENT);
+            assertFalse(stats.isEmpty());
+            assertTrue(stats.containsKey("avgResponseMs"));
+            assertTrue(stats.containsKey("p99ResponseMs"));
+            assertTrue(stats.containsKey("errorRatePct"));
+            assertTrue(stats.containsKey("totalRequests"));
+            assertTrue(stats.containsKey("throughputTPS"));
         }
     }
 }

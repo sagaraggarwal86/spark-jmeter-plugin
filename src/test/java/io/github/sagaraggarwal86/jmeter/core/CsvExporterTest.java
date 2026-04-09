@@ -297,6 +297,59 @@ class CsvExporterTest {
 
         // ── Multiple rows ────────────────────────────────────────
 
+        // ── TPS SLA ────────────────────────────────────────────────
+
+        @Test
+        @DisplayName("TPS SLA breach → FAIL in TPS SLA column")
+        void tpsSlaBreach() throws IOException {
+            DefaultTableModel model = modelWith(dataRow("Login", "200", "300", "1.00%"));
+            // TPS in row is "10.0/sec", threshold is 15 → breach
+            SlaConfig sla = SlaConfig.from("15", "", "", SlaConfig.RtMetric.PNN, 90);
+            List<String> lines = writeCsv(buildExporter(model, sla));
+
+            assertTrue(lines.get(0).contains("TPS SLA"));
+            assertTrue(lines.get(1).endsWith(",FAIL"));
+        }
+
+        @Test
+        @DisplayName("TPS SLA within → PASS in TPS SLA column")
+        void tpsSlaPass() throws IOException {
+            DefaultTableModel model = modelWith(dataRow("Login", "200", "300", "1.00%"));
+            // TPS in row is "10.0/sec", threshold is 5 → pass
+            SlaConfig sla = SlaConfig.from("5", "", "", SlaConfig.RtMetric.PNN, 90);
+            List<String> lines = writeCsv(buildExporter(model, sla));
+
+            assertTrue(lines.get(1).endsWith(",PASS"));
+        }
+
+        // ── All three SLAs ───────────────────────────────────────
+
+        @Test
+        @DisplayName("all three SLAs configured — headers present")
+        void allThreeSlaHeaders() throws IOException {
+            DefaultTableModel model = modelWith(dataRow("Login", "200", "300", "1.00%"));
+            SlaConfig sla = SlaConfig.from("5", "5", "2000", SlaConfig.RtMetric.PNN, 90);
+            List<String> lines = writeCsv(buildExporter(model, sla));
+
+            assertTrue(lines.get(0).contains("TPS SLA"));
+            assertTrue(lines.get(0).contains("Error% SLA"));
+            assertTrue(lines.get(0).contains("RT SLA"));
+        }
+
+        @Test
+        @DisplayName("all three SLAs — TOTAL row gets three dashes")
+        void allThreeSlaTotalDashes() throws IOException {
+            DefaultTableModel model = modelWith(
+                    dataRow("Login", "200", "300", "1.00%"),
+                    totalRow("200", "300", "1.00%"));
+            SlaConfig sla = SlaConfig.from("5", "5", "2000", SlaConfig.RtMetric.PNN, 90);
+            List<String> lines = writeCsv(buildExporter(model, sla));
+
+            assertTrue(lines.get(2).endsWith(",-,-,-"));
+        }
+
+        // ── Multiple rows ────────────────────────────────────────
+
         @Test
         @DisplayName("multiple rows with different SLA outcomes")
         void multipleRows() throws IOException {

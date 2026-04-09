@@ -181,4 +181,64 @@ class CellValueParserTest {
             assertEquals(0.0, CellValueParser.parseMs("N/A"));
         }
     }
+
+    // ─────────────────────────────────────────────────────────────
+    // parseTps(String)
+    // ─────────────────────────────────────────────────────────────
+
+    @Nested
+    @DisplayName("parseTps(String)")
+    class ParseTpsStringTests {
+
+        @Test
+        @DisplayName("null returns 0.0")
+        void nullReturnsZero() {
+            assertEquals(0.0, CellValueParser.parseTps((String) null));
+        }
+
+        @Test
+        @DisplayName("blank returns 0.0")
+        void blankReturnsZero() {
+            assertEquals(0.0, CellValueParser.parseTps(""));
+        }
+
+        @Test
+        @DisplayName("'10.50/sec' returns 10.50")
+        void withSecSuffix() {
+            assertEquals(10.50, CellValueParser.parseTps("10.50/sec"), 0.001);
+        }
+
+        @Test
+        @DisplayName("'25' without suffix returns 25.0")
+        void withoutSuffix() {
+            assertEquals(25.0, CellValueParser.parseTps("25"), 0.001);
+        }
+
+        @Test
+        @DisplayName("unparseable returns 0.0")
+        void unparseableReturnsZero() {
+            assertEquals(0.0, CellValueParser.parseTps("abc/sec"));
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // parseTps(Object)
+    // ─────────────────────────────────────────────────────────────
+
+    @Nested
+    @DisplayName("parseTps(Object)")
+    class ParseTpsObjectTests {
+
+        @Test
+        @DisplayName("null Object returns 0.0")
+        void nullObjectReturnsZero() {
+            assertEquals(0.0, CellValueParser.parseTps((Object) null));
+        }
+
+        @Test
+        @DisplayName("Object with '15.0/sec' returns 15.0")
+        void objectToString() {
+            assertEquals(15.0, CellValueParser.parseTps((Object) "15.0/sec"), 0.001);
+        }
+    }
 }
