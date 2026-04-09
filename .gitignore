@@ -32,3 +32,6 @@ service-account*.json
 .vscode/
 *.iml
 .idea/
+
+# Wiki clone (separate git repo — not a submodule)
+jaar-jmeter-plugin.wiki/
