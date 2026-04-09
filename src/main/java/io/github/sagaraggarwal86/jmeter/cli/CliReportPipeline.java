@@ -120,7 +120,7 @@ final class CliReportPipeline {
         } else {
             progress("Analysis mode — classification-based verdict (no SLA, no AI).");
             Map<String, Object> verdictResult = PromptBuilder.buildOverallVerdictSummary(
-                    null, null, classification, globalStats);
+                    null, null, null, classification, globalStats);
             verdict = String.valueOf(verdictResult.getOrDefault("verdict", "PASS"));
             progress("Verdict: %s (source: CLASSIFICATION)", verdict);
         }
@@ -172,7 +172,7 @@ final class CliReportPipeline {
         PromptContent prompt = buildPromptContent(result, systemPrompt, timeCtx);
 
         // Step 7 — Call AI
-        progress("Calling %s (this may take 30-60 seconds)...", provider.displayName);
+        progress("Calling %s (this may take up to %d seconds)...", provider.displayName, provider.timeoutSeconds);
         AiReportService service = new AiReportService(provider);
         final String markdown;
         final long aiElapsedMs;
@@ -304,6 +304,8 @@ final class CliReportPipeline {
                 ? args.rtSla() + " ms" : "Not configured";
         String slaRtMetric = "percentile".equals(args.rtMetric())
                 ? "P" + args.percentile() + " (ms)" : "Avg (ms)";
+        String slaTps = args.hasTpsSla()
+                ? args.tpsSla() + "/sec" : "Not configured";
 
         PromptRequest request = new PromptRequest(
                 timeCtx.users(),
@@ -316,7 +318,8 @@ final class CliReportPipeline {
                 args.percentile(),
                 slaErrorPct,
                 slaRtMs,
-                slaRtMetric);
+                slaRtMetric,
+                slaTps);
 
         PromptBuilder.LatencyContext latency = new PromptBuilder.LatencyContext(
                 result.avgLatencyMs, result.avgConnectMs, result.latencyPresent);

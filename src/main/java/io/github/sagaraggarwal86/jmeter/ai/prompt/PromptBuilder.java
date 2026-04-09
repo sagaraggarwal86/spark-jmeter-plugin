@@ -162,13 +162,14 @@ public class PromptBuilder {
      *
      * @param errSla     pre-computed error SLA summary map from {@code errorSlaSummary}
      * @param rtSla      pre-computed RT SLA summary map from {@code rtSlaSummary}
+     * @param tpsSla     pre-computed TPS SLA summary map from {@code tpsSlaSummary}
      * @param percentile configured percentile for metric label formatting
      * @param summary    full summary map containing {@code overallVerdictSummary}
      * @return plain-text block string
      */
     private static String buildSlaVerdictBlock(
             Map<String, Object> errSla, Map<String, Object> rtSla,
-            int percentile, Map<String, Object> summary) {
+            Map<String, Object> tpsSla, int percentile, Map<String, Object> summary) {
 
         StringBuilder sb = new StringBuilder(
                 "SLA Verdict (pre-computed — use these exact values in the report):\n");
@@ -201,6 +202,21 @@ public class PromptBuilder {
                     .append(" | worst transaction: ").append(rtWorst)
                     .append(" at ").append(rtObs).append(" ms ").append(metricLabel)
                     .append(" | threshold: ").append(rtThresh).append(" ms\n");
+        }
+
+        // ── TPS SLA line ──────────────────────────────────────────────────
+        Map<String, Object> safeTps = (tpsSla != null) ? tpsSla : Map.of();
+        String tpsVerdict = String.valueOf(safeTps.getOrDefault("verdict", "NOT_CONFIGURED"));
+        if ("NOT_CONFIGURED".equals(tpsVerdict)) {
+            sb.append("  TPS SLA           : Not configured\n");
+        } else {
+            String tpsWorst = String.valueOf(safeTps.getOrDefault("worstLabel", ""));
+            Object tpsObs = safeTps.getOrDefault("worstObservedTps", "");
+            Object tpsThresh = safeTps.getOrDefault("thresholdTps", "");
+            sb.append("  TPS SLA           : ").append(tpsVerdict)
+                    .append(" | worst transaction: ").append(tpsWorst)
+                    .append(" at ").append(tpsObs).append("/sec")
+                    .append(" | threshold: \u2265").append(tpsThresh).append("/sec\n");
         }
 
         // ── Overall verdict line — from pre-computed overallVerdictSummary ─
@@ -421,6 +437,86 @@ public class PromptBuilder {
         return result;
     }
 
+    /**
+     * Builds a pre-computed TPS SLA evaluation summary.
+     *
+     * <p>Mirrors {@link #buildRtSlaSummary} and {@link #buildErrorSlaSummary} —
+     * Java performs all comparisons so the AI never needs to compare per-transaction
+     * TPS against the threshold itself. TPS SLA breaches when observed TPS is
+     * <em>below</em> the configured minimum threshold.</p>
+     *
+     * @param allStats             per-label compact stats (must include {@code tps} field)
+     * @param userTpsSlaThreshold  parsed TPS SLA threshold (min TPS); &le; 0 if absent
+     * @return pre-computed TPS SLA summary map
+     */
+    private static Map<String, Object> buildTpsSlaSummary(
+            List<Map<String, Object>> allStats, double userTpsSlaThreshold) {
+
+        Map<String, Object> result = new LinkedHashMap<>();
+
+        if (userTpsSlaThreshold <= 0) {
+            result.put("configured", false);
+            result.put("verdict", "NOT_CONFIGURED");
+            return result;
+        }
+
+        result.put("configured", true);
+        result.put("thresholdTps", round2(userTpsSlaThreshold));
+
+        List<Map<String, Object>> breaches = new ArrayList<>();
+        String worstLabel = null;
+        double worstTps = Double.MAX_VALUE;
+
+        for (Map<String, Object> tx : allStats) {
+            double observed = asDouble(tx.get("tps"));
+            String label = String.valueOf(tx.get("label"));
+            if (observed < worstTps) {
+                worstTps = observed;
+                worstLabel = label;
+            }
+            if (observed < userTpsSlaThreshold) {
+                Map<String, Object> breach = new LinkedHashMap<>();
+                breach.put("label", label);
+                breach.put("observedTps", round2(observed));
+                breach.put("shortageTps", round2(userTpsSlaThreshold - observed));
+                breaches.add(breach);
+            }
+        }
+
+        breaches.sort((a, b) ->
+                Double.compare(asDouble(a.get("observedTps")), asDouble(b.get("observedTps"))));
+
+        result.put("verdict", breaches.isEmpty() ? "WITHIN" : "BREACH");
+        result.put("worstLabel", worstLabel != null ? worstLabel : "");
+        result.put("worstObservedTps", worstTps < Double.MAX_VALUE ? round2(worstTps) : 0.0);
+        result.put("worstShortageTps", worstTps < Double.MAX_VALUE
+                ? round2(userTpsSlaThreshold - worstTps) : 0.0);
+        result.put("breachingTransactions", breaches);
+        return result;
+    }
+
+    /**
+     * Parses the user-configured TPS SLA threshold string into a numeric value.
+     *
+     * @param tpsSlaThresholdTps raw SLA string from {@link PromptRequest}
+     * @return parsed threshold as a positive double, or -1 if absent/unparseable
+     */
+    static double parseTpsSlaThreshold(String tpsSlaThresholdTps) {
+        if (tpsSlaThresholdTps == null || tpsSlaThresholdTps.isBlank()) return -1.0;
+        String trimmed = tpsSlaThresholdTps.trim();
+        if (trimmed.equalsIgnoreCase("Not configured")) return -1.0;
+        // Strip trailing "/sec" or "/s" suffix if present
+        trimmed = trimmed.replaceAll("(?i)/s(ec)?$", "").trim();
+        try {
+            double val = Double.parseDouble(trimmed);
+            return val > 0 ? val : -1.0;
+        } catch (NumberFormatException e) {
+            log.warn("parseTpsSlaThreshold: unparseable value '{}' — treating as not configured.",
+                    tpsSlaThresholdTps);
+            return -1.0;
+        }
+    }
+
     // ─────────────────────────────────────────────────────────────
     // Error SLA threshold parsing
     // ─────────────────────────────────────────────────────────────
@@ -562,29 +658,36 @@ public class PromptBuilder {
      *
      * @param errSla         pre-computed error SLA summary
      * @param rtSla          pre-computed RT SLA summary
+     * @param tpsSla         pre-computed TPS SLA summary
      * @param classification pre-computed classification summary
      * @param globalStats    pre-built global statistics map
      * @return map with verdict, source, and reasoning
      */
     @SuppressWarnings("unchecked")
     public static Map<String, Object> buildOverallVerdictSummary(
-            Object errSla, Object rtSla, Object classification, Map<String, Object> globalStats) {
+            Object errSla, Object rtSla, Object tpsSla,
+            Object classification, Map<String, Object> globalStats) {
 
         Map<String, Object> result = new LinkedHashMap<>();
         Map<String, Object> err = (errSla instanceof Map) ? (Map<String, Object>) errSla : Map.of();
         Map<String, Object> rt = (rtSla instanceof Map) ? (Map<String, Object>) rtSla : Map.of();
+        Map<String, Object> tps = (tpsSla instanceof Map) ? (Map<String, Object>) tpsSla : Map.of();
         Map<String, Object> cls = (classification instanceof Map) ? (Map<String, Object>) classification : Map.of();
 
         String errVerdict = String.valueOf(err.getOrDefault("verdict", "NOT_CONFIGURED"));
         String rtVerdict = String.valueOf(rt.getOrDefault("verdict", "NOT_CONFIGURED"));
+        String tpsVerdict = String.valueOf(tps.getOrDefault("verdict", "NOT_CONFIGURED"));
         String label = String.valueOf(cls.getOrDefault("label", "THROUGHPUT-BOUND"));
 
         boolean errConfigured = !"NOT_CONFIGURED".equals(errVerdict);
         boolean rtConfigured = !"NOT_CONFIGURED".equals(rtVerdict);
-        boolean anyConfigured = errConfigured || rtConfigured;
+        boolean tpsConfigured = !"NOT_CONFIGURED".equals(tpsVerdict);
+        boolean anyConfigured = errConfigured || rtConfigured || tpsConfigured;
 
         if (anyConfigured) {
-            boolean anyBreach = "BREACH".equals(errVerdict) || "BREACH".equals(rtVerdict);
+            boolean anyBreach = "BREACH".equals(errVerdict)
+                    || "BREACH".equals(rtVerdict)
+                    || "BREACH".equals(tpsVerdict);
             if (anyBreach) {
                 result.put("verdict", "FAIL");
                 result.put("source", "SLA");
@@ -593,6 +696,8 @@ public class PromptBuilder {
                     reason.append(" errorSlaSummary.verdict=BREACH;");
                 if ("BREACH".equals(rtVerdict))
                     reason.append(" rtSlaSummary.verdict=BREACH;");
+                if ("BREACH".equals(tpsVerdict))
+                    reason.append(" tpsSlaSummary.verdict=BREACH;");
                 result.put("reasoning", reason.toString());
             } else {
                 result.put("verdict", "PASS");
@@ -791,7 +896,9 @@ public class PromptBuilder {
         Map<String, Object> errSla = (Map<String, Object>) summary.get("errorSlaSummary");
         @SuppressWarnings("unchecked")
         Map<String, Object> rtSla = (Map<String, Object>) summary.get("rtSlaSummary");
-        String slaVerdictBlock = buildSlaVerdictBlock(errSla, rtSla, percentile, summary);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> tpsSla = (Map<String, Object>) summary.get("tpsSlaSummary");
+        String slaVerdictBlock = buildSlaVerdictBlock(errSla, rtSla, tpsSla, percentile, summary);
 
         return """
                 DATA SOURCE: All metrics below reflect the user's currently \
@@ -799,7 +906,7 @@ public class PromptBuilder {
                 percentile have already been applied to the dataset. \
                 Do not adjust, extrapolate, or question the scope. \
                 Report on what is provided.
-                
+
                 Scenario              : %s
                 Thread Group          : %s
                 Description           : %s
@@ -808,10 +915,11 @@ public class PromptBuilder {
                 End Time              : %s
                 Duration              : %s
                 Configured Percentile : P%d
-                
+
                 SLA Thresholds (user-configured):
                   Error Rate SLA      : %s
                   Response Time SLA   : %s on %s
+                  TPS SLA             : %s
                 
                 %s
                 
@@ -828,6 +936,7 @@ public class PromptBuilder {
                 request.errorSlaThresholdPct(),
                 request.rtSlaThresholdMs(),
                 request.rtSlaMetric(),
+                request.tpsSlaThresholdTps(),
                 slaVerdictBlock,
                 json);
     }
@@ -878,6 +987,7 @@ public class PromptBuilder {
             final double pVal = c.getPercentPoint(pFraction).doubleValue();
             final double errPct = c.getErrorPercentage() * 100.0;
             final double stdDev = c.getStandardDeviation();
+            final double tps = c.getRate();
 
             // ── Slowest endpoints accumulator ─────────────────────────────────
             ranked.add(Map.entry(entry.getKey(), pVal));
@@ -891,6 +1001,7 @@ public class PromptBuilder {
             txStat.put("avgMs", round2(avg));
             txStat.put("pnnMs", round2(pVal));
             txStat.put(KEY_ERROR_RATE_PCT, round2(errPct));
+            txStat.put("tps", round2(tps));
             allStats.add(txStat);
 
             // ── Error endpoints accumulator ───────────────────────────────────
@@ -925,7 +1036,7 @@ public class PromptBuilder {
                 ep.put(pKey, round2(pVal));
                 ep.put("stdDevMs", round2(stdDev));
                 ep.put(KEY_ERROR_RATE_PCT, round2(errPct));
-                ep.put("throughputTPS", round2(c.getRate()));
+                ep.put("throughputTPS", round2(tps));
                 ep.put("receivedBandwidthKBps", round2(c.getKBPerSecond()));
                 // breachedThresholds: explicit list of which thresholds fired for this
                 // transaction. Uses effectiveErrorThreshold so the AI sees "errorRate > 5%"
@@ -986,6 +1097,11 @@ public class PromptBuilder {
         // Uses allStats as source — covers all 100% of transactions, not just the
         // capped errorEndpoints list — so no transaction is silently excluded.
         summary.put("errorSlaSummary", buildErrorSlaSummary(allStats, userErrorSlaThreshold));
+        // tpsSlaSummary: pre-computed TPS SLA verdict — Java performs all comparisons
+        // so the AI never needs to compare per-transaction TPS against the threshold.
+        // TPS SLA breaches when observed TPS is below the configured minimum.
+        final double userTpsSlaThreshold = parseTpsSlaThreshold(request.tpsSlaThresholdTps());
+        summary.put("tpsSlaSummary", buildTpsSlaSummary(allStats, userTpsSlaThreshold));
         // classificationSummary: pre-computed bottleneck classification — Java executes
         // the decision tree (Gate 1–4) so the AI never needs to compare errorRatePct,
         // latency_ratio, or plateau values itself. Eliminates the SLA-leaks-into-classification
@@ -999,6 +1115,7 @@ public class PromptBuilder {
         summary.put("overallVerdictSummary", buildOverallVerdictSummary(
                 summary.get("errorSlaSummary"),
                 summary.get("rtSlaSummary"),
+                summary.get("tpsSlaSummary"),
                 summary.get("classificationSummary"),
                 globalStats));
         // mandatedHypothesisTargets: top-5 transactions by errorRatePct from errorEndpoints,

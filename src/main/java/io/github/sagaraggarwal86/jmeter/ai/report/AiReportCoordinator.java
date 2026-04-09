@@ -199,7 +199,8 @@ public class AiReportCoordinator {
                                JButton triggerBtn,
                                AtomicBoolean cancelled) {
         try {
-            setProgress(progressLabel, "Calling " + ctx.providerDisplayName + " (this may take ~30 seconds)...");
+            setProgress(progressLabel, "Calling " + ctx.providerDisplayName
+                    + " (this may take up to " + ctx.providerConfig.timeoutSeconds + " seconds)...");
             String markdown = aiService.generateReport(prompt);
 
             // Normalise section headings — inject any structurally missing headings

@@ -211,7 +211,7 @@ class PromptBuilderStaticsTest {
         @DisplayName("error SLA BREACH → FAIL with source=SLA")
         void errorSlaBreachIsFailSla() {
             Map<String, Object> result = PromptBuilder.buildOverallVerdictSummary(
-                    slaSummary("BREACH"), slaSummary("WITHIN"),
+                    slaSummary("BREACH"), slaSummary("WITHIN"), noSlaSummary(),
                     classification("THROUGHPUT-BOUND"), emptyGlobalStats());
             assertEquals("FAIL", result.get("verdict"));
             assertEquals("SLA", result.get("source"));
@@ -221,7 +221,7 @@ class PromptBuilderStaticsTest {
         @DisplayName("RT SLA BREACH → FAIL with source=SLA")
         void rtSlaBreachIsFailSla() {
             Map<String, Object> result = PromptBuilder.buildOverallVerdictSummary(
-                    slaSummary("WITHIN"), slaSummary("BREACH"),
+                    slaSummary("WITHIN"), slaSummary("BREACH"), noSlaSummary(),
                     classification("THROUGHPUT-BOUND"), emptyGlobalStats());
             assertEquals("FAIL", result.get("verdict"));
             assertEquals("SLA", result.get("source"));
@@ -231,7 +231,7 @@ class PromptBuilderStaticsTest {
         @DisplayName("both SLAs WITHIN → PASS with source=SLA")
         void bothWithinIsPassSla() {
             Map<String, Object> result = PromptBuilder.buildOverallVerdictSummary(
-                    slaSummary("WITHIN"), slaSummary("WITHIN"),
+                    slaSummary("WITHIN"), slaSummary("WITHIN"), noSlaSummary(),
                     classification("THROUGHPUT-BOUND"), emptyGlobalStats());
             assertEquals("PASS", result.get("verdict"));
             assertEquals("SLA", result.get("source"));
@@ -241,7 +241,7 @@ class PromptBuilderStaticsTest {
         @DisplayName("no SLA + CAPACITY-WALL → FAIL with source=CLASSIFICATION")
         void capacityWallNoSlaIsFail() {
             Map<String, Object> result = PromptBuilder.buildOverallVerdictSummary(
-                    noSlaSummary(), noSlaSummary(),
+                    noSlaSummary(), noSlaSummary(), noSlaSummary(),
                     classification("CAPACITY-WALL"), emptyGlobalStats());
             assertEquals("FAIL", result.get("verdict"));
             assertEquals("CLASSIFICATION", result.get("source"));
@@ -251,7 +251,7 @@ class PromptBuilderStaticsTest {
         @DisplayName("no SLA + ERROR-BOUND → FAIL with source=CLASSIFICATION")
         void errorBoundNoSlaIsFail() {
             Map<String, Object> result = PromptBuilder.buildOverallVerdictSummary(
-                    noSlaSummary(), noSlaSummary(),
+                    noSlaSummary(), noSlaSummary(), noSlaSummary(),
                     classification("ERROR-BOUND"), emptyGlobalStats());
             assertEquals("FAIL", result.get("verdict"));
             assertEquals("CLASSIFICATION", result.get("source"));
@@ -262,7 +262,7 @@ class PromptBuilderStaticsTest {
         void latencyBoundHighP99IsFail() {
             Map<String, Object> stats = globalStats(100.0, 600.0, 0.5); // p99=600 > 5*100
             Map<String, Object> result = PromptBuilder.buildOverallVerdictSummary(
-                    noSlaSummary(), noSlaSummary(),
+                    noSlaSummary(), noSlaSummary(), noSlaSummary(),
                     classification("LATENCY-BOUND"), stats);
             assertEquals("FAIL", result.get("verdict"));
         }
@@ -272,7 +272,7 @@ class PromptBuilderStaticsTest {
         void latencyBoundLowP99IsPass() {
             Map<String, Object> stats = globalStats(100.0, 400.0, 0.5); // p99=400 <= 5*100
             Map<String, Object> result = PromptBuilder.buildOverallVerdictSummary(
-                    noSlaSummary(), noSlaSummary(),
+                    noSlaSummary(), noSlaSummary(), noSlaSummary(),
                     classification("LATENCY-BOUND"), stats);
             assertEquals("PASS", result.get("verdict"));
         }
@@ -281,7 +281,7 @@ class PromptBuilderStaticsTest {
         @DisplayName("no SLA + THROUGHPUT-BOUND → PASS with source=CLASSIFICATION")
         void throughputBoundNoSlaIsPass() {
             Map<String, Object> result = PromptBuilder.buildOverallVerdictSummary(
-                    noSlaSummary(), noSlaSummary(),
+                    noSlaSummary(), noSlaSummary(), noSlaSummary(),
                     classification("THROUGHPUT-BOUND"), emptyGlobalStats());
             assertEquals("PASS", result.get("verdict"));
             assertEquals("CLASSIFICATION", result.get("source"));
@@ -291,7 +291,7 @@ class PromptBuilderStaticsTest {
         @DisplayName("both SLAs NOT_CONFIGURED (no SLA at all) → CLASSIFICATION source")
         void bothNotConfiguredUsesClassification() {
             Map<String, Object> result = PromptBuilder.buildOverallVerdictSummary(
-                    noSlaSummary(), noSlaSummary(),
+                    noSlaSummary(), noSlaSummary(), noSlaSummary(),
                     classification("THROUGHPUT-BOUND"), emptyGlobalStats());
             assertEquals("CLASSIFICATION", result.get("source"));
         }
@@ -300,14 +300,14 @@ class PromptBuilderStaticsTest {
         @DisplayName("null inputs handled without NullPointerException")
         void nullInputsHandledSafely() {
             assertDoesNotThrow(() ->
-                    PromptBuilder.buildOverallVerdictSummary(null, null, null, emptyGlobalStats()));
+                    PromptBuilder.buildOverallVerdictSummary(null, null, null, null, emptyGlobalStats()));
         }
 
         @Test
         @DisplayName("both SLAs BREACH → reasoning mentions both")
         void bothBreachReasoningMentionsBoth() {
             Map<String, Object> result = PromptBuilder.buildOverallVerdictSummary(
-                    slaSummary("BREACH"), slaSummary("BREACH"),
+                    slaSummary("BREACH"), slaSummary("BREACH"), noSlaSummary(),
                     classification("THROUGHPUT-BOUND"), emptyGlobalStats());
             assertEquals("FAIL", result.get("verdict"));
             String reasoning = String.valueOf(result.get("reasoning"));
@@ -320,7 +320,7 @@ class PromptBuilderStaticsTest {
         void latencyBoundZeroAvgIsPass() {
             Map<String, Object> stats = globalStats(0.0, 600.0, 0.5);
             Map<String, Object> result = PromptBuilder.buildOverallVerdictSummary(
-                    noSlaSummary(), noSlaSummary(),
+                    noSlaSummary(), noSlaSummary(), noSlaSummary(),
                     classification("LATENCY-BOUND"), stats);
             assertEquals("PASS", result.get("verdict"));
         }
@@ -374,6 +374,112 @@ class PromptBuilderStaticsTest {
             assertTrue(stats.containsKey("errorRatePct"));
             assertTrue(stats.containsKey("totalRequests"));
             assertTrue(stats.containsKey("throughputTPS"));
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // parseTpsSlaThreshold
+    // ─────────────────────────────────────────────────────────────
+
+    @Nested
+    @DisplayName("parseTpsSlaThreshold")
+    class ParseTpsSlaThresholdTests {
+
+        @Test
+        @DisplayName("null → -1")
+        void nullReturnsNegative() {
+            assertEquals(-1.0, PromptBuilder.parseTpsSlaThreshold(null));
+        }
+
+        @Test
+        @DisplayName("blank → -1")
+        void blankReturnsNegative() {
+            assertEquals(-1.0, PromptBuilder.parseTpsSlaThreshold("  "));
+        }
+
+        @Test
+        @DisplayName("'Not configured' → -1")
+        void notConfiguredReturnsNegative() {
+            assertEquals(-1.0, PromptBuilder.parseTpsSlaThreshold("Not configured"));
+        }
+
+        @Test
+        @DisplayName("plain number → parsed value")
+        void plainNumber() {
+            assertEquals(0.2, PromptBuilder.parseTpsSlaThreshold("0.2"), 0.001);
+        }
+
+        @Test
+        @DisplayName("number with /sec suffix → parsed value")
+        void withSecSuffix() {
+            assertEquals(0.5, PromptBuilder.parseTpsSlaThreshold("0.5/sec"), 0.001);
+        }
+
+        @Test
+        @DisplayName("number with /s suffix → parsed value")
+        void withShortSuffix() {
+            assertEquals(1.0, PromptBuilder.parseTpsSlaThreshold("1.0/s"), 0.001);
+        }
+
+        @Test
+        @DisplayName("zero → -1 (disabled)")
+        void zeroReturnsNegative() {
+            assertEquals(-1.0, PromptBuilder.parseTpsSlaThreshold("0"));
+        }
+
+        @Test
+        @DisplayName("negative → -1 (disabled)")
+        void negativeReturnsNegative() {
+            assertEquals(-1.0, PromptBuilder.parseTpsSlaThreshold("-5"));
+        }
+
+        @Test
+        @DisplayName("unparseable → -1")
+        void unparseableReturnsNegative() {
+            assertEquals(-1.0, PromptBuilder.parseTpsSlaThreshold("abc"));
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // buildOverallVerdictSummary — TPS SLA scenarios
+    // ─────────────────────────────────────────────────────────────
+
+    @Nested
+    @DisplayName("buildOverallVerdictSummary — TPS SLA")
+    class TpsSlaVerdictTests {
+
+        @Test
+        @DisplayName("TPS SLA BREACH alone → FAIL with source=SLA")
+        void tpsSlaBreachIsFailSla() {
+            Map<String, Object> result = PromptBuilder.buildOverallVerdictSummary(
+                    noSlaSummary(), noSlaSummary(), slaSummary("BREACH"),
+                    classification("THROUGHPUT-BOUND"), emptyGlobalStats());
+            assertEquals("FAIL", result.get("verdict"));
+            assertEquals("SLA", result.get("source"));
+            assertTrue(String.valueOf(result.get("reasoning")).contains("tpsSlaSummary"));
+        }
+
+        @Test
+        @DisplayName("TPS SLA WITHIN + others not configured → PASS")
+        void tpsSlaWithinIsPassSla() {
+            Map<String, Object> result = PromptBuilder.buildOverallVerdictSummary(
+                    noSlaSummary(), noSlaSummary(), slaSummary("WITHIN"),
+                    classification("THROUGHPUT-BOUND"), emptyGlobalStats());
+            assertEquals("PASS", result.get("verdict"));
+            assertEquals("SLA", result.get("source"));
+        }
+
+        @Test
+        @DisplayName("all three SLAs BREACH → reasoning mentions all three")
+        void allThreeBreachReasoningMentionsAll() {
+            Map<String, Object> result = PromptBuilder.buildOverallVerdictSummary(
+                    slaSummary("BREACH"), slaSummary("BREACH"), slaSummary("BREACH"),
+                    classification("THROUGHPUT-BOUND"), emptyGlobalStats());
+            assertEquals("FAIL", result.get("verdict"));
+            String reasoning = String.valueOf(result.get("reasoning"));
+            assertTrue(reasoning.contains("errorSlaSummary"));
+            assertTrue(reasoning.contains("rtSlaSummary"));
+            assertTrue(reasoning.contains("tpsSlaSummary"));
         }
     }
 }

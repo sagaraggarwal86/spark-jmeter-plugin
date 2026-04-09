@@ -19,6 +19,7 @@ import java.util.Objects;
  * @param errorSlaThresholdPct user-configured error % SLA; "Not configured" if disabled
  * @param rtSlaThresholdMs     user-configured response time SLA in ms; "Not configured" if disabled
  * @param rtSlaMetric          response time metric the RT SLA applies to (e.g. "Avg (ms)", "P90 (ms)")
+ * @param tpsSlaThresholdTps   user-configured TPS SLA (min TPS per transaction); "Not configured" if disabled
  * @since 4.6.0
  */
 public record PromptRequest(
@@ -32,7 +33,8 @@ public record PromptRequest(
         int configuredPercentile,
         String errorSlaThresholdPct,
         String rtSlaThresholdMs,
-        String rtSlaMetric) {
+        String rtSlaMetric,
+        String tpsSlaThresholdTps) {
 
     private static final String NOT_CONFIGURED = "Not configured";
 
@@ -51,6 +53,7 @@ public record PromptRequest(
         errorSlaThresholdPct = Objects.requireNonNullElse(errorSlaThresholdPct, NOT_CONFIGURED);
         rtSlaThresholdMs = Objects.requireNonNullElse(rtSlaThresholdMs, NOT_CONFIGURED);
         rtSlaMetric = Objects.requireNonNullElse(rtSlaMetric, NOT_CONFIGURED);
+        tpsSlaThresholdTps = Objects.requireNonNullElse(tpsSlaThresholdTps, NOT_CONFIGURED);
     }
 
     /**
@@ -63,6 +66,6 @@ public record PromptRequest(
         return new PromptRequest(
                 "", "", "", "", "", "", "",
                 90,
-                NOT_CONFIGURED, NOT_CONFIGURED, NOT_CONFIGURED);
+                NOT_CONFIGURED, NOT_CONFIGURED, NOT_CONFIGURED, NOT_CONFIGURED);
     }
 }

@@ -61,7 +61,7 @@ public final class AiProviderRegistry {
     private static final Pattern API_KEY_PATTERN =
             Pattern.compile("^ai\\.reporter\\.([^.]+)\\.api\\.key$");
     // ── Global defaults ────────────────────────────────────────────────────
-    private static final int DEFAULT_TIMEOUT = 60;
+    private static final int DEFAULT_TIMEOUT = 120;
     private static final int DEFAULT_MAX_TOKENS = 8192;
 
     // ── Known-provider metadata ────────────────────────────────────────────

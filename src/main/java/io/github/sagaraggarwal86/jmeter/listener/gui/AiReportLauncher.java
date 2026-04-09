@@ -275,7 +275,7 @@ public final class AiReportLauncher {
                             config.rtSlaThresholdMs, useAvg ? "avg" : "pnn");
                 } else {
                     Map<String, Object> verdictResult = PromptBuilder.buildOverallVerdictSummary(
-                            null, null, classification, globalStats);
+                            null, null, null, classification, globalStats);
                     verdict = String.valueOf(verdictResult.getOrDefault("verdict", "PASS"));
                 }
 
@@ -357,12 +357,14 @@ public final class AiReportLauncher {
                 ? sla.rtThresholdMs + " ms" : "Not configured";
         final String slaRtMetric = sla.rtMetric == SlaConfig.RtMetric.AVG
                 ? "Avg (ms)" : "P" + percentile + " (ms)";
+        final String slaTps = sla.isTpsEnabled()
+                ? sla.tpsThreshold + "/sec" : "Not configured";
 
         PromptRequest request = new PromptRequest(
                 metadata.users, metadata.scenarioName, metadata.scenarioDesc,
                 dataProvider.getStartTime(), dataProvider.getEndTime(),
                 dataProvider.getDuration(), metadata.threadGroupName,
-                percentile, slaErrorPct, slaRtMs, slaRtMetric);
+                percentile, slaErrorPct, slaRtMs, slaRtMetric, slaTps);
 
         PromptBuilder.LatencyContext latency = new PromptBuilder.LatencyContext(
                 dataProvider.getAvgLatencyMs(), dataProvider.getAvgConnectMs(),

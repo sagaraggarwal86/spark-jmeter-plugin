@@ -37,7 +37,7 @@ runtime overhead.
 | ✅ **Pass / Fail Counts**       | Dedicated columns for transactions passed and transactions failed                                |
 | 🕐 **Test Time Info**          | Start Date/Time, End Date/Time, and total Duration shown automatically                           |
 | 🔀 **Sortable Columns**        | Click any column header to sort ascending; click again for descending                            |
-| 🚨 **SLA Thresholds**          | Set Error % and Response Time thresholds — breaching cells are highlighted in red                |
+| 🚨 **SLA Thresholds**          | Set TPS, Error %, and Response Time thresholds — breaching cells are highlighted in red           |
 | 💾 **CSV Export**              | Save all visible columns to a CSV file; SLA status columns (PASS/FAIL) included when configured  |
 | 🤖 **AI Performance Report**   | Generate a styled HTML report with deep-dive analysis, powered by any OpenAI-compatible provider |
 | 📊 **Chart Interval**          | Configure the time-bucket interval for performance charts (default: auto, or set custom)         |
@@ -168,6 +168,7 @@ Set live SLA thresholds in the **SLA Thresholds** panel. Breaching cells are hig
 
 | Field             | Description                                                                                   |
 |-------------------|-----------------------------------------------------------------------------------------------|
+| **TPS**           | Highlight TPS cells falling below this minimum value (e.g. `0.2`)                             |
 | **Error %**       | Highlight Error Rate cells exceeding this value (1–99)                                        |
 | **Response Time** | Choose **Avg (ms)** or **Pnn (ms)** from the dropdown, then enter a threshold in milliseconds |
 
@@ -194,6 +195,7 @@ deterministic, accurate outputs regardless of which AI model is used:
 | `overallVerdictSummary` | Final PASS/FAIL verdict combining SLA results with classification fallback                                                               |
 | `errorSlaSummary`       | Per-transaction error rate SLA evaluation with worst transaction and breach details                                                      |
 | `rtSlaSummary`          | Per-transaction response time SLA evaluation with worst transaction and breach details                                                   |
+| `tpsSlaSummary`         | Per-transaction TPS SLA evaluation with worst transaction and breach details                                                             |
 
 The AI provider's role is to write analytical prose that justifies and explains the pre-computed results — it never
 computes the classification, verdict, or SLA outcomes itself.
@@ -327,8 +329,8 @@ self-contained HTML report with tabbed navigation, charts, Excel export, and dar
 
 | Mode              | Required Args                                                 | Verdict Source                                                | HTML Report           |
 |-------------------|---------------------------------------------------------------|---------------------------------------------------------------|-----------------------|
-| **Analysis only** | `-i results.jtl`                                              | Workload classification (THROUGHPUT-BOUND, ERROR-BOUND, etc.) | Data Analysis Report  |
-| **SLA only**      | `-i results.jtl --tps-sla 10`                                 | SLA threshold evaluation                                      | Data Analysis Report  |
+| **Analysis only** | `-i results.jtl`                                              | Workload classification (THROUGHPUT-BOUND, ERROR-BOUND, etc.) | Performance Report  |
+| **SLA only**      | `-i results.jtl --tps-sla 10`                                 | SLA threshold evaluation                                      | Performance Report  |
 | **AI only**       | `-i results.jtl --provider groq --config props`               | AI report + classification                                    | AI Performance Report |
 | **AI + SLA**      | `-i results.jtl --provider groq --config props --error-sla 5` | AI report + SLA evaluation                                    | AI Performance Report |
 
@@ -422,9 +424,9 @@ classification engine to derive a verdict:
 | LATENCY-BOUND    | FAIL if p99 > 5x avg, else PASS | High latency, still ramping        |
 | THROUGHPUT-BOUND | PASS                            | Healthy workload                   |
 
-### Data Analysis Report (Non-AI Modes)
+### JMeter Performance Report (Non-AI Modes)
 
-When running without an AI provider (Analysis-only or SLA-only), the CLI generates a **Data Analysis Report**
+When running without an AI provider (Analysis-only or SLA-only), the CLI generates a **JMeter Performance Report**
 with these tabbed sections:
 
 | Tab                     | Content                                        | Source                                     |

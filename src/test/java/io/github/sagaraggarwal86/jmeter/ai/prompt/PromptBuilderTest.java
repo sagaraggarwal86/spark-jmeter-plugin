@@ -167,7 +167,7 @@ class PromptBuilderTest {
         @Test
         @DisplayName("user message embeds scenario name from PromptRequest")
         void embedsScenarioName() {
-            PromptRequest req = new PromptRequest("50", "Checkout Flow", "", "", "", "", "", 90, "Not configured", "Not configured", "Not configured");
+            PromptRequest req = new PromptRequest("50", "Checkout Flow", "", "", "", "", "", 90, "Not configured", "Not configured", "Not configured", "Not configured");
             String msg = new PromptBuilder()
                     .build(minimalResults(), 90, req, java.util.Collections.emptyList(), PromptBuilder.LatencyContext.ABSENT)
                     .userMessage();
@@ -178,7 +178,7 @@ class PromptBuilderTest {
         @Test
         @DisplayName("user message embeds user count from PromptRequest")
         void embedsUserCount() {
-            PromptRequest req = new PromptRequest("200", "", "", "", "", "", "", 90, "Not configured", "Not configured", "Not configured");
+            PromptRequest req = new PromptRequest("200", "", "", "", "", "", "", 90, "Not configured", "Not configured", "Not configured", "Not configured");
             String msg = new PromptBuilder()
                     .build(minimalResults(), 90, req, java.util.Collections.emptyList(), PromptBuilder.LatencyContext.ABSENT)
                     .userMessage();
@@ -534,6 +534,105 @@ class PromptBuilderTest {
         @DisplayName("unparseable value returns -1")
         void unparseableReturnsNoSla() {
             assertEquals(-1.0, PromptBuilder.parseRtSlaThreshold("fast ms"), 0.0001);
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // TPS SLA integration — exercises buildTpsSlaSummary via build()
+    // ─────────────────────────────────────────────────────────────
+
+    @Nested
+    @DisplayName("TPS SLA in prompt")
+    class TpsSlaIntegrationTests {
+
+        @Test
+        @DisplayName("user message includes TPS SLA threshold when configured")
+        void tpsSlaThresholdInUserMessage() {
+            PromptRequest req = new PromptRequest(
+                    "10", "Test", "", "", "", "", "", 90,
+                    "Not configured", "Not configured", "Not configured", "0.5/sec");
+            String msg = new PromptBuilder()
+                    .build(minimalResults(), 90, req,
+                            java.util.Collections.emptyList(),
+                            PromptBuilder.LatencyContext.ABSENT)
+                    .userMessage();
+            assertTrue(msg.contains("TPS SLA"), "user message must contain TPS SLA label");
+            assertTrue(msg.contains("0.5/sec"), "user message must contain TPS SLA threshold value");
+        }
+
+        @Test
+        @DisplayName("user message shows 'Not configured' when TPS SLA absent")
+        void tpsSlaNotConfiguredInUserMessage() {
+            String msg = new PromptBuilder()
+                    .build(minimalResults(), 90, PromptRequest.empty(),
+                            java.util.Collections.emptyList(),
+                            PromptBuilder.LatencyContext.ABSENT)
+                    .userMessage();
+            assertTrue(msg.contains("TPS SLA"), "user message must contain TPS SLA label");
+        }
+
+        @Test
+        @DisplayName("tpsSlaSummary appears in JSON when TPS SLA configured — BREACH path")
+        void tpsSlaSummaryBreachInJson() {
+            // Login TPS will be very low — should breach a high threshold
+            PromptRequest req = new PromptRequest(
+                    "10", "Test", "", "", "", "", "", 90,
+                    "Not configured", "Not configured", "Not configured", "999/sec");
+            String msg = new PromptBuilder()
+                    .build(minimalResults(), 90, req,
+                            java.util.Collections.emptyList(),
+                            PromptBuilder.LatencyContext.ABSENT)
+                    .userMessage();
+            assertTrue(msg.contains("tpsSlaSummary"), "JSON must contain tpsSlaSummary key");
+            assertTrue(msg.contains("\"verdict\":\"BREACH\""),
+                    "TPS SLA with unreachable threshold should produce BREACH verdict");
+        }
+
+        @Test
+        @DisplayName("tpsSlaSummary appears in JSON when TPS SLA configured — WITHIN path")
+        void tpsSlaSummaryWithinInJson() {
+            // Very low threshold — should pass
+            PromptRequest req = new PromptRequest(
+                    "10", "Test", "", "", "", "", "", 90,
+                    "Not configured", "Not configured", "Not configured", "0.0001/sec");
+            String msg = new PromptBuilder()
+                    .build(minimalResults(), 90, req,
+                            java.util.Collections.emptyList(),
+                            PromptBuilder.LatencyContext.ABSENT)
+                    .userMessage();
+            assertTrue(msg.contains("tpsSlaSummary"), "JSON must contain tpsSlaSummary key");
+            assertTrue(msg.contains("\"verdict\":\"WITHIN\""),
+                    "TPS SLA with very low threshold should produce WITHIN verdict");
+        }
+
+        @Test
+        @DisplayName("tpsSlaSummary NOT_CONFIGURED when TPS SLA absent")
+        void tpsSlaSummaryNotConfiguredInJson() {
+            String msg = new PromptBuilder()
+                    .build(minimalResults(), 90, PromptRequest.empty(),
+                            java.util.Collections.emptyList(),
+                            PromptBuilder.LatencyContext.ABSENT)
+                    .userMessage();
+            assertTrue(msg.contains("tpsSlaSummary"), "JSON must contain tpsSlaSummary key");
+            assertTrue(msg.contains("\"verdict\":\"NOT_CONFIGURED\"") || msg.contains("NOT_CONFIGURED"),
+                    "TPS SLA absent should produce NOT_CONFIGURED verdict");
+        }
+
+        @Test
+        @DisplayName("TPS SLA BREACH verdict block text includes worst transaction")
+        void tpsSlaVerdictBlockContainsWorstTransaction() {
+            PromptRequest req = new PromptRequest(
+                    "10", "Test", "", "", "", "", "", 90,
+                    "Not configured", "Not configured", "Not configured", "999/sec");
+            String msg = new PromptBuilder()
+                    .build(minimalResults(), 90, req,
+                            java.util.Collections.emptyList(),
+                            PromptBuilder.LatencyContext.ABSENT)
+                    .userMessage();
+            assertTrue(msg.contains("TPS SLA           : BREACH"),
+                    "verdict block must show TPS SLA BREACH");
+            assertTrue(msg.contains("worst transaction:"),
+                    "verdict block must identify worst transaction");
         }
     }
 }

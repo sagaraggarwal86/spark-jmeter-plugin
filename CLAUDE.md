@@ -20,7 +20,6 @@
 - After all changes are finalized, self-check for regressions, naming consistency, and adherence to these rules before
   presenting files
 - Multi-file changes: present all files together with dependency order noted
-- Conflicting requirements: flag the conflict, pause, and wait for decision
 - Rollback: revert to last explicitly approved file set, then ask how to proceed
 - If context grows large, summarize confirmed state before continuing
 
@@ -93,7 +92,7 @@ All processing is file-based with zero runtime overhead — no live metrics coll
 | `parser`        | `JTLParser` (two-pass CSV parser), `JtlParserCore` (static utilities), `DelimiterResolver`, `TimestampFormatResolver`, `JtlParseException`                                                                                                                 |
 | `listener.core` | `ColumnIndex` (13-column constants), `CellValueParser`, `TablePopulator` (row formatting + sorting), `TransactionFilter`, `SlaConfig`, `SlaEvaluator` (SLA + classification verdict HTML), `SlaRowRenderer`, `CsvExporter`, `ScenarioMetadata`             |
 | `listener.gui`  | `ListenerGUI` (extends AbstractVisualizer), `ListenerCollector` (extends ResultCollector, sampleOccurred=no-op), `AggregateReportPanel` (~958 lines, known SRP debt), `ReportPanelBuilder`, `FilePanelCustomizer`, `AiReportLauncher`, `SimpleDocListener` |
-| `ai.prompt`     | `PromptLoader`, `PromptContent` (record), `PromptRequest` (record), `PromptBuilder` (pre-computed verdicts + classification)                                                                                                                               |
+| `ai.prompt`     | `PromptLoader`, `PromptContent` (record), `PromptRequest` (record — 12 fields incl. 3 SLA thresholds), `PromptBuilder` (pre-computed verdicts + classification + error/RT/TPS SLA summaries)                                                                |
 | `ai.provider`   | `AiProviderConfig`, `AiProviderRegistry` (7 providers + custom), `AiReportService` (OpenAI-compatible API), `SharedHttpClient` (singleton), `AiProviderException`, `AiServiceException`                                                                    |
 | `ai.report`     | `AiReportCoordinator` (orchestrator), `HtmlReportRenderer` (AI + data-only rendering), `HtmlPageBuilder` (`buildPage` + `buildDataOnlyPage`), `MarkdownSectionNormaliser`, `MarkdownUtils`                                                                 |
 | `report`        | `DataReportBuilder` (data-only HTML section content — no AI, no Swing, no I/O)                                                                                                                                                                             |
@@ -119,7 +118,7 @@ All processing is file-based with zero runtime overhead — no live metrics coll
 
 ### AI Analysis Architecture
 
-- **Java does ~95% of work**: Transaction metrics table, SLA verdicts, classification summary, error/RT SLA summaries,
+- **Java does ~95% of work**: Transaction metrics table, SLA verdicts, classification summary, error/RT/TPS SLA summaries,
   anomaly detection, slowest endpoints — all pre-computed.
 - **AI does ~5%**: Generates narrative prose across 9 report sections (Executive Summary, Bottleneck Analysis,
   Error Analysis, Advanced Web Diagnostics, Root Cause Hypotheses, Recommendations, etc.).
