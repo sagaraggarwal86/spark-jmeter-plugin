@@ -158,8 +158,9 @@ final class CliReportPipeline {
         progress("Validating API key and pinging %s...", provider.displayName);
         String pingError = AiProviderRegistry.validateAndPing(provider);
         if (pingError != null) {
-            throw new AiProviderException("Provider validation failed for " + provider.displayName
-                    + ":\n" + pingError);
+            progress("Provider validation failed: %s", pingError);
+            progress("Falling back to data-only report (all metrics and verdict are Java-computed)...");
+            return executeSlaOnly(result, tableRows, timeCtx);
         }
         progress("Ping successful.");
 
@@ -180,13 +181,17 @@ final class CliReportPipeline {
             long aiStart = System.currentTimeMillis();
             markdown = service.generateReport(prompt);
             aiElapsedMs = System.currentTimeMillis() - aiStart;
-        } catch (AiServiceException ex) {
-            if (ex.getMessage().contains("HTTP 401") || ex.getMessage().contains("HTTP 403")) {
+        } catch (IOException ex) {
+            if (ex.getMessage() != null
+                    && (ex.getMessage().contains("HTTP 401") || ex.getMessage().contains("HTTP 403"))) {
                 progress("Auth failure from provider — evicting ping cache for next run. provider=%s",
                         provider.providerKey);
                 AiProviderRegistry.evictPingCache(provider);
             }
-            throw new AiServiceException("[" + provider.providerKey + "] " + ex.getMessage(), ex);
+            // Fall back to data-only report — verdict is Java-computed, not AI-dependent
+            progress("AI provider failed: %s", ex.getMessage());
+            progress("Falling back to data-only report (all metrics and verdict are Java-computed)...");
+            return executeSlaOnly(result, tableRows, timeCtx);
         }
         progress("AI response received: %d chars in %.1fs.", markdown.length(), aiElapsedMs / 1000.0);
 
@@ -236,11 +241,13 @@ final class CliReportPipeline {
      */
     private java.io.File resolveJmeterHome() {
         // Derive from config file path: config is expected at $JMETER_HOME/bin/ai-reporter.properties
-        java.io.File configFile = new java.io.File(args.configFile());
-        java.io.File binDir = configFile.getAbsoluteFile().getParentFile();
-        if (binDir != null && "bin".equalsIgnoreCase(binDir.getName())) {
-            java.io.File home = binDir.getParentFile();
-            if (home != null && home.isDirectory()) return home;
+        String configPath = args.configFile();
+        if (configPath != null && !configPath.isBlank()) {
+            java.io.File binDir = new java.io.File(configPath).getAbsoluteFile().getParentFile();
+            if (binDir != null && "bin".equalsIgnoreCase(binDir.getName())) {
+                java.io.File home = binDir.getParentFile();
+                if (home != null && home.isDirectory()) return home;
+            }
         }
         // Fallback: environment variable
         String env = System.getenv("JMETER_HOME");

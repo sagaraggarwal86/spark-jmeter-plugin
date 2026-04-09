@@ -408,9 +408,27 @@ Help:
 | `2`  | Verdict **UNDECISIVE** (AI mode only)         |
 | `3`  | Invalid arguments                             |
 | `4`  | JTL parse error                               |
-| `5`  | AI provider error (key, ping, or API failure) |
+| `5`  | AI provider error (bad provider name, missing config, or corrupt JAR) |
 | `6`  | Report write error                            |
 | `7`  | Unexpected error                              |
+
+### AI Fallback Behavior
+
+When an AI provider fails — ping validation (429, 503, connection refused), timeout, HTTP error, or
+rate limit — the CLI automatically falls back to a **JMeter Performance Report** (data-only) instead of
+failing. The verdict, classification, SLA evaluation, metrics, and charts are all Java-computed and
+unaffected by the AI failure. The exit code reflects the actual verdict (`0` = PASS, `1` = FAIL).
+
+```
+[CLI] Validating API key and pinging Nvidia (Free)...
+[CLI] Provider validation failed: Could not connect to Nvidia (Free).
+[CLI] Falling back to data-only report (all metrics and verdict are Java-computed)...
+[CLI] Report saved to: /path/to/report.html
+VERDICT:FAIL
+```
+
+> **Note:** Exit code `5` only occurs for hard configuration errors — bad provider name,
+> missing config file, or corrupt plugin JAR.
 
 ### Classification-Based Verdict
 

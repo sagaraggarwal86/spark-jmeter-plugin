@@ -124,6 +124,9 @@ All processing is file-based with zero runtime overhead — no live metrics coll
   Error Analysis, Advanced Web Diagnostics, Root Cause Hypotheses, Recommendations, etc.).
 - **7 providers**: groq, gemini, mistral, deepseek, cerebras, openai, claude. Shared `ai-reporter.properties` config.
 - **CLI 4 modes**: (1) Analysis-only (no AI, no SLA → classification verdict), (2) SLA-only, (3) AI-only, (4) AI+SLA.
+- **CLI AI fallback**: When AI provider fails (ping validation, timeout, HTTP error, rate limit), CLI falls back
+  to data-only report with Java-computed verdict. Exit code reflects the verdict (0/1), not the AI failure.
+  Only hard errors (bad provider name, corrupt JAR) exit with code 5.
 - **CLI exit codes**: 0=PASS, 1=FAIL, 2=UNDECISIVE, 3=bad args, 4=parse error, 5=AI error, 6=write error, 7=unexpected.
 
 ### Key Constraints
