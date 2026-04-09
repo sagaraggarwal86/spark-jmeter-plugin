@@ -11,14 +11,14 @@
 | **Language / Build**   | Java 17, Maven                                                                                                                                                          |
 | **JMeter target**      | 5.6.3 (provided scope)                                                                                                                                                  |
 | **Distributable**      | Single fat JAR → `JMeter/lib/ext/` or Maven Central                                                                                                                     |
-| **Package root**       | `com.personal.jmeter`                                                                                                                                                   |
+| **Package root**       | `io.github.sagaraggarwal86.jmeter`                                                                                                                                      |
 | **Test framework**     | JUnit 5 · Mockito 5 · JaCoCo (80 % line coverage floor)                                                                                                                 |
 | **Shaded deps**        | Gson 2.13.2, CommonMark 0.27.1 (no transitive exposure to JMeter classloader)                                                                                           |
 | **Provided deps**      | ApacheJMeter_core, ApacheJMeter_components, jorphan, slf4j-api                                                                                                          |
 | **Test-only deps**     | logback-classic                                                                                                                                                         |
 | **CI/CD**              | GitHub Actions — `build.yml` (matrix: windows + ubuntu, `mvn clean verify -Dgpg.skip=true`) · `release.yml` (deploys to Maven Central on `v*.*.*` tag via `-P release`) |
-| **CLI entry point**    | `com.personal.jmeter.cli.Main` (wrapped by `jaar-cli-report.sh/.bat`)                                                                                                   |
-| **JMeter entry point** | `com.personal.jmeter.listener.gui.ListenerGUI` (registered via `META-INF/services/org.apache.jmeter.gui.JMeterGUIComponent`)                                            |
+| **CLI entry point**    | `io.github.sagaraggarwal86.jmeter.cli.Main` (wrapped by `jaar-cli-report.sh/.bat`)                                                                                      |
+| **JMeter entry point** | `io.github.sagaraggarwal86.jmeter.gui.listener.ListenerGUI` (registered via `META-INF/services/org.apache.jmeter.gui.JMeterGUIComponent`)                               |
 | **Properties file**    | `$JMETER_HOME/bin/ai-reporter.properties` (user-editable)                                                                                                               |
 | **Bundled resources**  | `ai-reporter-prompt.txt` (system prompt), `ai-reporter.properties` (template)                                                                                           |
 
@@ -197,7 +197,7 @@ HtmlReportRenderer.renderToFile()   →  .html file
 
 ### Naming rules
 
-- Package: `com.personal.jmeter.<module>` (never change)
+- Package: `io.github.sagaraggarwal86.jmeter.<module>` (never change)
 - Test classes: `<SubjectClass>Test.java` or `<SubjectClass>StaticsTest.java`
 - Properties keys in `ListenerCollector`: `PROP_*` constants (e.g., `PROP_START_OFFSET`)
 - AI provider keys: lowercase (`groq`, `openai`, `claude`, etc.)
