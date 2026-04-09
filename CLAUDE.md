@@ -19,8 +19,6 @@
   recommend better alternatives
 - After all changes are finalized, self-check for regressions, naming consistency, and adherence to these rules before
   presenting files
-- Analyze impact across dependent layers (parser → core → GUI → AI → CLI) before proposing changes
-- Code changes: present full file with changes marked as // CHANGED
 - Multi-file changes: present all files together with dependency order noted
 - Conflicting requirements: flag the conflict, pause, and wait for decision
 - Rollback: revert to last explicitly approved file set, then ask how to proceed
@@ -29,6 +27,28 @@
 ## Response Style
 
 - Concise — no filler phrases, no restating the request, no vague or over-explanatory content
+
+## Communication
+
+- Always provide honest feedback — flag risks, trade-offs, or better alternatives even if the user didn't ask.
+  Do not agree silently if there is a concrete concern. Be direct, not diplomatic.
+- For every decision point or design choice, present options in a concise table:
+
+  | Option | Risk | Effort | Impact | Recommendation |
+        |--------|------|--------|--------|----------------|
+
+  Highlight the recommended option. Keep descriptions brief — one line per cell.
+
+## Self-Maintenance
+
+- **Auto-optimize CLAUDE.md**: After any session that adds or modifies design decisions, constraints, or architectural
+  details in this file, review CLAUDE.md for redundancy, stale entries, and verbosity. Remove duplicates, compress
+  verbose entries, and ensure every line carries actionable information. Do not wait for the user to request this.
+- **Auto-compact**: When the conversation context grows large (many tool calls, long code reads, repeated file edits),
+  proactively suggest `/compact` to the user before context becomes unwieldy. Do not wait until context is nearly full.
+- **Auto-update README.md**: After any session that adds, removes, or modifies user-facing features (filters, columns,
+  report panels, CLI options, configuration), update README.md to reflect the change. Keep feature tables, filter docs,
+  GUI overview, and configuration sections current. Do not wait for the user to request this.
 
 ## Role
 

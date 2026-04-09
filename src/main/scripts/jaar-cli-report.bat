@@ -26,6 +26,6 @@ REM Build classpath: plugin JAR + JMeter libs
 set "CP=%JMETER_HOME%\lib\ext\*;%JMETER_HOME%\lib\*"
 
 REM Launch CLI
-java -cp "%CP%" com.personal.jmeter.cli.Main %*
+java -cp "%CP%" io.github.sagaraggarwal86.jmeter.cli.Main %*
 
 exit /b %ERRORLEVEL%
