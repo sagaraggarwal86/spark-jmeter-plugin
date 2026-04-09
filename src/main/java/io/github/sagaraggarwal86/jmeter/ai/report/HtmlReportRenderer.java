@@ -159,12 +159,12 @@ public class HtmlReportRenderer {
     }
 
     /**
-     * Escapes {@code &}, {@code <}, and {@code >} for safe HTML embedding.
+     * Escapes {@code &}, {@code <}, {@code >}, {@code "}, and {@code '} for safe HTML embedding.
      *
      * @param s input string (may be null)
      * @return escaped string, or empty string for null input
      */
-    static String escapeHtml(String s) {
+    public static String escapeHtml(String s) {
         if (s == null) return "";
         return s.replace("&", "&amp;")
                 .replace("<", "&lt;")
@@ -302,8 +302,58 @@ public class HtmlReportRenderer {
         return outputPath;
     }
 
+    /**
+     * Renders a data-only HTML report (no AI sections) at the specified output path.
+     *
+     * <p>Assembles pre-built content sections from
+     * {@link io.github.sagaraggarwal86.jmeter.report.DataReportBuilder} together with
+     * shared infrastructure sections (Transaction Metrics, Error Breakdown,
+     * Latency Panel, Performance Charts) and delegates page assembly to
+     * {@link HtmlPageBuilder#buildDataOnlyPage}.</p>
+     *
+     * <p>This method does <b>not</b> modify any code path used by
+     * {@link #renderToFile} — it is a separate, additive entry point.</p>
+     *
+     * @param outputPath      absolute path of the output HTML file
+     * @param config          scenario metadata
+     * @param tableRows       visible table rows (TOTAL excluded)
+     * @param timeBuckets     time buckets from the JTL parser
+     * @param verdict         verdict string ("PASS", "FAIL", "UNDECISIVE")
+     * @param contentSections pre-built {@code [title, htmlContent]} section pairs
+     * @return absolute path of the written HTML file
+     * @throws IOException if the file cannot be written
+     */
+    public String renderDataReport(String outputPath,
+                                   RenderConfig config,
+                                   List<String[]> tableRows,
+                                   List<JTLParser.TimeBucket> timeBuckets,
+                                   String verdict,
+                                   List<String[]> contentSections) throws IOException {
+        Objects.requireNonNull(outputPath, "outputPath must not be null");
+        Objects.requireNonNull(config, "config must not be null");
+
+        log.info("renderDataReport: generating data-only HTML report. outputPath={}", outputPath);
+
+        String safeVerdict = verdict != null ? verdict : "UNDECISIVE";
+        String metricsTable = buildTransactionMetricsSection(
+                tableRows, config.percentile,
+                config.tpsSlaThreshold, config.errorSlaThreshold,
+                config.rtSlaThresholdMs, config.rtSlaMetric);
+        String chartsBlock = HtmlPageBuilder.buildChartsSection(timeBuckets);
+        String errorBreakdown = buildErrorBreakdownHtml(config.errorTypeSummary);
+        String latencyPanel = buildLatencyPanelHtml(
+                config.avgLatencyMs, config.avgConnectMs, config.latencyPresent);
+
+        String page = HtmlPageBuilder.buildDataOnlyPage(
+                contentSections, metricsTable, chartsBlock, config,
+                errorBreakdown, latencyPanel, safeVerdict);
+        writeReport(page, Path.of(outputPath));
+        log.info("renderDataReport: data-only HTML report written. outputPath={}", outputPath);
+        return outputPath;
+    }
+
     // ─────────────────────────────────────────────────────────────
-    // Path helpers
+    // AI page assembly (existing)
     // ─────────────────────────────────────────────────────────────
 
     private String buildFullPage(String markdownContent, RenderConfig config,

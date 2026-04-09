@@ -673,6 +673,42 @@ public class PromptBuilder {
     // RT SLA summary — pre-computed verdict, eliminates model arithmetic
     // ─────────────────────────────────────────────────────────────
 
+    public static Map<String, Object> buildGlobalStats(Map<String, SamplingStatCalculator> results,
+                                                       int percentile, double pFraction,
+                                                       LatencyContext latency) {
+        Map<String, Object> global = new LinkedHashMap<>();
+        SamplingStatCalculator total = results.get(JTLParser.TOTAL_LABEL);
+        if (total == null || total.getCount() == 0) return global;
+
+        final long totalCount = total.getCount();
+        final long failedCount = Math.min(Math.round(total.getErrorPercentage() * totalCount), totalCount);
+
+        global.put("totalRequests", totalCount);
+        global.put("totalPassed", totalCount - failedCount);
+        global.put("totalFailed", failedCount);
+        global.put("configuredPercentile", percentile);
+        global.put("avgResponseMs", round2(total.getMean()));
+        global.put("medianResponseMs", round2(total.getPercentPoint(MEDIAN).doubleValue()));
+        global.put("minResponseMs", total.getMin().longValue());
+        global.put("maxResponseMs", total.getMax().longValue());
+        global.put(percentile + "thPctMs", round2(total.getPercentPoint(pFraction).doubleValue()));
+        global.put("p99ResponseMs", round2(total.getPercentPoint(0.99).doubleValue()));
+        global.put("stdDevMs", round2(total.getStandardDeviation()));
+        global.put(KEY_ERROR_RATE_PCT, round2(total.getErrorPercentage() * 100.0));
+        global.put("throughputTPS", round2(total.getRate()));
+        global.put("receivedBandwidthKBps", round2(total.getKBPerSecond()));
+        // Latency decomposition fields — consumed by the Advanced Web Diagnostics
+        // section of the AI prompt to decide between direct and inferred mode.
+        global.put("avgLatencyMs", latency.avgLatencyMs());
+        global.put("avgConnectMs", latency.avgConnectMs());
+        global.put("latencyPresent", latency.latencyPresent());
+        return global;
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // Error Rate SLA summary — pre-computed verdict, eliminates model arithmetic
+    // ─────────────────────────────────────────────────────────────
+
     /**
      * Convenience overload — delegates to
      * {@link #build(Map, int, PromptRequest, List, LatencyContext, List)}
@@ -696,7 +732,7 @@ public class PromptBuilder {
     }
 
     // ─────────────────────────────────────────────────────────────
-    // Error Rate SLA summary — pre-computed verdict, eliminates model arithmetic
+    // TPS series builder
     // ─────────────────────────────────────────────────────────────
 
     /**
@@ -731,10 +767,6 @@ public class PromptBuilder {
         String userMessage = buildUserMessage(results, percentile, request, safeErrorTypes, safeLatency, safeBuckets);
         return new PromptContent(systemPrompt, userMessage);
     }
-
-    // ─────────────────────────────────────────────────────────────
-    // TPS series builder
-    // ─────────────────────────────────────────────────────────────
 
     private String buildUserMessage(Map<String, SamplingStatCalculator> results,
                                     int percentile, PromptRequest request,
@@ -986,38 +1018,6 @@ public class PromptBuilder {
         }
         summary.put("mandatedHypothesisTargets", mandatedTargets);
         return summary;
-    }
-
-    public static Map<String, Object> buildGlobalStats(Map<String, SamplingStatCalculator> results,
-                                                       int percentile, double pFraction,
-                                                       LatencyContext latency) {
-        Map<String, Object> global = new LinkedHashMap<>();
-        SamplingStatCalculator total = results.get(JTLParser.TOTAL_LABEL);
-        if (total == null || total.getCount() == 0) return global;
-
-        final long totalCount = total.getCount();
-        final long failedCount = Math.min(Math.round(total.getErrorPercentage() * totalCount), totalCount);
-
-        global.put("totalRequests", totalCount);
-        global.put("totalPassed", totalCount - failedCount);
-        global.put("totalFailed", failedCount);
-        global.put("configuredPercentile", percentile);
-        global.put("avgResponseMs", round2(total.getMean()));
-        global.put("medianResponseMs", round2(total.getPercentPoint(MEDIAN).doubleValue()));
-        global.put("minResponseMs", total.getMin().longValue());
-        global.put("maxResponseMs", total.getMax().longValue());
-        global.put(percentile + "thPctMs", round2(total.getPercentPoint(pFraction).doubleValue()));
-        global.put("p99ResponseMs", round2(total.getPercentPoint(0.99).doubleValue()));
-        global.put("stdDevMs", round2(total.getStandardDeviation()));
-        global.put(KEY_ERROR_RATE_PCT, round2(total.getErrorPercentage() * 100.0));
-        global.put("throughputTPS", round2(total.getRate()));
-        global.put("receivedBandwidthKBps", round2(total.getKBPerSecond()));
-        // Latency decomposition fields — consumed by the Advanced Web Diagnostics
-        // section of the AI prompt to decide between direct and inferred mode.
-        global.put("avgLatencyMs", latency.avgLatencyMs());
-        global.put("avgConnectMs", latency.avgConnectMs());
-        global.put("latencyPresent", latency.latencyPresent());
-        return global;
     }
 
     /**

@@ -158,7 +158,8 @@ public final class SlaEvaluator {
     private static String escapeHtml(String text) {
         if (text == null) return "";
         return text.replace("&", "&amp;").replace("<", "&lt;")
-                   .replace(">", "&gt;").replace("\"", "&quot;");
+                .replace(">", "&gt;").replace("\"", "&quot;")
+                .replace("'", "&#39;");
     }
 
     /**

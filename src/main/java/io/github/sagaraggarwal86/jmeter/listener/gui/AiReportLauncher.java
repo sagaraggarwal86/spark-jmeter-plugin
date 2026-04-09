@@ -13,6 +13,7 @@ import io.github.sagaraggarwal86.jmeter.listener.core.ScenarioMetadata;
 import io.github.sagaraggarwal86.jmeter.listener.core.SlaConfig;
 import io.github.sagaraggarwal86.jmeter.listener.core.SlaEvaluator;
 import io.github.sagaraggarwal86.jmeter.parser.JTLParser;
+import io.github.sagaraggarwal86.jmeter.report.DataReportBuilder;
 import org.apache.jmeter.visualizers.SamplingStatCalculator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -207,8 +208,10 @@ public final class AiReportLauncher {
     }
 
     /**
-     * Generates an HTML report without AI — SLA verdict + Transaction Metrics + Charts only.
-     * Runs the render on the background executor to avoid blocking the EDT.
+     * Generates a data-only HTML report without AI — classification, SLA verdict,
+     * transaction metrics, error breakdown, slowest endpoints, and charts.
+     * Classification is computed on the EDT (JMM visibility for SamplingStatCalculator);
+     * HTML rendering runs on the background executor to avoid blocking the EDT.
      *
      * @param triggerBtn the button that initiated the workflow (re-enabled on completion)
      */
@@ -230,25 +233,61 @@ public final class AiReportLauncher {
 
         triggerBtn.setEnabled(false);
 
+        // Compute classification on the EDT — same thread that wrote the
+        // SamplingStatCalculator values — to guarantee JMM visibility.
+        // The resulting maps contain only immutable Strings/Numbers, safe to
+        // hand off to the background executor.
+        HtmlReportRenderer.RenderConfig config = buildSlaOnlyRenderConfig();
+        List<String[]> tableRows = dataProvider.getVisibleTableRows();
+        List<JTLParser.TimeBucket> buckets = List.copyOf(dataProvider.getCachedBuckets());
+        int percentile = dataProvider.getPercentile();
+
+        double pFraction = percentile / 100.0;
+        Map<String, Object> globalStats = PromptBuilder.buildGlobalStats(
+                dataProvider.getCachedResults(), percentile, pFraction,
+                new PromptBuilder.LatencyContext(
+                        dataProvider.getAvgLatencyMs(), dataProvider.getAvgConnectMs(),
+                        dataProvider.isLatencyPresent()));
+        Map<String, Object> classification = PromptBuilder.buildClassificationSummary(
+                globalStats, buckets);
+
         executor.submit(() -> {
             try {
-                HtmlReportRenderer.RenderConfig config = buildSlaOnlyRenderConfig();
-                List<String[]> tableRows = dataProvider.getVisibleTableRows();
-                List<JTLParser.TimeBucket> buckets = List.copyOf(dataProvider.getCachedBuckets());
 
+                // SLA evaluation — only when thresholds configured
                 boolean useAvg = "avg".equals(config.rtSlaMetric);
-                SlaEvaluator.SlaResult slaResult = SlaEvaluator.evaluate(
-                        tableRows, config.tpsSlaThreshold, config.errorSlaThreshold,
-                        config.rtSlaThresholdMs, useAvg);
-                String slaHtml = SlaEvaluator.buildVerdictHtml(slaResult,
-                        config.tpsSlaThreshold, config.errorSlaThreshold,
-                        config.rtSlaThresholdMs, useAvg, dataProvider.getPercentile());
-                String verdict = slaResult.verdict();
+                boolean hasSla = config.tpsSlaThreshold >= 0
+                        || config.errorSlaThreshold >= 0
+                        || config.rtSlaThresholdMs >= 0;
+                String slaVerdictHtml = null;
+                String verdict;
 
-                String outputPath = new HtmlReportRenderer().renderToFile(
-                        slaHtml,
+                if (hasSla) {
+                    SlaEvaluator.SlaResult slaResult = SlaEvaluator.evaluate(
+                            tableRows, config.tpsSlaThreshold, config.errorSlaThreshold,
+                            config.rtSlaThresholdMs, useAvg);
+                    verdict = slaResult.verdict();
+                    slaVerdictHtml = SlaEvaluator.buildVerdictHtml(slaResult,
+                            config.tpsSlaThreshold, config.errorSlaThreshold,
+                            config.rtSlaThresholdMs, useAvg, percentile)
+                            + DataReportBuilder.buildSlaBreachDetails(tableRows,
+                            config.tpsSlaThreshold, config.errorSlaThreshold,
+                            config.rtSlaThresholdMs, useAvg ? "avg" : "pnn");
+                } else {
+                    Map<String, Object> verdictResult = PromptBuilder.buildOverallVerdictSummary(
+                            null, null, classification, globalStats);
+                    verdict = String.valueOf(verdictResult.getOrDefault("verdict", "PASS"));
+                }
+
+                // Build data-only report sections
+                String rtMetric = useAvg ? "avg" : "pnn";
+                List<String[]> contentSections = DataReportBuilder.buildSections(
+                        classification, globalStats, slaVerdictHtml,
+                        tableRows, percentile, rtMetric);
+
+                String outputPath = new HtmlReportRenderer().renderDataReport(
                         deriveOutputPath(jtlPath),
-                        config, tableRows, buckets, verdict);
+                        config, tableRows, buckets, verdict, contentSections);
 
                 SwingUtilities.invokeLater(() -> {
                     triggerBtn.setEnabled(true);
@@ -281,11 +320,14 @@ public final class AiReportLauncher {
         long rtSla = sla.isRtEnabled() ? sla.rtThresholdMs : -1L;
         String rtMetric = sla.rtMetric == SlaConfig.RtMetric.AVG ? "avg" : "pnn";
 
+        boolean hasSla = tpsSla >= 0 || errorSla >= 0 || rtSla >= 0;
+        String modeName = hasSla ? "SLA Evaluation Mode" : "Classification Analysis Mode";
+
         return new HtmlReportRenderer.RenderConfig(
                 metadata.users, metadata.scenarioName, metadata.scenarioDesc,
                 metadata.threadGroupName,
                 dataProvider.getStartTime(), dataProvider.getEndTime(),
-                dataProvider.getDuration(), percentile, "SLA Evaluation Mode",
+                dataProvider.getDuration(), percentile, modeName,
                 tpsSla, errorSla, rtSla, rtMetric,
                 dataProvider.getErrorTypeSummary(),
                 dataProvider.getAvgLatencyMs(), dataProvider.getAvgConnectMs(),

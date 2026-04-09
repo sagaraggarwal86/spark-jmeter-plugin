@@ -322,7 +322,15 @@ Ensure at least 8 GB RAM free before pulling a 7B model.
 
 ## CLI Mode
 
-Generate an AI performance report from the command line — no JMeter GUI required.
+Generate a performance report from the command line — no JMeter GUI required. All four modes produce a
+self-contained HTML report with tabbed navigation, charts, Excel export, and dark mode.
+
+| Mode              | Required Args                                                 | Verdict Source                                                | HTML Report           |
+|-------------------|---------------------------------------------------------------|---------------------------------------------------------------|-----------------------|
+| **Analysis only** | `-i results.jtl`                                              | Workload classification (THROUGHPUT-BOUND, ERROR-BOUND, etc.) | Data Analysis Report  |
+| **SLA only**      | `-i results.jtl --tps-sla 10`                                 | SLA threshold evaluation                                      | Data Analysis Report  |
+| **AI only**       | `-i results.jtl --provider groq --config props`               | AI report + classification                                    | AI Performance Report |
+| **AI + SLA**      | `-i results.jtl --provider groq --config props --error-sla 5` | AI report + SLA evaluation                                    | AI Performance Report |
 
 ### Setup
 
@@ -336,11 +344,18 @@ Copy the wrapper scripts to your JMeter `bin/` directory:
 ### Quick Start
 
 ```bash
-# Windows
-jaar-cli-report.bat -i results.jtl --provider mistral --config ai-reporter.properties
+# Analysis only — no AI, no SLA (classification-based verdict)
+./jaar-cli-report.sh -i results.jtl
 
-# macOS / Linux
+# SLA only — no AI (fast, free)
+./jaar-cli-report.sh -i results.jtl --tps-sla 10 --error-sla 5 --rt-sla 2000
+
+# AI report with provider
 ./jaar-cli-report.sh -i results.jtl --provider mistral --config ai-reporter.properties
+
+# Full (AI + SLA)
+./jaar-cli-report.sh -i results.jtl --provider mistral --config ai-reporter.properties \
+  --error-sla 5 --rt-sla 2000
 ```
 
 ### All Options
@@ -348,9 +363,12 @@ jaar-cli-report.bat -i results.jtl --provider mistral --config ai-reporter.prope
 ```
 Required:
   -i, --input FILE            JTL file path
+
+AI Provider (optional — when omitted, runs without AI):
   --provider STRING           provider name (mistral, groq, gemini, deepseek,
                                cerebras, openai, claude, ollama, or custom)
   --config FILE               path to ai-reporter.properties
+                               (required when --provider is set)
 
 Output:
   -o, --output FILE           HTML report output path (default: ./report.html)
@@ -369,7 +387,8 @@ Report Metadata:
   --description STRING        scenario description
   --virtual-users INT         virtual user count for report header
 
-SLA Thresholds:
+SLA Thresholds (optional — when omitted, verdict derived from workload classification):
+  --tps-sla DOUBLE            minimum TPS threshold (positive number)
   --error-sla INT             error rate threshold % (1-99)
   --rt-sla LONG               response time threshold in ms
   --rt-metric avg|percentile  which RT column for --rt-sla (default: percentile)
@@ -382,24 +401,65 @@ Help:
 
 | Code | Meaning                                       |
 |------|-----------------------------------------------|
-| `0`  | AI verdict **PASS**                           |
-| `1`  | AI verdict **FAIL**                           |
-| `2`  | AI verdict **UNDECISIVE**                     |
+| `0`  | Verdict **PASS**                              |
+| `1`  | Verdict **FAIL**                              |
+| `2`  | Verdict **UNDECISIVE** (AI mode only)         |
 | `3`  | Invalid arguments                             |
 | `4`  | JTL parse error                               |
 | `5`  | AI provider error (key, ping, or API failure) |
 | `6`  | Report write error                            |
 | `7`  | Unexpected error                              |
 
+### Classification-Based Verdict
+
+When no SLA thresholds and no AI provider are configured, the CLI uses the built-in workload
+classification engine to derive a verdict:
+
+| Classification   | Verdict                         | Condition                          |
+|------------------|---------------------------------|------------------------------------|
+| ERROR-BOUND      | FAIL                            | Error rate > 2%                    |
+| CAPACITY-WALL    | FAIL                            | TPS plateaued + latency ratio > 3x |
+| LATENCY-BOUND    | FAIL if p99 > 5x avg, else PASS | High latency, still ramping        |
+| THROUGHPUT-BOUND | PASS                            | Healthy workload                   |
+
+### Data Analysis Report (Non-AI Modes)
+
+When running without an AI provider (Analysis-only or SLA-only), the CLI generates a **Data Analysis Report**
+with these tabbed sections:
+
+| Tab                     | Content                                        | Source                                     |
+|-------------------------|------------------------------------------------|--------------------------------------------|
+| Transaction Metrics     | Sortable, searchable table with SLA columns    | `TablePopulator`                           |
+| Workload Classification | Classification badge, reasoning, key metrics   | `PromptBuilder` classification engine      |
+| SLA Evaluation          | SLA verdict panel with threshold details       | `SlaEvaluator` (only when SLAs configured) |
+| Slowest Endpoints       | Top 5 transactions by response time            | Sorted from metrics table                  |
+| Error Analysis          | Error breakdown by status code                 | `JTLParser` error maps                     |
+| Network & Server Timing | Latency, connect, server processing KPIs       | JTL latency fields (when present)          |
+| Performance Charts      | TPS, RT, Error %, KB/s time-series charts      | `JTLParser` time buckets                   |
+
+Test metadata (scenario name, users, duration, etc.) is shown in the always-visible report header.
+
+The report uses the same CSS, Chart.js, Excel export, and dark mode as the AI report — but with
+zero AI dependency. The AI report path (`renderToFile` / `buildPage`) is completely untouched.
+
 ### CI/CD Pipeline Example
 
 ```bash
+# Minimal — classification-based gate (no AI key needed)
+./jaar-cli-report.sh -i results.jtl
+EXIT_CODE=$?
+if [ $EXIT_CODE -eq 1 ]; then
+  echo "Performance gate FAILED (workload classified as unhealthy)"
+  exit 1
+fi
+
+# Full — AI + SLA gate
 ./jaar-cli-report.sh \
   -i results.jtl -o report.html \
   --provider mistral --config /etc/jmeter/ai-reporter.properties \
   --start-offset 10 --end-offset 300 --percentile 95 \
   --scenario-name "Nightly Load Test" --virtual-users 200 \
-  --error-sla 5 --rt-sla 2000 --rt-metric percentile
+  --tps-sla 10 --error-sla 5 --rt-sla 2000 --rt-metric percentile
 
 EXIT_CODE=$?
 if [ $EXIT_CODE -eq 1 ]; then

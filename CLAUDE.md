@@ -35,7 +35,7 @@
 - For every decision point or design choice, present options in a concise table:
 
   | Option | Risk | Effort | Impact | Recommendation |
-        |--------|------|--------|--------|----------------|
+          |--------|------|--------|--------|----------------|
 
   Highlight the recommended option. Keep descriptions brief — one line per cell.
 
@@ -77,8 +77,8 @@ mvn clean deploy -Prelease                # Release to Maven Central
 ```
 
 Requirements: JDK 17 only, Maven 3.6+. JaCoCo enforces **80%** line coverage excluding `listener.gui/**`,
-`ai.report/**`,
-`AiProviderRegistry`, `SharedHttpClient`, `Main`, `TimestampFormatResolver`.
+`AiReportCoordinator`, `HtmlReportRenderer`, `AiProviderRegistry`, `SharedHttpClient`, `AiProviderException`,
+`CliReportPipeline`, `Main`, `TimestampFormatResolver`, `SlaRowRenderer`, `ColumnIndex`.
 
 ## Architecture
 
@@ -91,11 +91,12 @@ All processing is file-based with zero runtime overhead — no live metrics coll
 | Package         | Responsibility                                                                                                                                                                                                                                             |
 |-----------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `parser`        | `JTLParser` (two-pass CSV parser), `JtlParserCore` (static utilities), `DelimiterResolver`, `TimestampFormatResolver`, `JtlParseException`                                                                                                                 |
-| `listener.core` | `ColumnIndex` (13-column constants), `CellValueParser`, `TablePopulator` (row formatting + sorting), `TransactionFilter`, `SlaConfig`, `SlaRowRenderer`, `CsvExporter`, `ScenarioMetadata`                                                                 |
+| `listener.core` | `ColumnIndex` (13-column constants), `CellValueParser`, `TablePopulator` (row formatting + sorting), `TransactionFilter`, `SlaConfig`, `SlaEvaluator` (SLA + classification verdict HTML), `SlaRowRenderer`, `CsvExporter`, `ScenarioMetadata`             |
 | `listener.gui`  | `ListenerGUI` (extends AbstractVisualizer), `ListenerCollector` (extends ResultCollector, sampleOccurred=no-op), `AggregateReportPanel` (~958 lines, known SRP debt), `ReportPanelBuilder`, `FilePanelCustomizer`, `AiReportLauncher`, `SimpleDocListener` |
 | `ai.prompt`     | `PromptLoader`, `PromptContent` (record), `PromptRequest` (record), `PromptBuilder` (pre-computed verdicts + classification)                                                                                                                               |
 | `ai.provider`   | `AiProviderConfig`, `AiProviderRegistry` (7 providers + custom), `AiReportService` (OpenAI-compatible API), `SharedHttpClient` (singleton), `AiProviderException`, `AiServiceException`                                                                    |
-| `ai.report`     | `AiReportCoordinator` (orchestrator), `HtmlReportRenderer`, `HtmlPageBuilder`, `MarkdownSectionNormaliser`, `MarkdownUtils`                                                                                                                                |
+| `ai.report`     | `AiReportCoordinator` (orchestrator), `HtmlReportRenderer` (AI + data-only rendering), `HtmlPageBuilder` (`buildPage` + `buildDataOnlyPage`), `MarkdownSectionNormaliser`, `MarkdownUtils`                                                                 |
+| `report`        | `DataReportBuilder` (data-only HTML section content — no AI, no Swing, no I/O)                                                                                                                                                                             |
 | `cli`           | `Main` (exit codes 0-7), `CliArgs`, `CliReportPipeline`                                                                                                                                                                                                    |
 
 ### Key Design Decisions
@@ -105,13 +106,16 @@ All processing is file-based with zero runtime overhead — no live metrics coll
   time buckets, error classification. Handles 1-2 GB+ files via streaming.
 - **Pre-computed analysis**: All verdicts (PASS/FAIL), classifications (THROUGHPUT-BOUND, LATENCY-BOUND, ERROR-BOUND,
   CAPACITY-WALL), SLA evaluations computed in Java — AI writes prose justifying pre-computed results, never computes
-  verdicts itself.
+  verdicts itself. Classification logic is reusable standalone (CLI analysis-only mode).
 - **Shading strategy**: Only Gson and CommonMark shaded into fat JAR. JMeter-provided deps never bundled.
 - **Provider abstraction**: `AiProviderRegistry` + `AiProviderConfig` + `AiReportService` abstracts provider quirks
   (Cerebras prefill suppression, token limits, model variants). 7 known providers + unlimited custom endpoints.
 - **Single source of truth**: `TablePopulator.buildRowAsStrings` for row formatting (GUI + CLI),
   `ColumnIndex.ALL_COLUMNS` for column ordering.
 - **sampleOccurred no-op**: `ListenerCollector` prevents live write-back to source JTL file.
+- **Data-only HTML report**: `DataReportBuilder` (in `report` package) builds section content for non-AI reports.
+  `HtmlReportRenderer.renderDataReport()` + `HtmlPageBuilder.buildDataOnlyPage()` assemble the page.
+  Zero coupling to AI path — `renderToFile()` and `buildPage()` are untouched.
 
 ### AI Analysis Architecture
 
@@ -120,6 +124,7 @@ All processing is file-based with zero runtime overhead — no live metrics coll
 - **AI does ~5%**: Generates narrative prose across 9 report sections (Executive Summary, Bottleneck Analysis,
   Error Analysis, Advanced Web Diagnostics, Root Cause Hypotheses, Recommendations, etc.).
 - **7 providers**: groq, gemini, mistral, deepseek, cerebras, openai, claude. Shared `ai-reporter.properties` config.
+- **CLI 4 modes**: (1) Analysis-only (no AI, no SLA → classification verdict), (2) SLA-only, (3) AI-only, (4) AI+SLA.
 - **CLI exit codes**: 0=PASS, 1=FAIL, 2=UNDECISIVE, 3=bad args, 4=parse error, 5=AI error, 6=write error, 7=unexpected.
 
 ### Key Constraints

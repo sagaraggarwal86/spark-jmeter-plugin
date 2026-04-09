@@ -14,6 +14,7 @@ import io.github.sagaraggarwal86.jmeter.parser.DelimiterResolver;
 import io.github.sagaraggarwal86.jmeter.parser.JTLParser;
 import io.github.sagaraggarwal86.jmeter.parser.JtlParseException;
 import io.github.sagaraggarwal86.jmeter.parser.TimestampFormatResolver;
+import io.github.sagaraggarwal86.jmeter.report.DataReportBuilder;
 import org.apache.jmeter.visualizers.SamplingStatCalculator;
 
 import java.io.IOException;
@@ -82,7 +83,8 @@ final class CliReportPipeline {
     }
 
     /**
-     * SLA-only path: evaluate SLA thresholds, render HTML report without AI sections.
+     * Non-AI path: evaluate SLA thresholds and/or compute classification,
+     * then render a data-only HTML report via {@link DataReportBuilder}.
      * When no SLAs are configured, falls back to classification-based verdict.
      */
     private PipelineResult executeSlaOnly(JTLParser.ParseResult result,
@@ -90,55 +92,53 @@ final class CliReportPipeline {
                                           TimeContext timeCtx) throws IOException {
 
         boolean hasSla = args.hasTpsSla() || args.hasErrorSla() || args.hasRtSla();
+        boolean useAvg = "avg".equals(rtMetricValue());
 
-        if (hasSla) {
-            progress("SLA-only mode — no AI provider configured.");
-            HtmlReportRenderer.RenderConfig config = buildRenderConfig(result, timeCtx,
-                    "SLA Evaluation Mode");
-            boolean useAvg = "avg".equals(rtMetricValue());
-            SlaEvaluator.SlaResult slaResult = SlaEvaluator.evaluate(
-                    tableRows, tpsSlaValue(), errorSlaValue(), rtSlaValue(), useAvg);
-            String verdict = slaResult.verdict();
-            progress("SLA Verdict: %s", verdict);
-
-            progress("Rendering HTML report (SLA-only)...");
-            String slaHtml = SlaEvaluator.buildVerdictHtml(slaResult,
-                    tpsSlaValue(), errorSlaValue(), rtSlaValue(), useAvg, args.percentile());
-            String outputPath = new HtmlReportRenderer().renderToFile(
-                    slaHtml, args.outputFile(), config, tableRows, result.timeBuckets, verdict);
-            progress("Report saved to: " + outputPath);
-            return new PipelineResult(outputPath, verdict);
-        }
-
-        // No SLAs configured — classification-based verdict
-        progress("Analysis mode — classification-based verdict (no SLA, no AI).");
-        HtmlReportRenderer.RenderConfig config = buildRenderConfig(result, timeCtx,
-                "Classification Analysis Mode");
-
+        // ── Classification (always computed for data-only report) ─────────
         double pFraction = args.percentile() / 100.0;
         Map<String, Object> globalStats = PromptBuilder.buildGlobalStats(
                 result.results, args.percentile(), pFraction,
                 new PromptBuilder.LatencyContext(
                         result.avgLatencyMs, result.avgConnectMs, result.latencyPresent));
-
         Map<String, Object> classification = PromptBuilder.buildClassificationSummary(
                 globalStats, result.timeBuckets);
 
-        Map<String, Object> verdictResult = PromptBuilder.buildOverallVerdictSummary(
-                null, null, classification, globalStats);
+        // ── SLA evaluation (only when thresholds configured) ─────────────
+        String slaVerdictHtml = null;
+        String verdict;
 
-        String verdict = String.valueOf(verdictResult.getOrDefault("verdict", "PASS"));
+        if (hasSla) {
+            progress("SLA-only mode — no AI provider configured.");
+            SlaEvaluator.SlaResult slaResult = SlaEvaluator.evaluate(
+                    tableRows, tpsSlaValue(), errorSlaValue(), rtSlaValue(), useAvg);
+            verdict = slaResult.verdict();
+            slaVerdictHtml = SlaEvaluator.buildVerdictHtml(slaResult,
+                    tpsSlaValue(), errorSlaValue(), rtSlaValue(), useAvg, args.percentile())
+                    + DataReportBuilder.buildSlaBreachDetails(
+                    tableRows, tpsSlaValue(), errorSlaValue(), rtSlaValue(), rtMetricValue());
+            progress("SLA Verdict: %s", verdict);
+        } else {
+            progress("Analysis mode — classification-based verdict (no SLA, no AI).");
+            Map<String, Object> verdictResult = PromptBuilder.buildOverallVerdictSummary(
+                    null, null, classification, globalStats);
+            verdict = String.valueOf(verdictResult.getOrDefault("verdict", "PASS"));
+            progress("Verdict: %s (source: CLASSIFICATION)", verdict);
+        }
+
         String classLabel = String.valueOf(classification.getOrDefault("label", "THROUGHPUT-BOUND"));
-        String reasoning = String.valueOf(classification.getOrDefault("reasoning", ""));
-
         progress("Classification: %s", classLabel);
-        progress("Verdict: %s (source: CLASSIFICATION)", verdict);
 
-        progress("Rendering HTML report (classification-based)...");
-        String verdictHtml = SlaEvaluator.buildClassificationVerdictHtml(
-                verdict, classLabel, reasoning);
-        String outputPath = new HtmlReportRenderer().renderToFile(
-                verdictHtml, args.outputFile(), config, tableRows, result.timeBuckets, verdict);
+        // ── Build data-only report ──────────────────────────────────────
+        String modeName = hasSla ? "SLA Evaluation Mode" : "Classification Analysis Mode";
+        HtmlReportRenderer.RenderConfig config = buildRenderConfig(result, timeCtx, modeName);
+
+        List<String[]> contentSections = DataReportBuilder.buildSections(
+                classification, globalStats, slaVerdictHtml,
+                tableRows, args.percentile(), rtMetricValue());
+
+        progress("Rendering HTML report (%s)...", hasSla ? "SLA + classification" : "classification-based");
+        String outputPath = new HtmlReportRenderer().renderDataReport(
+                args.outputFile(), config, tableRows, result.timeBuckets, verdict, contentSections);
         progress("Report saved to: " + outputPath);
         return new PipelineResult(outputPath, verdict);
     }

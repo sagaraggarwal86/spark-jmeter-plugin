@@ -14,6 +14,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -252,6 +253,225 @@ final class HtmlPageBuilder {
                 .append(buildDarkModeJs())
                 .append("</body>\n</html>\n")
                 .toString();
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // Data-only page assembly (no AI markdown)
+    // ─────────────────────────────────────────────────────────────
+
+    /**
+     * Assembles a complete HTML page for data-only reports (no AI provider).
+     *
+     * <p>Parallel to {@link #buildPage} but accepts pre-built section content
+     * instead of AI-generated Markdown. Reuses the same CSS, JavaScript,
+     * sidebar navigation, chart rendering, and Excel export infrastructure.</p>
+     *
+     * <p>This method does <b>not</b> modify any code path used by
+     * {@link #buildPage} — it is a separate, additive entry point.</p>
+     *
+     * @param sections       pre-built content sections as {@code [title, htmlContent]} pairs
+     * @param metricsTable   Transaction Metrics HTML section (may be empty)
+     * @param chartsBlock    Performance Charts HTML section (may be empty)
+     * @param config         scenario metadata
+     * @param errorBreakdown Java-computed error breakdown table HTML (may be empty)
+     * @param latencyPanel   Java-computed latency KPI panel HTML (may be empty)
+     * @param verdict        extracted verdict ("PASS", "FAIL", "UNDECISIVE")
+     * @return complete HTML document as a string
+     */
+    static String buildDataOnlyPage(List<String[]> sections,
+                                    String metricsTable, String chartsBlock,
+                                    HtmlReportRenderer.RenderConfig config,
+                                    String errorBreakdown, String latencyPanel,
+                                    String verdict) {
+
+        String runDateTime = buildRunDateTime(config.startTime, config.endTime);
+        String modeLabel = config.providerDisplayName.isBlank()
+                ? "Data Analysis" : HtmlReportRenderer.escapeHtml(config.providerDisplayName);
+
+        // ── Assemble section list (mutable copy) ─────────────────────────────
+        List<String[]> allSections = new ArrayList<>(sections);
+
+        // Transaction Metrics: insert at index 1 (after first content section)
+        String safeMetrics = metricsTable != null ? metricsTable : "";
+        if (!safeMetrics.isBlank()) {
+            int idx = Math.min(1, allSections.size());
+            allSections.add(idx, new String[]{"Transaction Metrics", safeMetrics});
+        }
+
+        // Error Analysis: <h2> replaces inner <h3>; summary line prepended
+        String safeError = errorBreakdown != null ? errorBreakdown : "";
+        if (!safeError.isBlank()) {
+            String errorContent = safeError.replace("  <h3>Error Breakdown</h3>\n", "");
+            String errorSummary = buildErrorSummaryLine(config.errorTypeSummary);
+            allSections.add(new String[]{"Error Analysis",
+                    "<h2>Error Analysis</h2>\n" + errorSummary + errorContent});
+        }
+
+        // Network & Server Timing: <h2> replaces inner <h3>; interpretation appended
+        String safeLatency = latencyPanel != null ? latencyPanel : "";
+        if (!safeLatency.isBlank()) {
+            String latencyContent = safeLatency.replace(
+                    "  <h3>Network &amp; Server Timing</h3>\n", "");
+            String interpretation = buildLatencyInterpretation(
+                    config.avgLatencyMs, config.avgConnectMs);
+            allSections.add(new String[]{"Network & Server Timing",
+                    "<h2>Network &amp; Server Timing</h2>\n" + latencyContent + interpretation});
+        }
+
+        // Performance Charts: always last
+        String[] chartsParts = splitChartsBlock(chartsBlock != null ? chartsBlock : "");
+        String chartsContent = chartsParts[0];
+        String chartsScript = chartsParts[1];
+        allSections.add(new String[]{"Performance Charts", chartsContent});
+
+        // ── Meta grid ────────────────────────────────────────────────────────
+        StringBuilder metaGrid = new StringBuilder("<div class=\"meta-grid\">\n");
+        appendMetaRow(metaGrid, "Scenario Name", config.scenarioName, false);
+        appendMetaRow(metaGrid, "Scenario Description", config.scenarioDesc, false);
+        appendMetaRow(metaGrid, "Virtual Users", config.users, false);
+        if (!runDateTime.isEmpty()) appendMetaRow(metaGrid, "Run Date/Time", runDateTime, false);
+        appendMetaRow(metaGrid, "Duration", config.duration, true);
+        metaGrid.append("</div>\n");
+
+        // ── Sidebar navigation ──────────────────────────────────────────────
+        StringBuilder sidebar = new StringBuilder("<nav class=\"sidebar\">\n");
+        for (int i = 0; i < allSections.size(); i++) {
+            String title = allSections.get(i)[0];
+            String titleLower = title.toLowerCase(Locale.ROOT);
+            String status = "";
+            if (titleLower.contains("sla") && !"UNDECISIVE".equals(verdict)) {
+                status = "PASS".equals(verdict) ? "pass" : "fail";
+            } else if (titleLower.contains("classification")) {
+                // Derive status from the classification badge, not the overall verdict
+                String content = allSections.get(i)[1];
+                if (content.contains("badge-fail")) status = "fail";
+                else if (content.contains("badge-warn")) status = "warn";
+                else if (content.contains("badge-pass")) status = "pass";
+            } else if (titleLower.contains("error")
+                    && config.errorTypeSummary != null && !config.errorTypeSummary.isEmpty()) {
+                status = "warn";
+            }
+            sidebar.append("  <button class=\"nav-item")
+                    .append(i == 0 ? " active" : "")
+                    .append("\" data-panel=\"panel-").append(i).append("\"");
+            if (!status.isEmpty()) {
+                sidebar.append(" data-status=\"").append(status).append("\"");
+            }
+            sidebar.append(">")
+                    .append(HtmlReportRenderer.escapeHtml(title))
+                    .append("</button>\n");
+        }
+        sidebar.append("</nav>\n");
+
+        // ── Panels ──────────────────────────────────────────────────────────
+        StringBuilder panels = new StringBuilder();
+        for (int i = 0; i < allSections.size(); i++) {
+            String title = allSections.get(i)[0];
+            String content = allSections.get(i)[1];
+            panels.append("<div class=\"panel")
+                    .append(i == 0 ? " active" : "")
+                    .append("\" id=\"panel-").append(i).append("\"")
+                    .append(" data-title=\"").append(HtmlReportRenderer.escapeHtml(title)).append("\">\n")
+                    .append(content)
+                    .append("\n</div>\n");
+        }
+
+        // ── Page assembly ──────────────────────────────────────────────────
+        StringBuilder page = new StringBuilder(400_000)
+                .append("<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n")
+                .append("  <meta charset=\"UTF-8\">\n")
+                .append("  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n")
+                .append("  <title>JMeter Performance Report</title>\n");
+        inlineOrCdn(page, "chart.umd.min.js",
+                "https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js");
+        inlineOrCdn(page, "xlsx-style.bundle.js",
+                "https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js");
+        return page.append(buildCss())
+                .append(buildMetaScript(config, runDateTime))
+                .append("</head>\n<body>\n")
+                .append("<div class=\"rpt\">\n")
+                .append("  <div class=\"rpt-header\">\n")
+                .append("    <div>\n")
+                .append("      <h1>JMeter Performance Report</h1>\n")
+                .append("      <div class=\"sub\">Generated by JAAR Plugin &mdash; ")
+                .append(modeLabel).append("</div>\n")
+                .append(buildVerdictBadge(verdict))
+                .append("      ").append(metaGrid)
+                .append("    </div>\n")
+                .append("    <div class=\"header-actions\">\n")
+                .append("      <button class=\"exp-btn\" onclick=\"exportExcel()\">&#x1F4E5;&nbsp; Export Excel</button>\n")
+                .append("      <button class=\"exp-btn\" id=\"darkToggle\" onclick=\"toggleDark()\">&#x1F319;&nbsp; Dark Mode</button>\n")
+                .append("    </div>\n")
+                .append("  </div>\n")
+                .append("  <div class=\"body-row\">\n")
+                .append("    ").append(sidebar)
+                .append("    <div class=\"main-col\">\n")
+                .append("      <div class=\"content-area\">\n")
+                .append(panels)
+                .append("      </div>\n")
+                .append("    </div>\n")
+                .append("  </div>\n")
+                .append("  <div class=\"footer-rpt\">Report generated on ")
+                .append(LocalDateTime.now().format(FOOTER_TIME_FMT))
+                .append(" \u2014 ").append(modeLabel)
+                .append("</div>\n")
+                .append("</div>\n")
+                .append(chartsScript)
+                .append(buildTabJs())
+                .append(buildMetricsJs())
+                .append(buildDarkModeJs())
+                .append("</body>\n</html>\n")
+                .toString();
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // Data-only section enrichment helpers
+    // ─────────────────────────────────────────────────────────────
+
+    /**
+     * Builds a one-line summary above the error breakdown table:
+     * e.g. "2,293 errors out of 226,792 requests (1.01%)".
+     */
+    private static String buildErrorSummaryLine(List<Map<String, Object>> errorTypeSummary) {
+        if (errorTypeSummary == null || errorTypeSummary.isEmpty()) return "";
+        long totalErrors = errorTypeSummary.stream()
+                .mapToLong(e -> ((Number) e.getOrDefault("count", 0L)).longValue())
+                .sum();
+        if (totalErrors == 0) return "";
+        return "<p style=\"font-size:13px;color:var(--color-text-secondary);margin:4px 0 12px\">"
+                + String.format("%,d", totalErrors) + " errors recorded"
+                + (errorTypeSummary.size() > 1
+                        ? " (top " + errorTypeSummary.size() + " error types shown below)"
+                        : "")
+                + ".</p>\n";
+    }
+
+    /**
+     * Builds an interpretation line below the latency cards:
+     * e.g. "Server processing accounts for 97.4% of total latency — network overhead is minimal."
+     */
+    private static String buildLatencyInterpretation(long avgLatencyMs, long avgConnectMs) {
+        if (avgLatencyMs <= 0) return "";
+        long serverMs = Math.max(0, avgLatencyMs - avgConnectMs);
+        double serverPct = (double) serverMs / avgLatencyMs * 100.0;
+        String interpretation;
+        if (serverPct >= 90) {
+            interpretation = String.format(
+                    "Server processing accounts for %.1f%% of total latency \u2014 network overhead is minimal.",
+                    serverPct);
+        } else if (serverPct >= 50) {
+            interpretation = String.format(
+                    "Server processing accounts for %.1f%% of total latency. "
+                            + "Connect time (%.1f%%) suggests moderate network or TLS overhead.",
+                    serverPct, 100.0 - serverPct);
+        } else {
+            interpretation = String.format(
+                    "Network/connect time dominates at %.1f%% of total latency \u2014 "
+                            + "investigate DNS, TCP, or TLS overhead.",
+                    100.0 - serverPct);
+        }
+        return "<p style=\"font-size:12px;color:var(--color-text-secondary);margin:8px 0 0\">"
+                + HtmlReportRenderer.escapeHtml(interpretation) + "</p>\n";
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -1476,6 +1696,27 @@ final class HtmlPageBuilder {
                 + "    .nav-item[data-status=\"fail\"]:not(.active) { color: var(--color-danger); }\n"
                 + "    .nav-item[data-status=\"warn\"]:not(.active) { color: #b7791f; }\n"
                 + "    .dark .nav-item[data-status=\"warn\"]:not(.active) { color: #f6e05e; }\n"
+                // ── Print styles ──────────────────────────────────────────────
+                // ── Data-only report sections (DataReportBuilder) ─────────
+                + "    .classification-section { margin: 10px 0 20px; }\n"
+                + "    .classification-badge {\n"
+                + "      display: inline-block; padding: 8px 20px; border-radius: 6px;\n"
+                + "      font-size: 18px; font-weight: 700; letter-spacing: 0.5px; margin: 8px 0 16px;\n"
+                + "    }\n"
+                + "    .badge-pass { background: rgba(72,187,120,0.15); color: var(--color-success); }\n"
+                + "    .badge-fail { background: rgba(245,101,101,0.15); color: var(--color-danger); }\n"
+                + "    .badge-warn { background: rgba(246,224,94,0.2); color: #b7791f; }\n"
+                + "    .dark .badge-warn { color: #f6e05e; }\n"
+                + "    .classification-reasoning { margin: 0 0 16px; }\n"
+                + "    .classification-reasoning p { font-size: 13px; line-height: 1.6; color: var(--color-text-secondary); }\n"
+                + "    .classification-metrics { margin: 0 0 16px; }\n"
+                + "    .classification-metrics h3, .classification-reasoning h3 {\n"
+                + "      font-size: 13px; font-weight: 600; margin: 0 0 8px; color: var(--color-text-primary);\n"
+                + "    }\n"
+                + "    .classification-metrics .data-table,\n"
+                + "    .slowest-section .data-table,\n"
+                + "    .error-breakdown .data-table { width: auto; }\n"
+                + "    .slowest-section { margin: 10px 0 20px; }\n"
                 // ── Print styles ──────────────────────────────────────────────
                 + "    @media print {\n"
                 + "      .sidebar { display: none !important; }\n"

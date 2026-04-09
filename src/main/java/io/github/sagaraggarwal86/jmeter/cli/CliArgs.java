@@ -110,16 +110,16 @@ final class CliArgs {
                   --error-sla INT             error rate threshold % (1-99)
                   --rt-sla LONG               response time threshold in ms
                   --rt-metric avg|percentile  which RT column for --rt-sla (default: percentile)
-
+                
                 Help:
                   -h, --help                  print this message and exit
-
+                
                 Modes:
                   1. Analysis only  — no --provider, no SLA: classification-based verdict
                   2. SLA only       — no --provider, with SLA: SLA threshold evaluation
                   3. AI only        — --provider, no SLA: AI report + classification verdict
                   4. AI + SLA       — --provider, with SLA: AI report + SLA verdict
-
+                
                 Exit Codes:
                   0   Verdict PASS
                   1   Verdict FAIL
@@ -129,17 +129,17 @@ final class CliArgs {
                   5   AI provider error (key, ping, or API failure)
                   6   Report write error
                   7   Unexpected error — full stack trace printed to stderr
-
+                
                 Examples:
                   # Analysis only (no AI, no SLA — classification-based verdict)
                   jaar-cli-report.sh -i results.jtl
-
+                
                   # SLA-only (no AI — fast, free)
                   jaar-cli-report.sh -i results.jtl --tps-sla 10 --error-sla 5 --rt-sla 2000
-
+                
                   # AI report with provider
                   jaar-cli-report.sh -i results.jtl --provider groq --config ai-reporter.properties
-
+                
                   # Full (AI + SLA)
                   jaar-cli-report.sh \\
                     -i results.jtl -o report.html \\
@@ -274,9 +274,18 @@ final class CliArgs {
                 case "--scenario-name" -> scenarioName = nextValue(args, i++, arg);
                 case "--description" -> description = nextValue(args, i++, arg);
                 case "--virtual-users" -> virtualUsers = nextInt(args, i++, arg);
-                case "--tps-sla" -> { tpsSla = nextDouble(args, i++, arg); tpsSlaExplicit = true; }
-                case "--error-sla" -> { errorSla = nextInt(args, i++, arg); errorSlaExplicit = true; }
-                case "--rt-sla" -> { rtSla = nextLong(args, i++, arg); rtSlaExplicit = true; }
+                case "--tps-sla" -> {
+                    tpsSla = nextDouble(args, i++, arg);
+                    tpsSlaExplicit = true;
+                }
+                case "--error-sla" -> {
+                    errorSla = nextInt(args, i++, arg);
+                    errorSlaExplicit = true;
+                }
+                case "--rt-sla" -> {
+                    rtSla = nextLong(args, i++, arg);
+                    rtSlaExplicit = true;
+                }
                 case "--rt-metric" -> rtMetric = nextValue(args, i++, arg);
                 case "--help", "-h" -> helpRequested = true;
                 default -> errors.add("Unknown argument: " + arg);

@@ -278,18 +278,25 @@
                             <excludes>
                                 <!-- Swing GUI classes require a display — excluded
                                      until a headless GUI-test strategy is in place -->
-                                <exclude>io/github/sagaraggarwal86/jmeter/listener/gui/AggregateReportPanel.class</exclude>
-                                <exclude>io/github/sagaraggarwal86/jmeter/listener/gui/AggregateReportPanel$*.class</exclude>
+                                <exclude>io/github/sagaraggarwal86/jmeter/listener/gui/AggregateReportPanel.class
+                                </exclude>
+                                <exclude>io/github/sagaraggarwal86/jmeter/listener/gui/AggregateReportPanel$*.class
+                                </exclude>
                                 <exclude>io/github/sagaraggarwal86/jmeter/listener/gui/ListenerGUI.class</exclude>
                                 <exclude>io/github/sagaraggarwal86/jmeter/listener/gui/ListenerGUI$*.class</exclude>
-                                <exclude>io/github/sagaraggarwal86/jmeter/listener/gui/ReportPanelBuilder.class</exclude>
-                                <exclude>io/github/sagaraggarwal86/jmeter/listener/gui/ReportPanelBuilder$*.class</exclude>
-                                <exclude>io/github/sagaraggarwal86/jmeter/listener/gui/FilePanelCustomizer.class</exclude>
+                                <exclude>io/github/sagaraggarwal86/jmeter/listener/gui/ReportPanelBuilder.class
+                                </exclude>
+                                <exclude>io/github/sagaraggarwal86/jmeter/listener/gui/ReportPanelBuilder$*.class
+                                </exclude>
+                                <exclude>io/github/sagaraggarwal86/jmeter/listener/gui/FilePanelCustomizer.class
+                                </exclude>
                                 <exclude>io/github/sagaraggarwal86/jmeter/listener/core/SlaRowRenderer.class</exclude>
                                 <exclude>io/github/sagaraggarwal86/jmeter/listener/gui/AiReportLauncher.class</exclude>
-                                <exclude>io/github/sagaraggarwal86/jmeter/listener/gui/AiReportLauncher$*.class</exclude>
+                                <exclude>io/github/sagaraggarwal86/jmeter/listener/gui/AiReportLauncher$*.class
+                                </exclude>
                                 <exclude>io/github/sagaraggarwal86/jmeter/ai/report/AiReportCoordinator.class</exclude>
-                                <exclude>io/github/sagaraggarwal86/jmeter/ai/report/AiReportCoordinator$*.class</exclude>
+                                <exclude>io/github/sagaraggarwal86/jmeter/ai/report/AiReportCoordinator$*.class
+                                </exclude>
                                 <!-- HTML report rendering — requires live file system and full render pipeline -->
                                 <exclude>io/github/sagaraggarwal86/jmeter/ai/report/HtmlReportRenderer.class</exclude>
                                 <exclude>io/github/sagaraggarwal86/jmeter/ai/report/HtmlReportRenderer$*.class</exclude>
@@ -310,7 +317,8 @@
                                 <!-- Requires live JMeter properties files and runtime context -->
                                 <exclude>io/github/sagaraggarwal86/jmeter/parser/TimestampFormatResolver.class</exclude>
                                 <!-- Trivial exception wrapper — no executable logic to test -->
-                                <exclude>io/github/sagaraggarwal86/jmeter/ai/provider/AiProviderException.class</exclude>
+                                <exclude>io/github/sagaraggarwal86/jmeter/ai/provider/AiProviderException.class
+                                </exclude>
                             </excludes>
                         </configuration>
                     </execution>

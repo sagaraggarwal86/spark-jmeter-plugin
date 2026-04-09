@@ -8,7 +8,9 @@
       "Bash(sed:*)",
       "Bash(git:*)",
       "Bash(cp \"F:/Projects/BPM-jmeter-plugin/src/main/resources/chart.umd.min.js\" \"F:/Projects/JAAR-jmeter-plugin/src/main/resources/chart.umd.min.js\")",
-      "Bash(cp \"F:/Projects/BPM-jmeter-plugin/src/main/resources/xlsx-style.bundle.js\" \"F:/Projects/JAAR-jmeter-plugin/src/main/resources/xlsx-style.bundle.js\")"
+      "Bash(cp \"F:/Projects/BPM-jmeter-plugin/src/main/resources/xlsx-style.bundle.js\" \"F:/Projects/JAAR-jmeter-plugin/src/main/resources/xlsx-style.bundle.js\")",
+      "Bash(cd /f)",
+      "Bash(find \"Projects/JAAR-jmeter-plugin/src/test\" -name \"*.java\" -exec grep -l \"unused\\\\|@Deprecated\" {} \\\\;)"
     ]
   }
 }
