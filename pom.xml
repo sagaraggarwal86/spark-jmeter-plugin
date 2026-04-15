@@ -6,7 +6,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>io.github.sagaraggarwal86</groupId>
     <artifactId>jaar-jmeter-plugin</artifactId>
-    <version>5.0.1</version>
+    <version>6.0.0</version>
     <packaging>jar</packaging>
     <name>JAAR — JTL AI Analysis &amp; Reporting</name>
     <description>JAAR is an AI-powered JMeter listener plugin that analyzes load test results and generates intelligent
@@ -57,7 +57,7 @@
             <dependency>
                 <groupId>com.fasterxml.jackson.core</groupId>
                 <artifactId>jackson-core</artifactId>
-                <version>2.21.1</version>
+                <version>2.21.2</version>
             </dependency>
             <dependency>
                 <groupId>com.thoughtworks.xstream</groupId>
@@ -72,7 +72,7 @@
             <dependency>
                 <groupId>org.apache.logging.log4j</groupId>
                 <artifactId>log4j-core</artifactId>
-                <version>2.25.3</version>
+                <version>2.25.4</version>
             </dependency>
             <dependency>
                 <groupId>org.apache.xmlgraphics</groupId>
@@ -196,7 +196,7 @@
         <dependency>
             <groupId>org.commonmark</groupId>
             <artifactId>commonmark</artifactId>
-            <version>0.27.1</version>
+            <version>0.28.0</version>
         </dependency>
 
         <dependency>
@@ -224,7 +224,7 @@
                 <artifactId>exec-maven-plugin</artifactId>
                 <version>3.6.3</version>
                 <configuration>
-                    <mainClass>com.personal.jmeter.UIPreview</mainClass>
+                    <mainClass>io.github.sagaraggarwal86.jmeter.UIPreview</mainClass>
                     <classpathScope>test</classpathScope>
                 </configuration>
             </plugin>
@@ -278,39 +278,47 @@
                             <excludes>
                                 <!-- Swing GUI classes require a display — excluded
                                      until a headless GUI-test strategy is in place -->
-                                <exclude>com/personal/jmeter/listener/gui/AggregateReportPanel.class</exclude>
-                                <exclude>com/personal/jmeter/listener/gui/AggregateReportPanel$*.class</exclude>
-                                <exclude>com/personal/jmeter/listener/gui/ListenerGUI.class</exclude>
-                                <exclude>com/personal/jmeter/listener/gui/ListenerGUI$*.class</exclude>
-                                <exclude>com/personal/jmeter/listener/gui/ReportPanelBuilder.class</exclude>
-                                <exclude>com/personal/jmeter/listener/gui/ReportPanelBuilder$*.class</exclude>
-                                <exclude>com/personal/jmeter/listener/gui/FilePanelCustomizer.class</exclude>
-                                <exclude>com/personal/jmeter/listener/core/SlaRowRenderer.class</exclude>
-                                <exclude>com/personal/jmeter/listener/gui/AiReportLauncher.class</exclude>
-                                <exclude>com/personal/jmeter/listener/gui/AiReportLauncher$*.class</exclude>
-                                <exclude>com/personal/jmeter/ai/report/AiReportCoordinator.class</exclude>
-                                <exclude>com/personal/jmeter/ai/report/AiReportCoordinator$*.class</exclude>
+                                <exclude>io/github/sagaraggarwal86/jmeter/listener/gui/AggregateReportPanel.class
+                                </exclude>
+                                <exclude>io/github/sagaraggarwal86/jmeter/listener/gui/AggregateReportPanel$*.class
+                                </exclude>
+                                <exclude>io/github/sagaraggarwal86/jmeter/listener/gui/ListenerGUI.class</exclude>
+                                <exclude>io/github/sagaraggarwal86/jmeter/listener/gui/ListenerGUI$*.class</exclude>
+                                <exclude>io/github/sagaraggarwal86/jmeter/listener/gui/ReportPanelBuilder.class
+                                </exclude>
+                                <exclude>io/github/sagaraggarwal86/jmeter/listener/gui/ReportPanelBuilder$*.class
+                                </exclude>
+                                <exclude>io/github/sagaraggarwal86/jmeter/listener/gui/FilePanelCustomizer.class
+                                </exclude>
+                                <exclude>io/github/sagaraggarwal86/jmeter/listener/core/SlaRowRenderer.class</exclude>
+                                <exclude>io/github/sagaraggarwal86/jmeter/listener/gui/AiReportLauncher.class</exclude>
+                                <exclude>io/github/sagaraggarwal86/jmeter/listener/gui/AiReportLauncher$*.class
+                                </exclude>
+                                <exclude>io/github/sagaraggarwal86/jmeter/ai/report/AiReportCoordinator.class</exclude>
+                                <exclude>io/github/sagaraggarwal86/jmeter/ai/report/AiReportCoordinator$*.class
+                                </exclude>
                                 <!-- HTML report rendering — requires live file system and full render pipeline -->
-                                <exclude>com/personal/jmeter/ai/report/HtmlReportRenderer.class</exclude>
-                                <exclude>com/personal/jmeter/ai/report/HtmlReportRenderer$*.class</exclude>
+                                <exclude>io/github/sagaraggarwal86/jmeter/ai/report/HtmlReportRenderer.class</exclude>
+                                <exclude>io/github/sagaraggarwal86/jmeter/ai/report/HtmlReportRenderer$*.class</exclude>
                                 <!-- Swing/JMeter boilerplate — no testable logic -->
-                                <exclude>com/personal/jmeter/listener/gui/ListenerCollector.class</exclude>
-                                <exclude>com/personal/jmeter/listener/gui/SimpleDocListener.class</exclude>
+                                <exclude>io/github/sagaraggarwal86/jmeter/listener/gui/ListenerCollector.class</exclude>
+                                <exclude>io/github/sagaraggarwal86/jmeter/listener/gui/SimpleDocListener.class</exclude>
                                 <!-- Constants-only class — no executable logic -->
-                                <exclude>com/personal/jmeter/listener/core/ColumnIndex.class</exclude>
+                                <exclude>io/github/sagaraggarwal86/jmeter/listener/core/ColumnIndex.class</exclude>
                                 <!-- Live-network classes — require real AI provider endpoints -->
                                 <!-- CHANGED: AiReportService removed from exclusions; extractAndValidateContent is unit-tested in AiReportServiceTest -->
-                                <exclude>com/personal/jmeter/ai/provider/AiProviderRegistry.class</exclude>
-                                <exclude>com/personal/jmeter/ai/provider/SharedHttpClient.class</exclude>
+                                <exclude>io/github/sagaraggarwal86/jmeter/ai/provider/AiProviderRegistry.class</exclude>
+                                <exclude>io/github/sagaraggarwal86/jmeter/ai/provider/SharedHttpClient.class</exclude>
                                 <!-- CLI pipeline — requires live API + full JMeter runtime -->
-                                <exclude>com/personal/jmeter/cli/CliReportPipeline.class</exclude>
-                                <exclude>com/personal/jmeter/cli/CliReportPipeline$*.class</exclude>
+                                <exclude>io/github/sagaraggarwal86/jmeter/cli/CliReportPipeline.class</exclude>
+                                <exclude>io/github/sagaraggarwal86/jmeter/cli/CliReportPipeline$*.class</exclude>
                                 <!-- Entry point — System.exit calls prevent unit testing -->
-                                <exclude>com/personal/jmeter/cli/Main.class</exclude>
+                                <exclude>io/github/sagaraggarwal86/jmeter/cli/Main.class</exclude>
                                 <!-- Requires live JMeter properties files and runtime context -->
-                                <exclude>com/personal/jmeter/parser/TimestampFormatResolver.class</exclude>
+                                <exclude>io/github/sagaraggarwal86/jmeter/parser/TimestampFormatResolver.class</exclude>
                                 <!-- Trivial exception wrapper — no executable logic to test -->
-                                <exclude>com/personal/jmeter/ai/provider/AiProviderException.class</exclude>
+                                <exclude>io/github/sagaraggarwal86/jmeter/ai/provider/AiProviderException.class
+                                </exclude>
                             </excludes>
                         </configuration>
                     </execution>
