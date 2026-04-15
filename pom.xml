@@ -92,7 +92,7 @@
             <dependency>
                 <groupId>com.jayway.jsonpath</groupId>
                 <artifactId>json-path</artifactId>
-                <version>2.9.0</version>
+                <version>3.0.0</version>
             </dependency>
             <dependency>
                 <groupId>net.minidev</groupId>
@@ -202,7 +202,7 @@
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>
-            <version>5.11.3</version> <!-- CHANGED: 6.0.3 was pre-release; pinned to latest stable 5.x -->
+            <version>6.0.3</version> <!-- CHANGED: 6.0.3 was pre-release; pinned to latest stable 5.x -->
             <scope>test</scope>
         </dependency>
 
