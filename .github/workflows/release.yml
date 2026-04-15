@@ -31,14 +31,21 @@ jobs:
           MAVEN_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
           MAVEN_GPG_PASSPHRASE: ${{ secrets.MAVEN_GPG_PASSPHRASE }}
 
+      - name: Package release assets
+        run: |
+          VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)
+          STAGE_DIR="jaar-jmeter-plugin-${VERSION}"
+          mkdir -p "${STAGE_DIR}"
+          cp target/jaar-jmeter-plugin-*.jar "${STAGE_DIR}/"
+          cp src/main/scripts/jaar-cli-report.bat "${STAGE_DIR}/"
+          cp src/main/scripts/jaar-cli-report.sh "${STAGE_DIR}/"
+          cp docs/ai-reporter.properties "${STAGE_DIR}/"
+          zip -r "jaar-jmeter-plugin-${VERSION}.zip" "${STAGE_DIR}"
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: |
-            target/jaar-jmeter-plugin-*.jar
-            src/main/scripts/jaar-cli-report.bat
-            src/main/scripts/jaar-cli-report.sh
-            docs/ai-reporter.properties
+          files: jaar-jmeter-plugin-*.zip
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
