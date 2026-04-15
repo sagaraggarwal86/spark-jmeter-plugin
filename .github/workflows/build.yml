@@ -32,6 +32,11 @@ jobs:
             src/main/scripts/jaar-cli-report.bat
             src/main/scripts/jaar-cli-report.sh
       - uses: actions/upload-artifact@v4
+        if: always() && matrix.os == 'ubuntu-latest'
+        with:
+          name: test-reports
+          path: target/surefire-reports/
+      - uses: actions/upload-artifact@v4
         if: matrix.os == 'ubuntu-latest'
         with:
           name: coverage-report

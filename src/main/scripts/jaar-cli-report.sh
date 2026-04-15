@@ -26,4 +26,4 @@ fi
 CP="$JMETER_HOME/lib/ext/*:$JMETER_HOME/lib/*"
 
 # Launch CLI
-exec java -cp "$CP" com.personal.jmeter.cli.Main "$@"
+exec java -cp "$CP" io.github.sagaraggarwal86.jmeter.cli.Main "$@"
