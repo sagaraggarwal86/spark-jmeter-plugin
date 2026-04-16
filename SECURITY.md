@@ -39,7 +39,6 @@ JAAR is a **local-first** JMeter listener plugin. It does not open inbound socke
 
 1. **Do not** open a public GitHub issue.
 2. Use GitHub's [private vulnerability reporting](https://docs.github.com/en/code-security/security-advisories/guidance-on-reporting-and-writing-information-about-vulnerabilities/privately-reporting-a-security-vulnerability) on this repository, or email **sagarhoney.aggarwal@gmail.com** with a description, reproduction steps, and potential impact.
-3. Acknowledgment within 72 hours. Fix prioritised by severity.
 
 ## Dependencies
 
