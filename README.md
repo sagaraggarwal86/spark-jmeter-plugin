@@ -1,5 +1,9 @@
 # JAAR — JTL AI Analysis & Reporting
 
+[![Release](https://img.shields.io/github/v/release/sagaraggarwal86/jaar-jmeter-plugin?label=release&sort=semver&cacheSeconds=300)](https://github.com/sagaraggarwal86/jaar-jmeter-plugin/releases/latest)
+[![Maven Central](https://img.shields.io/maven-central/v/io.github.sagaraggarwal86/jaar-jmeter-plugin.svg?label=Maven%20Central&cacheSeconds=300)](https://central.sonatype.com/artifact/io.github.sagaraggarwal86/jaar-jmeter-plugin)
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
+
 A file-based Apache JMeter listener plugin for post-test JTL analysis. Load a JTL file and get
 a filterable aggregate table, CSV export, and an AI-generated HTML performance report — with zero
 runtime overhead.
@@ -18,8 +22,9 @@ runtime overhead.
 - [Local LLM Support](#local-llm-support)
 - [CLI Mode](#cli-mode)
 - [Large JTL Files](#large-jtl-files)
-- [Running Tests](#running-tests)
+- [Known Limitations](#known-limitations)
 - [Troubleshooting](#troubleshooting)
+- [Uninstall](#uninstall)
 - [Contributing](#contributing)
 - [License](#license)
 
@@ -52,8 +57,8 @@ runtime overhead.
 
 | Requirement   | Version                    |
 |---------------|----------------------------|
-| Java          | 17+                        |
-| Apache JMeter | 5.6.3+                     |
+| Java          | 17                         |
+| Apache JMeter | 5.6.3                      |
 | Maven         | 3.6+ *(build only)*        |
 | AI API key    | *(AI report feature only)* |
 
@@ -73,38 +78,24 @@ runtime overhead.
 
 3. Restart JMeter.
 
-4. *(Optional — CLI mode)* Copy the wrapper scripts to `<JMETER_HOME>/bin/`:
-   ```
-   <JMETER_HOME>/bin/jaar-cli-report.bat     (Windows)
-   <JMETER_HOME>/bin/jaar-cli-report.sh      (macOS / Linux)
-   ```
-   The scripts are in the `src/main/scripts/` directory of the source repository.
+4. *(Optional — CLI mode)* Copy the wrapper scripts from `src/main/scripts/` to
+   `<JMETER_HOME>/bin/jaar-cli-report.bat` (Windows) or `jaar-cli-report.sh` (macOS/Linux).
 
-5. *(Optional — AI report)* Copy the sample configuration file to `<JMETER_HOME>/bin/`:
-   ```
-   <JMETER_HOME>/bin/ai-reporter.properties
-   ```
-   A sample file with all supported options is provided at
-   [docs/ai-reporter.properties](docs/ai-reporter.properties).
-   Set at least one provider's `api.key` to enable the AI report feature:
-   ```properties
-   ai.reporter.mistral.api.key=          ← Recommended (free, high limits)
-   ai.reporter.cerebras.api.key=
-   ai.reporter.gemini.api.key=
-   ai.reporter.openai.api.key=
-   ai.reporter.claude.api.key=
-   ```
+5. *(Optional — AI report)* See [API Key Setup](#api-key-setup) to enable AI generation.
 
 ### Build from Source
-
-**Prerequisites:** Java 17+, Maven 3.6+
 
 ```bash
 git clone https://github.com/sagaraggarwal86/jaar-jmeter-plugin.git
 cd jaar-jmeter-plugin
 mvn clean verify
-cp target/jaar-jmeter-plugin-*.jar $JMETER_HOME/lib/ext/
 ```
+
+Then copy the built JAR into `<JMETER_HOME>/lib/ext/`:
+
+- **Linux / macOS**: `cp target/jaar-jmeter-plugin-*.jar "$JMETER_HOME/lib/ext/"`
+- **Windows (PowerShell)**: `Copy-Item target\jaar-jmeter-plugin-*.jar "$env:JMETER_HOME\lib\ext\"`
+- **Windows (cmd)**: `copy target\jaar-jmeter-plugin-*.jar "%JMETER_HOME%\lib\ext\"`
 
 ---
 
@@ -238,8 +229,8 @@ and appends a notice identifying which sections were completed and which were no
 > To get a complete report, try regenerating or increase `max.tokens` for this provider in `ai-reporter.properties`.
 
 The plugin detects truncation via two signals — `finish_reason: "length"` and a fallback check of
-`usage.completion_tokens >= max_tokens`. The SLA verdict, classification, and transaction metrics
-are always accurate regardless of truncation — they are computed in Java, not by the AI.
+`usage.completion_tokens >= max_tokens`. Verdict, classification, and metrics remain accurate —
+see [Pre-Computed Analysis](#pre-computed-analysis).
 
 ### API Key Setup
 
@@ -310,14 +301,11 @@ cloud AI providers. No API key, no internet connection required after model down
    ai.reporter.ollama.api.key=ollama
    ai.reporter.ollama.model=qwen2.5:7b
    ai.reporter.ollama.base.url=http://localhost:11434/v1
-   ai.reporter.ollama.timeout.seconds=180
-   ai.reporter.ollama.max.tokens=8192
-   ai.reporter.ollama.temperature=0.3
    ```
+   On CPU-only machines, add `ai.reporter.ollama.timeout.seconds=180` — generation can take 1–3 minutes.
 
 4. Select **ollama** from the provider dropdown and click **Generate AI Report**.
 
-On CPU-only machines, set `timeout.seconds=180` or higher — generation can take 1–3 minutes.
 Ensure at least 8 GB RAM free before pulling a 7B model.
 
 ---
@@ -329,7 +317,7 @@ self-contained HTML report with tabbed navigation, charts, Excel export, and dar
 
 | Mode              | Required Args                                                 | Verdict Source                                                | HTML Report           |
 |-------------------|---------------------------------------------------------------|---------------------------------------------------------------|-----------------------|
-| **Analysis only** | `-i results.jtl`                                              | Workload classification (THROUGHPUT-BOUND, ERROR-BOUND, etc.) | Performance Report  |
+| **Analysis only** | `-i results.jtl`                                              | Workload classification (see table below)                     | Performance Report  |
 | **SLA only**      | `-i results.jtl --tps-sla 10`                                 | SLA threshold evaluation                                      | Performance Report  |
 | **AI only**       | `-i results.jtl --provider groq --config props`               | AI report + classification                                    | AI Performance Report |
 | **AI + SLA**      | `-i results.jtl --provider groq --config props --error-sla 5` | AI report + SLA evaluation                                    | AI Performance Report |
@@ -416,8 +404,8 @@ Help:
 
 When an AI provider fails — ping validation (429, 503, connection refused), timeout, HTTP error, or
 rate limit — the CLI automatically falls back to a **JMeter Performance Report** (data-only) instead of
-failing. The verdict, classification, SLA evaluation, metrics, and charts are all Java-computed and
-unaffected by the AI failure. The exit code reflects the actual verdict (`0` = PASS, `1` = FAIL).
+failing. All analytical content is unaffected (see [Pre-Computed Analysis](#pre-computed-analysis)).
+The exit code reflects the actual verdict (`0` = PASS, `1` = FAIL).
 
 ```
 [CLI] Validating API key and pinging Nvidia (Free)...
@@ -447,33 +435,22 @@ classification engine to derive a verdict:
 When running without an AI provider (Analysis-only or SLA-only), the CLI generates a **JMeter Performance Report**
 with these tabbed sections:
 
-| Tab                     | Content                                        | Source                                     |
-|-------------------------|------------------------------------------------|--------------------------------------------|
-| Transaction Metrics     | Sortable, searchable table with SLA columns    | `TablePopulator`                           |
-| Workload Classification | Classification badge, reasoning, key metrics   | `PromptBuilder` classification engine      |
-| SLA Evaluation          | SLA verdict panel with threshold details       | `SlaEvaluator` (only when SLAs configured) |
-| Slowest Endpoints       | Top 5 transactions by response time            | Sorted from metrics table                  |
-| Error Analysis          | Error breakdown by status code                 | `JTLParser` error maps                     |
-| Network & Server Timing | Latency, connect, server processing KPIs       | JTL latency fields (when present)          |
-| Performance Charts      | TPS, RT, Error %, KB/s time-series charts      | `JTLParser` time buckets                   |
+| Tab                     | Content                                        | When shown                       |
+|-------------------------|------------------------------------------------|----------------------------------|
+| Transaction Metrics     | Sortable, searchable table with SLA columns    | Always                           |
+| Workload Classification | Classification badge, reasoning, key metrics   | Always                           |
+| SLA Evaluation          | SLA verdict panel with threshold details       | Only when any SLA is configured  |
+| Slowest Endpoints       | Top 5 transactions by response time            | When table has rows              |
+| Error Analysis          | Error breakdown by status code                 | Only when errors are present     |
+| Network & Server Timing | Latency, connect, server processing KPIs       | Only when JTL has latency fields |
+| Performance Charts      | TPS, RT, Error %, KB/s time-series charts      | Always                           |
 
 Test metadata (scenario name, users, duration, etc.) is shown in the always-visible report header.
-
-The report uses the same CSS, Chart.js, Excel export, and dark mode as the AI report — but with
-zero AI dependency. The AI report path (`renderToFile` / `buildPage`) is completely untouched.
+Same CSS, Chart.js, Excel export, and dark mode as the AI report — with zero AI dependency.
 
 ### CI/CD Pipeline Example
 
 ```bash
-# Minimal — classification-based gate (no AI key needed)
-./jaar-cli-report.sh -i results.jtl
-EXIT_CODE=$?
-if [ $EXIT_CODE -eq 1 ]; then
-  echo "Performance gate FAILED (workload classified as unhealthy)"
-  exit 1
-fi
-
-# Full — AI + SLA gate
 ./jaar-cli-report.sh \
   -i results.jtl -o report.html \
   --provider mistral --config /etc/jmeter/ai-reporter.properties \
@@ -481,11 +458,7 @@ fi
   --scenario-name "Nightly Load Test" --virtual-users 200 \
   --tps-sla 10 --error-sla 5 --rt-sla 2000 --rt-metric percentile
 
-EXIT_CODE=$?
-if [ $EXIT_CODE -eq 1 ]; then
-  echo "Performance gate FAILED"
-  exit 1
-fi
+[ $? -eq 1 ] && { echo "Performance gate FAILED"; exit 1; }
 ```
 
 On success, two lines are printed to stdout:
@@ -529,15 +502,13 @@ java -Xmx2g -jar jaar-jmeter-plugin-*.jar ...
 
 ---
 
-## Running Tests
+## Known Limitations
 
-```bash
-# Build and run all tests
-mvn clean verify
-
-# Unit tests only
-mvn test
-```
+- **JMeter 5.6.3 only** — plugin is built and tested exclusively against this version. Other versions may work but are untested.
+- **No live metric collection** — JAAR analyses completed JTL files; it does not stream samples in real time during a test run.
+- **AI report requires network** — all built-in providers are cloud-hosted. For offline use, see [Local LLM Support](#local-llm-support).
+- **GUI requires display** — the listener panel is Swing-based. Headless analysis is only available via [CLI Mode](#cli-mode).
+- **Provider token limits** — very large test runs can exceed a provider's `max_tokens`; the report shows a truncation banner when this happens.
 
 ---
 
@@ -601,6 +572,14 @@ See the [Large JTL Files](#large-jtl-files) section for JVM heap recommendations
 
 ---
 
+## Uninstall
+
+Remove the JAR from `<JMETER_HOME>/lib/ext/`. If you installed the CLI scripts and
+`ai-reporter.properties`, remove them from `<JMETER_HOME>/bin/` as well. Generated HTML reports
+are standalone files — delete them manually if no longer needed.
+
+---
+
 ## Contributing
 
 Bug reports and pull requests are welcome via
@@ -608,9 +587,13 @@ Bug reports and pull requests are welcome via
 
 Before submitting a pull request:
 
-- Run `mvn clean verify` and confirm all tests pass
+```bash
+mvn clean verify          # All tests must pass (JaCoCo ≥80% line coverage enforced)
+```
+
 - Test manually with JMeter 5.6.3 on your platform
 - Keep each pull request focused on a single change
+- See [CLAUDE.md](CLAUDE.md) for architecture, design decisions, and enforced invariants
 
 ---
 
