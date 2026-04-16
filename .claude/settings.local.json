@@ -11,7 +11,10 @@
       "Bash(cp \"F:/Projects/BPM-jmeter-plugin/src/main/resources/xlsx-style.bundle.js\" \"F:/Projects/JAAR-jmeter-plugin/src/main/resources/xlsx-style.bundle.js\")",
       "Bash(cd /f)",
       "Bash(find \"Projects/JAAR-jmeter-plugin/src/test\" -name \"*.java\" -exec grep -l \"unused\\\\|@Deprecated\" {} \\\\;)",
-      "Bash(mvn help:evaluate:*)"
+      "Bash(mvn help:evaluate:*)",
+      "Bash(awk END{print FILENAME\": \"NR} *)",
+      "Bash(cmd.exe *)",
+      "Bash(powershell.exe *)"
     ]
   }
 }

@@ -1,7 +1,5 @@
 package io.github.sagaraggarwal86.jmeter.ai.provider;
 
-import io.github.sagaraggarwal86.jmeter.cli.Main;
-
 import java.io.IOException;
 
 /**
@@ -9,9 +7,9 @@ import java.io.IOException;
  * API key fails structural validation, or a live ping is rejected.
  *
  * <p>Extends {@link IOException} so callers that declare {@code throws IOException}
- * need no signature change. Typed subclass allows {@link Main}
- * to map provider failures to {@code EXIT_AI_ERROR (3)} without string-matching
- * exception messages.</p>
+ * need no signature change. Typed subclass allows the CLI entry point
+ * ({@link io.github.sagaraggarwal86.jmeter.cli.Main}) to map provider failures
+ * to {@code EXIT_AI_ERROR (5)} without string-matching exception messages.</p>
  *
  * <p>Distinct from {@link AiServiceException}, which covers runtime API errors
  * (HTTP errors, empty responses, retry exhaustion) during report generation.
