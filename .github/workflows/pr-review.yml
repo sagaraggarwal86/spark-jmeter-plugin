@@ -64,7 +64,7 @@ jobs:
               ai.prompt -> parser
               report -> listener.core
               ai.provider -> ai.prompt
-              ai.report -> {ai.prompt, ai.provider, parser}
+              ai.report -> {{ai.prompt, ai.provider, parser}}
               Entry points cli and listener.gui may import any package.
           - JaCoCo 80% BUNDLE line coverage gate; flag new code without tests.
 
