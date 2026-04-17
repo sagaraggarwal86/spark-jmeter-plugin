@@ -83,8 +83,8 @@ class DelimiterResolverTest {
         @DisplayName("both commented out → default comma (example 1)")
         void bothCommentedOut() throws IOException {
             File home = writeBothProps(
-                    "#jmeter.save.saveservice.default_delimiter=|\n",
-                    "#jmeter.save.saveservice.default_delimiter=;\n");
+                "#jmeter.save.saveservice.default_delimiter=|\n",
+                "#jmeter.save.saveservice.default_delimiter=;\n");
             assertEquals(',', DelimiterResolver.resolve(home));
         }
 
@@ -92,8 +92,8 @@ class DelimiterResolverTest {
         @DisplayName("user.properties takes priority over jmeter.properties (example 2)")
         void userPriority() throws IOException {
             File home = writeBothProps(
-                    "jmeter.save.saveservice.default_delimiter=|\n",
-                    "jmeter.save.saveservice.default_delimiter=;\n");
+                "jmeter.save.saveservice.default_delimiter=|\n",
+                "jmeter.save.saveservice.default_delimiter=;\n");
             assertEquals(';', DelimiterResolver.resolve(home));
         }
 
@@ -101,8 +101,8 @@ class DelimiterResolverTest {
         @DisplayName("jmeter.properties active, user.properties commented → use jmeter (example 3)")
         void jmeterActiveUserCommented() throws IOException {
             File home = writeBothProps(
-                    "jmeter.save.saveservice.default_delimiter=|\n",
-                    "#jmeter.save.saveservice.default_delimiter=;\n");
+                "jmeter.save.saveservice.default_delimiter=|\n",
+                "#jmeter.save.saveservice.default_delimiter=;\n");
             assertEquals('|', DelimiterResolver.resolve(home));
         }
 
@@ -110,8 +110,8 @@ class DelimiterResolverTest {
         @DisplayName("jmeter.properties commented, user.properties active → use user (example 4)")
         void jmeterCommentedUserActive() throws IOException {
             File home = writeBothProps(
-                    "#jmeter.save.saveservice.default_delimiter=|\n",
-                    "jmeter.save.saveservice.default_delimiter=;\n");
+                "#jmeter.save.saveservice.default_delimiter=|\n",
+                "jmeter.save.saveservice.default_delimiter=;\n");
             assertEquals(';', DelimiterResolver.resolve(home));
         }
 
@@ -119,7 +119,7 @@ class DelimiterResolverTest {
         @DisplayName("only jmeter.properties present with active value")
         void onlyJmeterPresent() throws IOException {
             File home = writeProps("jmeter.properties",
-                    "jmeter.save.saveservice.default_delimiter=;\n");
+                "jmeter.save.saveservice.default_delimiter=;\n");
             assertEquals(';', DelimiterResolver.resolve(home));
         }
 
@@ -127,7 +127,7 @@ class DelimiterResolverTest {
         @DisplayName("only user.properties present with active value")
         void onlyUserPresent() throws IOException {
             File home = writeProps("user.properties",
-                    "jmeter.save.saveservice.default_delimiter=|\n");
+                "jmeter.save.saveservice.default_delimiter=|\n");
             assertEquals('|', DelimiterResolver.resolve(home));
         }
 
@@ -135,7 +135,7 @@ class DelimiterResolverTest {
         @DisplayName("tab delimiter via \\t escape")
         void tabDelimiter() throws IOException {
             File home = writeProps("jmeter.properties",
-                    "jmeter.save.saveservice.default_delimiter=\\t\n");
+                "jmeter.save.saveservice.default_delimiter=\\t\n");
             assertEquals('\t', DelimiterResolver.resolve(home));
         }
     }
@@ -164,77 +164,77 @@ class DelimiterResolverTest {
         @DisplayName("commented line → '\\0'")
         void commentedLine() {
             assertEquals('\0', DelimiterResolver.parseLine(
-                    "#jmeter.save.saveservice.default_delimiter=;"));
+                "#jmeter.save.saveservice.default_delimiter=;"));
         }
 
         @Test
         @DisplayName("comment with leading spaces → '\\0'")
         void commentWithSpaces() {
             assertEquals('\0', DelimiterResolver.parseLine(
-                    "  # jmeter.save.saveservice.default_delimiter=;"));
+                "  # jmeter.save.saveservice.default_delimiter=;"));
         }
 
         @Test
         @DisplayName("active semicolon → ';'")
         void activeSemicolon() {
             assertEquals(';', DelimiterResolver.parseLine(
-                    "jmeter.save.saveservice.default_delimiter=;"));
+                "jmeter.save.saveservice.default_delimiter=;"));
         }
 
         @Test
         @DisplayName("active pipe → '|'")
         void activePipe() {
             assertEquals('|', DelimiterResolver.parseLine(
-                    "jmeter.save.saveservice.default_delimiter=|"));
+                "jmeter.save.saveservice.default_delimiter=|"));
         }
 
         @Test
         @DisplayName("value with surrounding spaces → trimmed")
         void spacesAroundValue() {
             assertEquals(';', DelimiterResolver.parseLine(
-                    "jmeter.save.saveservice.default_delimiter = ; "));
+                "jmeter.save.saveservice.default_delimiter = ; "));
         }
 
         @Test
         @DisplayName("empty value after '=' → '\\0'")
         void emptyValue() {
             assertEquals('\0', DelimiterResolver.parseLine(
-                    "jmeter.save.saveservice.default_delimiter="));
+                "jmeter.save.saveservice.default_delimiter="));
         }
 
         @Test
         @DisplayName("no '=' sign → '\\0'")
         void noEquals() {
             assertEquals('\0', DelimiterResolver.parseLine(
-                    "jmeter.save.saveservice.default_delimiter"));
+                "jmeter.save.saveservice.default_delimiter"));
         }
 
         @Test
         @DisplayName("partial key match ignored → '\\0'")
         void partialKeyMatch() {
             assertEquals('\0', DelimiterResolver.parseLine(
-                    "jmeter.save.saveservice.default_delimiter_extra=;"));
+                "jmeter.save.saveservice.default_delimiter_extra=;"));
         }
 
         @Test
         @DisplayName("unrelated property → '\\0'")
         void unrelatedProperty() {
             assertEquals('\0', DelimiterResolver.parseLine(
-                    "jmeter.save.saveservice.output_format=csv"));
+                "jmeter.save.saveservice.output_format=csv"));
         }
 
         @Test
         @DisplayName("multi-character value → '\\0' (unsupported)")
         void multiCharValue() {
             assertEquals('\0', DelimiterResolver.parseLine(
-                    "jmeter.save.saveservice.default_delimiter=;;"));
+                "jmeter.save.saveservice.default_delimiter=;;"));
         }
 
         @Test
         @DisplayName("tab escape → '\\t'")
         void tabEscape() {
             assertEquals('\t', DelimiterResolver.parseLine(
-                    "jmeter.save.saveservice.default_delimiter=\\t"));
+                "jmeter.save.saveservice.default_delimiter=\\t"));
         }
     }
 
@@ -256,15 +256,15 @@ class DelimiterResolverTest {
         @DisplayName("non-existent file → '\\0'")
         void nonExistentFile() {
             assertEquals('\0', DelimiterResolver.readDelimiterFromFile(
-                    new File("/no/such/file.properties")));
+                new File("/no/such/file.properties")));
         }
 
         @Test
         @DisplayName("last occurrence wins when property appears multiple times")
         void lastOccurrenceWins() throws IOException {
             File home = writeProps("jmeter.properties",
-                    "jmeter.save.saveservice.default_delimiter=|\n"
-                            + "jmeter.save.saveservice.default_delimiter=;\n");
+                "jmeter.save.saveservice.default_delimiter=|\n"
+                    + "jmeter.save.saveservice.default_delimiter=;\n");
             Path file = home.toPath().resolve("bin/jmeter.properties");
             assertEquals(';', DelimiterResolver.readDelimiterFromFile(file.toFile()));
         }
@@ -273,8 +273,8 @@ class DelimiterResolverTest {
         @DisplayName("active entry after commented entry → active wins")
         void activeAfterCommented() throws IOException {
             File home = writeProps("jmeter.properties",
-                    "#jmeter.save.saveservice.default_delimiter=|\n"
-                            + "jmeter.save.saveservice.default_delimiter=;\n");
+                "#jmeter.save.saveservice.default_delimiter=|\n"
+                    + "jmeter.save.saveservice.default_delimiter=;\n");
             Path file = home.toPath().resolve("bin/jmeter.properties");
             assertEquals(';', DelimiterResolver.readDelimiterFromFile(file.toFile()));
         }
@@ -283,8 +283,8 @@ class DelimiterResolverTest {
         @DisplayName("file with only unrelated properties → '\\0'")
         void noMatchingProperty() throws IOException {
             File home = writeProps("jmeter.properties",
-                    "some.other.property=value\n"
-                            + "another.property=123\n");
+                "some.other.property=value\n"
+                    + "another.property=123\n");
             Path file = home.toPath().resolve("bin/jmeter.properties");
             assertEquals('\0', DelimiterResolver.readDelimiterFromFile(file.toFile()));
         }

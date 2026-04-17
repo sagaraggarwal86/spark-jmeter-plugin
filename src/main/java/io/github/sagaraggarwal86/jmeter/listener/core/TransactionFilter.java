@@ -30,7 +30,7 @@ public final class TransactionFilter {
      * Avoids recompiling the same pattern on every keystroke / table row.
      */
     private static final ConcurrentHashMap<String, Pattern> PATTERN_CACHE =
-            new ConcurrentHashMap<>();
+        new ConcurrentHashMap<>();
 
     private TransactionFilter() {
     }

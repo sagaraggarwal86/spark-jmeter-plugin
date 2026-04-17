@@ -30,17 +30,17 @@ public final class TablePopulator {
      * Uses {@link ThreadLocal} because {@link DecimalFormat} is not thread-safe.
      */
     private static final ThreadLocal<DecimalFormat> FORMAT_INTEGER =
-            ThreadLocal.withInitial(() -> new DecimalFormat("#"));
+        ThreadLocal.withInitial(() -> new DecimalFormat("#"));
     /**
      * Thread-safe DecimalFormat for one decimal place (std deviation).
      */
     private static final ThreadLocal<DecimalFormat> FORMAT_ONE_DP =
-            ThreadLocal.withInitial(() -> new DecimalFormat("0.0"));
+        ThreadLocal.withInitial(() -> new DecimalFormat("0.0"));
     /**
      * Thread-safe DecimalFormat for two decimal places (error rate).
      */
     private static final ThreadLocal<DecimalFormat> FORMAT_TWO_DP =
-            ThreadLocal.withInitial(() -> new DecimalFormat("0.00"));
+        ThreadLocal.withInitial(() -> new DecimalFormat("0.00"));
 
     private final DefaultTableModel tableModel;
     private final JTable resultsTable;
@@ -89,19 +89,19 @@ public final class TablePopulator {
         long total = calc.getCount();
         long failed = Math.min(Math.round(calc.getErrorPercentage() * total), total);
         return new String[]{
-                calc.getLabel(),
-                String.valueOf(total),
-                String.valueOf(total - failed),
-                String.valueOf(failed),
-                FORMAT_INTEGER.get().format(calc.getMean()),
-                String.valueOf(calc.getMin().intValue()),
-                String.valueOf(calc.getMax().intValue()),
-                FORMAT_INTEGER.get().format(calc.getPercentPoint(pFraction).doubleValue()),
-                FORMAT_ONE_DP.get().format(calc.getStandardDeviation()),
-                FORMAT_TWO_DP.get().format(calc.getErrorPercentage() * 100.0) + "%",
-                String.format("%.2f/sec", calc.getRate()),
-                FORMAT_TWO_DP.get().format(calc.getKBPerSecond()),
-                FORMAT_ONE_DP.get().format(calc.getAvgPageBytes())
+            calc.getLabel(),
+            String.valueOf(total),
+            String.valueOf(total - failed),
+            String.valueOf(failed),
+            FORMAT_INTEGER.get().format(calc.getMean()),
+            String.valueOf(calc.getMin().intValue()),
+            String.valueOf(calc.getMax().intValue()),
+            FORMAT_INTEGER.get().format(calc.getPercentPoint(pFraction).doubleValue()),
+            FORMAT_ONE_DP.get().format(calc.getStandardDeviation()),
+            FORMAT_TWO_DP.get().format(calc.getErrorPercentage() * 100.0) + "%",
+            String.format("%.2f/sec", calc.getRate()),
+            FORMAT_TWO_DP.get().format(calc.getKBPerSecond()),
+            FORMAT_ONE_DP.get().format(calc.getAvgPageBytes())
         };
     }
 
@@ -173,11 +173,11 @@ public final class TablePopulator {
     private Object[] buildRow(SamplingStatCalculator calc, double pFraction) {
         String[] s = buildRowAsStrings(calc, pFraction);
         return new Object[]{
-                s[0],
-                Long.parseLong(s[1]),   // Count  — kept numeric for table sorting
-                Long.parseLong(s[2]),   // Passed
-                Long.parseLong(s[3]),   // Failed
-                s[4], s[5], s[6], s[7], s[8], s[9], s[10], s[11], s[12]
+            s[0],
+            Long.parseLong(s[1]),   // Count  — kept numeric for table sorting
+            Long.parseLong(s[2]),   // Passed
+            Long.parseLong(s[3]),   // Failed
+            s[4], s[5], s[6], s[7], s[8], s[9], s[10], s[11], s[12]
         };
     }
 

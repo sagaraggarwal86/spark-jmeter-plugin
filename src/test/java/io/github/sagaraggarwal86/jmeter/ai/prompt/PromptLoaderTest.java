@@ -34,14 +34,14 @@ class PromptLoaderTest {
         @DisplayName("RESOURCE_PATH starts with /")
         void resourcePathStartsWithSlash() {
             assertTrue(PromptLoader.RESOURCE_PATH.startsWith("/"),
-                    "RESOURCE_PATH must be an absolute classpath resource");
+                "RESOURCE_PATH must be an absolute classpath resource");
         }
 
         @Test
         @DisplayName("RESOURCE_PATH ends with PROMPT_FILE_NAME")
         void resourcePathEndsWithFileName() {
             assertTrue(PromptLoader.RESOURCE_PATH.endsWith(PromptLoader.PROMPT_FILE_NAME),
-                    "RESOURCE_PATH must end with PROMPT_FILE_NAME");
+                "RESOURCE_PATH must end with PROMPT_FILE_NAME");
         }
     }
 
@@ -58,7 +58,7 @@ class PromptLoaderTest {
         void loadReturnsNonNull() {
             String result = PromptLoader.load();
             assertNotNull(result,
-                    "load() must return non-null — bundled ai-reporter-prompt.txt must be on classpath");
+                "load() must return non-null — bundled ai-reporter-prompt.txt must be on classpath");
         }
 
         @Test
@@ -67,7 +67,7 @@ class PromptLoaderTest {
             String result = PromptLoader.load();
             assertNotNull(result);
             assertFalse(result.isBlank(),
-                    "load() must return non-blank content from bundled prompt");
+                "load() must return non-blank content from bundled prompt");
         }
 
         @Test
@@ -78,7 +78,7 @@ class PromptLoaderTest {
             assertNotNull(first);
             assertNotNull(second);
             assertEquals(first, second,
-                    "load() must return identical content on each call");
+                "load() must return identical content on each call");
         }
 
         @Test
@@ -87,7 +87,7 @@ class PromptLoaderTest {
             String result = PromptLoader.load();
             assertNotNull(result);
             assertEquals(result, result.strip(),
-                    "load() result must be trimmed of leading/trailing whitespace");
+                "load() result must be trimmed of leading/trailing whitespace");
         }
     }
 }

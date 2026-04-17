@@ -78,7 +78,7 @@ public final class TimestampFormatResolver {
             return formatter;
         } catch (IllegalArgumentException e) {
             log.warn("resolve: invalid timestamp_format pattern '{}' — falling back to epoch ms. reason={}",
-                    format, e.getMessage());
+                format, e.getMessage());
             return null;
         }
     }
@@ -101,14 +101,14 @@ public final class TimestampFormatResolver {
         String fromUser = readFormatFromFile(userProps);
         if (fromUser != null) {
             log.info("resolveFormatString: timestamp_format='{}' from {}",
-                    fromUser, userProps.getAbsolutePath());
+                fromUser, userProps.getAbsolutePath());
             return fromUser;
         }
 
         String fromJmeter = readFormatFromFile(jmeterProps);
         if (fromJmeter != null) {
             log.info("resolveFormatString: timestamp_format='{}' from {}",
-                    fromJmeter, jmeterProps.getAbsolutePath());
+                fromJmeter, jmeterProps.getAbsolutePath());
         }
         return fromJmeter;
     }
@@ -128,12 +128,12 @@ public final class TimestampFormatResolver {
     static String readFormatFromFile(File file) {
         if (file == null || !file.isFile()) {
             log.debug("readFormatFromFile: file not found: {}",
-                    file != null ? file.getAbsolutePath() : "null");
+                file != null ? file.getAbsolutePath() : "null");
             return null;
         }
         String result = null;
         try (BufferedReader reader = new BufferedReader(
-                new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8))) {
+            new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8))) {
             String line;
             while ((line = reader.readLine()) != null) {
                 String parsed = parseLine(line);
@@ -143,7 +143,7 @@ public final class TimestampFormatResolver {
             }
         } catch (IOException e) {
             log.warn("readFormatFromFile: failed to read {}",
-                    file.getAbsolutePath(), e);
+                file.getAbsolutePath(), e);
             return null;
         }
         return result;

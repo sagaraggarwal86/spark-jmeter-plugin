@@ -96,7 +96,7 @@ public class AiReportCoordinator {
      * @throws IOException if the EDT invocation is interrupted
      */
     private static String promptForSavePath(String suggestedName, File startDir)
-            throws IOException {
+        throws IOException {
         final String[] result = {null};
         try {
             SwingUtilities.invokeAndWait(() -> {
@@ -136,8 +136,8 @@ public class AiReportCoordinator {
         String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
         // Strip parenthetical tier suffix — "Groq (Free)" → "Groq", "OpenAI (Paid)" → "OpenAI"
         String baseName = (providerDisplayName != null)
-                ? providerDisplayName.replaceAll("\\s*\\(.*\\)\\s*$", "").trim()
-                : "";
+            ? providerDisplayName.replaceAll("\\s*\\(.*\\)\\s*$", "").trim()
+            : "";
         String providerPart = sanitizeSegment(baseName);
         if (providerPart.isEmpty()) providerPart = "AI";
         return "JAAR_" + providerPart + "_Report_" + timestamp + ".html";
@@ -146,9 +146,9 @@ public class AiReportCoordinator {
     private static String sanitizeSegment(String raw) {
         if (raw == null || raw.isBlank()) return "";
         return raw.trim()
-                .replaceAll("[\\\\/:*?\"<>|\\s]+", "_")
-                .replaceAll("_+", "_")
-                .replaceAll("^_|_$", "");
+            .replaceAll("[\\\\/:*?\"<>|\\s]+", "_")
+            .replaceAll("_+", "_")
+            .replaceAll("^_|_$", "");
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -200,7 +200,7 @@ public class AiReportCoordinator {
                                AtomicBoolean cancelled) {
         try {
             setProgress(progressLabel, "Calling " + ctx.providerDisplayName
-                    + " (this may take up to " + ctx.providerConfig.timeoutSeconds + " seconds)...");
+                + " (this may take up to " + ctx.providerConfig.timeoutSeconds + " seconds)...");
             String markdown = aiService.generateReport(prompt);
 
             // Normalise section headings — inject any structurally missing headings
@@ -216,7 +216,7 @@ public class AiReportCoordinator {
             String verdict = MarkdownUtils.extractVerdict(markdown);
             String verdictSource = MarkdownUtils.verdictSource(markdown);
             log.info("executeReport: verdict={} source={} provider={}",
-                    verdict, verdictSource, ctx.providerConfig.providerKey);
+                verdict, verdictSource, ctx.providerConfig.providerKey);
             String strippedMarkdown = MarkdownUtils.stripVerdictLine(markdown);
 
             setProgress(progressLabel, "Rendering HTML report...");
@@ -230,14 +230,14 @@ public class AiReportCoordinator {
             // This forces a fresh live ping on the next attempt instead of hitting the stale
             // cached-success entry — which would otherwise bypass the ping indefinitely.
             if (ex instanceof AiServiceException
-                    && (ex.getMessage().contains("HTTP 401") || ex.getMessage().contains("HTTP 403"))) {
+                && (ex.getMessage().contains("HTTP 401") || ex.getMessage().contains("HTTP 403"))) {
                 log.warn("executeReport: auth failure from provider — evicting ping cache. provider={}",
-                        ctx.providerConfig.providerKey);
+                    ctx.providerConfig.providerKey);
                 AiProviderRegistry.evictPingCache(ctx.providerConfig);
             }
             if (cancelled.get()) {
                 log.info("executeReport: report generation interrupted by user cancellation. provider={}",
-                        ctx.providerConfig.providerKey);
+                    ctx.providerConfig.providerKey);
             } else {
                 log.error("executeReport: AI report generation failed. reason={}", ex.getMessage(), ex);
             }
@@ -245,22 +245,22 @@ public class AiReportCoordinator {
         } catch (RuntimeException ex) {
             if (cancelled.get()) {
                 log.info("executeReport: report generation interrupted by user cancellation (runtime). provider={}",
-                        ctx.providerConfig.providerKey);
+                    ctx.providerConfig.providerKey);
             } else {
                 log.error("executeReport: unexpected error during report generation. reason={}", ex.getMessage(), ex);
             }
             SwingUtilities.invokeLater(() -> onFailure(
-                    new IOException("Unexpected error during report generation. "
-                            + "Check the log for details. reason=" + ex.getMessage(), ex),
-                    progressDialog, triggerBtn, cancelled.get()));
+                new IOException("Unexpected error during report generation. "
+                    + "Check the log for details. reason=" + ex.getMessage(), ex),
+                progressDialog, triggerBtn, cancelled.get()));
         }
     }
 
     private String renderReport(ReportContext ctx, String markdown, String verdict) throws IOException {
         String suggestedName = deriveSuggestedFileName(ctx.providerDisplayName);
         File startDir = Path.of(ctx.jtlPath).toAbsolutePath().getParent() != null
-                ? Path.of(ctx.jtlPath).toAbsolutePath().getParent().toFile()
-                : new File(System.getProperty("user.dir"));
+            ? Path.of(ctx.jtlPath).toAbsolutePath().getParent().toFile()
+            : new File(System.getProperty("user.dir"));
 
         String outPath = promptForSavePath(suggestedName, startDir);
         if (outPath == null) {
@@ -283,8 +283,8 @@ public class AiReportCoordinator {
         triggerBtn.setEnabled(true);
         if (!cancelled) {
             JOptionPane.showMessageDialog(triggerBtn.getParent(),
-                    "Report generation failed:\n\n" + ex.getMessage(),
-                    "Error", JOptionPane.ERROR_MESSAGE);
+                "Report generation failed:\n\n" + ex.getMessage(),
+                "Error", JOptionPane.ERROR_MESSAGE);
         }
     }
 

@@ -27,7 +27,7 @@ public class ListenerCollector extends ResultCollector {
      * GitHub repository URL — single source of truth for the help link.
      */
     public static final String HELP_URL =
-            "https://github.com/sagaraggarwal86/jaar-jmeter-plugin";
+        "https://github.com/sagaraggarwal86/jaar-jmeter-plugin";
     /**
      * JMeter property key for the start-offset filter (seconds).
      */

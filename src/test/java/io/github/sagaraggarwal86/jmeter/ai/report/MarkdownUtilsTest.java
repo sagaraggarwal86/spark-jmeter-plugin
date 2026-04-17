@@ -174,14 +174,14 @@ class MarkdownUtilsTest {
         @DisplayName("VERDICT: at last non-blank line returns CANONICAL")
         void canonical_verdictAtEnd() {
             assertEquals("CANONICAL",
-                    MarkdownUtils.verdictSource("## Verdict\nAll SLAs met.\nVERDICT:PASS"));
+                MarkdownUtils.verdictSource("## Verdict\nAll SLAs met.\nVERDICT:PASS"));
         }
 
         @Test
         @DisplayName("VERDICT:FAIL at last non-blank line returns CANONICAL")
         void canonical_verdictFailAtEnd() {
             assertEquals("CANONICAL",
-                    MarkdownUtils.verdictSource("## Verdict\nSLA breached.\nVERDICT:FAIL"));
+                MarkdownUtils.verdictSource("## Verdict\nSLA breached.\nVERDICT:FAIL"));
         }
 
         @Test
@@ -202,7 +202,7 @@ class MarkdownUtilsTest {
         @DisplayName("neither token present returns UNDECISIVE")
         void undecisive_noTokens() {
             assertEquals("UNDECISIVE",
-                    MarkdownUtils.verdictSource("## Root Cause\nSome analysis cut off"));
+                MarkdownUtils.verdictSource("## Root Cause\nSome analysis cut off"));
         }
 
         @Test
@@ -261,7 +261,7 @@ class MarkdownUtilsTest {
             String result = MarkdownUtils.stripVerdictLine(md);
             assertFalse(result.contains("VERDICT:PASS"), "inline token must be removed");
             assertTrue(result.contains("PASS — SLA within the 10% threshold"),
-                    "verdict prose must be preserved");
+                "verdict prose must be preserved");
         }
 
         @Test

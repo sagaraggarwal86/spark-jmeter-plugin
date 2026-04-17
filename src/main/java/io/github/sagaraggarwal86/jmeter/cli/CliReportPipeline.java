@@ -58,13 +58,13 @@ final class CliReportPipeline {
         JTLParser.FilterOptions opts = buildFilterOptions();
         JTLParser.ParseResult result = new JTLParser().parse(args.inputFile(), opts);
         long totalSamples = result.results.containsKey(JTLParser.TOTAL_LABEL)
-                ? result.results.get(JTLParser.TOTAL_LABEL).getCount() : 0;
+            ? result.results.get(JTLParser.TOTAL_LABEL).getCount() : 0;
         progress("Parsed %d transaction types, %d total samples.",
-                Math.max(0, result.results.size() - 1), totalSamples);
+            Math.max(0, result.results.size() - 1), totalSamples);
         if (totalSamples == 0) {
             throw new JtlParseException(
-                    "No samples matched the filter criteria. Check --start-offset, --end-offset, "
-                            + "--search, and --exclude settings.");
+                "No samples matched the filter criteria. Check --start-offset, --end-offset, "
+                    + "--search, and --exclude settings.");
         }
 
         // Step 2 — Build table rows
@@ -73,10 +73,10 @@ final class CliReportPipeline {
 
         // Step 3 — Resolve shared time/user context (used by both prompt and render config)
         TimeContext timeCtx = new TimeContext(
-                result.formattedStartTime(),
-                result.formattedEndTime(),
-                result.formattedDuration(),
-                args.virtualUsers() > 0 ? String.valueOf(args.virtualUsers()) : "");
+            result.formattedStartTime(),
+            result.formattedEndTime(),
+            result.formattedDuration(),
+            args.virtualUsers() > 0 ? String.valueOf(args.virtualUsers()) : "");
 
         // ── Branch: SLA-only vs AI+SLA ──────────────────────────────
         if (!args.hasProvider()) {
@@ -100,11 +100,11 @@ final class CliReportPipeline {
         // ── Classification (always computed for data-only report) ─────────
         double pFraction = args.percentile() / 100.0;
         Map<String, Object> globalStats = PromptBuilder.buildGlobalStats(
-                result.results, args.percentile(), pFraction,
-                new PromptBuilder.LatencyContext(
-                        result.avgLatencyMs, result.avgConnectMs, result.latencyPresent));
+            result.results, args.percentile(), pFraction,
+            new PromptBuilder.LatencyContext(
+                result.avgLatencyMs, result.avgConnectMs, result.latencyPresent));
         Map<String, Object> classification = PromptBuilder.buildClassificationSummary(
-                globalStats, result.timeBuckets);
+            globalStats, result.timeBuckets);
 
         // ── SLA evaluation (only when thresholds configured) ─────────────
         String slaVerdictHtml = null;
@@ -113,17 +113,17 @@ final class CliReportPipeline {
         if (hasSla) {
             progress("SLA-only mode — no AI provider configured.");
             SlaEvaluator.SlaResult slaResult = SlaEvaluator.evaluate(
-                    tableRows, tpsSlaValue(), errorSlaValue(), rtSlaValue(), useAvg);
+                tableRows, tpsSlaValue(), errorSlaValue(), rtSlaValue(), useAvg);
             verdict = slaResult.verdict();
             slaVerdictHtml = SlaEvaluator.buildVerdictHtml(slaResult,
-                    tpsSlaValue(), errorSlaValue(), rtSlaValue(), useAvg, args.percentile())
-                    + DataReportBuilder.buildSlaBreachDetails(
-                    tableRows, tpsSlaValue(), errorSlaValue(), rtSlaValue(), rtMetricValue());
+                tpsSlaValue(), errorSlaValue(), rtSlaValue(), useAvg, args.percentile())
+                + DataReportBuilder.buildSlaBreachDetails(
+                tableRows, tpsSlaValue(), errorSlaValue(), rtSlaValue(), rtMetricValue());
             progress("SLA Verdict: %s", verdict);
         } else {
             progress("Analysis mode — classification-based verdict (no SLA, no AI).");
             Map<String, Object> verdictResult = PromptBuilder.buildOverallVerdictSummary(
-                    null, null, null, classification, globalStats);
+                null, null, null, classification, globalStats);
             verdict = String.valueOf(verdictResult.getOrDefault("verdict", "PASS"));
             progress("Verdict: %s (source: CLASSIFICATION)", verdict);
         }
@@ -136,12 +136,12 @@ final class CliReportPipeline {
         HtmlReportRenderer.RenderConfig config = buildRenderConfig(result, timeCtx, modeName);
 
         List<String[]> contentSections = DataReportBuilder.buildSections(
-                classification, globalStats, slaVerdictHtml,
-                tableRows, args.percentile(), rtMetricValue());
+            classification, globalStats, slaVerdictHtml,
+            tableRows, args.percentile(), rtMetricValue());
 
         progress("Rendering HTML report (%s)...", hasSla ? "SLA + classification" : "classification-based");
         String outputPath = new HtmlReportRenderer().renderDataReport(
-                args.outputFile(), config, tableRows, result.timeBuckets, verdict, contentSections);
+            args.outputFile(), config, tableRows, result.timeBuckets, verdict, contentSections);
         progress("Report saved to: " + outputPath);
         return new PipelineResult(outputPath, verdict);
     }
@@ -186,9 +186,9 @@ final class CliReportPipeline {
             aiElapsedMs = System.currentTimeMillis() - aiStart;
         } catch (IOException ex) {
             if (ex.getMessage() != null
-                    && (ex.getMessage().contains("HTTP 401") || ex.getMessage().contains("HTTP 403"))) {
+                && (ex.getMessage().contains("HTTP 401") || ex.getMessage().contains("HTTP 403"))) {
                 progress("Auth failure from provider — evicting ping cache for next run. provider=%s",
-                        provider.providerKey);
+                    provider.providerKey);
                 AiProviderRegistry.evictPingCache(provider);
             }
             // Fall back to data-only report — verdict is Java-computed, not AI-dependent
@@ -208,7 +208,7 @@ final class CliReportPipeline {
         progress("Rendering HTML report...");
         HtmlReportRenderer.RenderConfig config = buildRenderConfig(result, timeCtx, provider);
         String outputPath = new HtmlReportRenderer().renderToFile(
-                strippedMarkdown, args.outputFile(), config, tableRows, result.timeBuckets, verdict);
+            strippedMarkdown, args.outputFile(), config, tableRows, result.timeBuckets, verdict);
         progress("Report saved to: " + outputPath);
 
         return new PipelineResult(outputPath, verdict);
@@ -288,17 +288,17 @@ final class CliReportPipeline {
 
     private AiProviderConfig resolveProvider() throws IOException {
         List<AiProviderConfig> providers =
-                AiProviderRegistry.loadConfiguredProviders(Path.of(args.configFile()));
+            AiProviderRegistry.loadConfiguredProviders(Path.of(args.configFile()));
 
         return providers.stream()
-                .filter(p -> p.providerKey.equalsIgnoreCase(args.provider()))
-                .findFirst()
-                .orElseThrow(() -> new AiProviderException(
-                        "Provider '" + args.provider() + "' not found in " + args.configFile()
-                                + ".\nConfigured providers: "
-                                + (providers.isEmpty() ? "(none)"
-                                : String.join(", ", providers.stream()
-                                                    .map(p -> p.providerKey).toList()))));
+            .filter(p -> p.providerKey.equalsIgnoreCase(args.provider()))
+            .findFirst()
+            .orElseThrow(() -> new AiProviderException(
+                "Provider '" + args.provider() + "' not found in " + args.configFile()
+                    + ".\nConfigured providers: "
+                    + (providers.isEmpty() ? "(none)"
+                    : String.join(", ", providers.stream()
+                                        .map(p -> p.providerKey).toList()))));
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -309,35 +309,35 @@ final class CliReportPipeline {
                                              String systemPrompt,
                                              TimeContext timeCtx) {
         String slaErrorPct = args.hasErrorSla()
-                ? args.errorSla() + "%" : "Not configured";
+            ? args.errorSla() + "%" : "Not configured";
         String slaRtMs = args.hasRtSla()
-                ? args.rtSla() + " ms" : "Not configured";
+            ? args.rtSla() + " ms" : "Not configured";
         String slaRtMetric = "percentile".equals(args.rtMetric())
-                ? "P" + args.percentile() + " (ms)" : "Avg (ms)";
+            ? "P" + args.percentile() + " (ms)" : "Avg (ms)";
         String slaTps = args.hasTpsSla()
-                ? args.tpsSla() + "/sec" : "Not configured";
+            ? args.tpsSla() + "/sec" : "Not configured";
 
         PromptRequest request = new PromptRequest(
-                timeCtx.users(),
-                args.scenarioName(),
-                args.description(),
-                timeCtx.startTime(),
-                timeCtx.endTime(),
-                timeCtx.duration(),
-                "",  // threadGroupName — not available from CLI
-                args.percentile(),
-                slaErrorPct,
-                slaRtMs,
-                slaRtMetric,
-                slaTps);
+            timeCtx.users(),
+            args.scenarioName(),
+            args.description(),
+            timeCtx.startTime(),
+            timeCtx.endTime(),
+            timeCtx.duration(),
+            "",  // threadGroupName — not available from CLI
+            args.percentile(),
+            slaErrorPct,
+            slaRtMs,
+            slaRtMetric,
+            slaTps);
 
         PromptBuilder.LatencyContext latency = new PromptBuilder.LatencyContext(
-                result.avgLatencyMs, result.avgConnectMs, result.latencyPresent);
+            result.avgLatencyMs, result.avgConnectMs, result.latencyPresent);
 
         return new PromptBuilder(systemPrompt)
-                .build(result.results, args.percentile(), request,
-                        result.errorTypeSummary, latency,
-                        result.timeBuckets);
+            .build(result.results, args.percentile(), request,
+                result.errorTypeSummary, latency,
+                result.timeBuckets);
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -367,12 +367,12 @@ final class CliReportPipeline {
                                                               TimeContext timeCtx,
                                                               AiProviderConfig provider) {
         return new HtmlReportRenderer.RenderConfig(
-                timeCtx.users(), args.scenarioName(), args.description(),
-                "", timeCtx.startTime(), timeCtx.endTime(), timeCtx.duration(),
-                args.percentile(), provider.displayName,
-                tpsSlaValue(), errorSlaValue(), rtSlaValue(), rtMetricValue(),
-                result.errorTypeSummary,
-                result.avgLatencyMs, result.avgConnectMs, result.latencyPresent);
+            timeCtx.users(), args.scenarioName(), args.description(),
+            "", timeCtx.startTime(), timeCtx.endTime(), timeCtx.duration(),
+            args.percentile(), provider.displayName,
+            tpsSlaValue(), errorSlaValue(), rtSlaValue(), rtMetricValue(),
+            result.errorTypeSummary,
+            result.avgLatencyMs, result.avgConnectMs, result.latencyPresent);
     }
 
     /**
@@ -382,12 +382,12 @@ final class CliReportPipeline {
                                                               TimeContext timeCtx,
                                                               String modeName) {
         return new HtmlReportRenderer.RenderConfig(
-                timeCtx.users(), args.scenarioName(), args.description(),
-                "", timeCtx.startTime(), timeCtx.endTime(), timeCtx.duration(),
-                args.percentile(), modeName,
-                tpsSlaValue(), errorSlaValue(), rtSlaValue(), rtMetricValue(),
-                result.errorTypeSummary,
-                result.avgLatencyMs, result.avgConnectMs, result.latencyPresent);
+            timeCtx.users(), args.scenarioName(), args.description(),
+            "", timeCtx.startTime(), timeCtx.endTime(), timeCtx.duration(),
+            args.percentile(), modeName,
+            tpsSlaValue(), errorSlaValue(), rtSlaValue(), rtMetricValue(),
+            result.errorTypeSummary,
+            result.avgLatencyMs, result.avgConnectMs, result.latencyPresent);
     }
 
 

@@ -44,8 +44,8 @@ class SlaRowRendererTest {
         table = new JTable(model);
         currentSla = new SlaConfig[]{SlaConfig.disabled(90)};
         renderer = new SlaRowRenderer(
-                () -> currentSla[0],
-                TPS_COL, ERROR_RATE_COL, AVG_COL, PNN_COL, NAME_COL);
+            () -> currentSla[0],
+            TPS_COL, ERROR_RATE_COL, AVG_COL, PNN_COL, NAME_COL);
         table.setDefaultRenderer(Object.class, renderer);
     }
 
@@ -54,7 +54,7 @@ class SlaRowRendererTest {
      */
     private void addRow(String name, String avg, String p90, String errorRate) {
         model.addRow(new Object[]{name, 100L, 95L, 5L, avg, "10", "500", p90,
-                "50.0", errorRate, "10.0/sec", "5.00", "512.0"});
+            "50.0", errorRate, "10.0/sec", "5.00", "512.0"});
     }
 
     /**
@@ -62,17 +62,17 @@ class SlaRowRendererTest {
      */
     private Component render(int row, int col) {
         return renderer.getTableCellRendererComponent(
-                table, model.getValueAt(row, col), false, false, row, col);
+            table, model.getValueAt(row, col), false, false, row, col);
     }
 
     private boolean isBreachHighlighted(Component c) {
         return c.getForeground().equals(Color.RED)
-                && c.getFont().isBold();
+            && c.getFont().isBold();
     }
 
     private boolean isNormalStyle(Component c) {
         return !c.getForeground().equals(Color.RED)
-                && !c.getFont().isBold();
+            && !c.getFont().isBold();
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -231,7 +231,7 @@ class SlaRowRendererTest {
         void totalErrorRateNeverHighlighted() {
             currentSla[0] = SlaConfig.from("", "5", "", SlaConfig.RtMetric.PNN, 90);
             model.addRow(new Object[]{"TOTAL", 100L, 90L, 10L, "200", "10", "500", "300",
-                    "50.0", "10.00%", "10.0/sec", "5.00", "512.0"});
+                "50.0", "10.00%", "10.0/sec", "5.00", "512.0"});
             assertTrue(isNormalStyle(render(0, ERROR_RATE_COL)));
         }
 
@@ -240,7 +240,7 @@ class SlaRowRendererTest {
         void totalRtNeverHighlighted() {
             currentSla[0] = SlaConfig.from("", "", "100", SlaConfig.RtMetric.PNN, 90);
             model.addRow(new Object[]{"TOTAL", 100L, 90L, 10L, "5000", "10", "500", "5000",
-                    "50.0", "1.00%", "10.0/sec", "5.00", "512.0"});
+                "50.0", "1.00%", "10.0/sec", "5.00", "512.0"});
             assertTrue(isNormalStyle(render(0, PNN_COL)));
         }
     }
@@ -259,7 +259,7 @@ class SlaRowRendererTest {
             currentSla[0] = SlaConfig.from("", "5", "", SlaConfig.RtMetric.PNN, 90);
             addRow("Login", "200", "300", "8.00%");
             Component c = renderer.getTableCellRendererComponent(
-                    table, model.getValueAt(0, ERROR_RATE_COL), true, false, 0, ERROR_RATE_COL);
+                table, model.getValueAt(0, ERROR_RATE_COL), true, false, 0, ERROR_RATE_COL);
             // When selected, renderer returns early before applying breach colour
             assertFalse(c.getForeground().equals(Color.RED) && c.getFont().isBold());
         }
@@ -278,7 +278,7 @@ class SlaRowRendererTest {
         void nullCellNoThrow() {
             currentSla[0] = SlaConfig.from("", "5", "2000", SlaConfig.RtMetric.PNN, 90);
             model.addRow(new Object[]{"Login", 100L, 95L, 5L, null, "10", "500", null,
-                    "50.0", null, "10.0/sec", "5.00", "512.0"});
+                "50.0", null, "10.0/sec", "5.00", "512.0"});
             assertDoesNotThrow(() -> render(0, ERROR_RATE_COL));
             assertDoesNotThrow(() -> render(0, PNN_COL));
         }
@@ -288,7 +288,7 @@ class SlaRowRendererTest {
         void nonNumericNoThrow() {
             currentSla[0] = SlaConfig.from("", "5", "2000", SlaConfig.RtMetric.PNN, 90);
             model.addRow(new Object[]{"Login", 100L, 95L, 5L, "N/A", "10", "500", "N/A",
-                    "50.0", "N/A%", "10.0/sec", "5.00", "512.0"});
+                "50.0", "N/A%", "10.0/sec", "5.00", "512.0"});
             assertDoesNotThrow(() -> render(0, ERROR_RATE_COL));
             assertDoesNotThrow(() -> render(0, PNN_COL));
         }

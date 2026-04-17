@@ -23,18 +23,18 @@ import java.util.Objects;
  * @since 4.6.0
  */
 public record PromptRequest(
-        String users,
-        String scenarioName,
-        String scenarioDesc,
-        String startTime,
-        String endTime,
-        String duration,
-        String threadGroupName,
-        int configuredPercentile,
-        String errorSlaThresholdPct,
-        String rtSlaThresholdMs,
-        String rtSlaMetric,
-        String tpsSlaThresholdTps) {
+    String users,
+    String scenarioName,
+    String scenarioDesc,
+    String startTime,
+    String endTime,
+    String duration,
+    String threadGroupName,
+    int configuredPercentile,
+    String errorSlaThresholdPct,
+    String rtSlaThresholdMs,
+    String rtSlaMetric,
+    String tpsSlaThresholdTps) {
 
     private static final String NOT_CONFIGURED = "Not configured";
 
@@ -64,8 +64,8 @@ public record PromptRequest(
      */
     public static PromptRequest empty() {
         return new PromptRequest(
-                "", "", "", "", "", "", "",
-                90,
-                NOT_CONFIGURED, NOT_CONFIGURED, NOT_CONFIGURED, NOT_CONFIGURED);
+            "", "", "", "", "", "", "",
+            90,
+            NOT_CONFIGURED, NOT_CONFIGURED, NOT_CONFIGURED, NOT_CONFIGURED);
     }
 }

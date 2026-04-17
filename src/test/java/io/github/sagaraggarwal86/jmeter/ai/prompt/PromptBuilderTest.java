@@ -123,7 +123,7 @@ class PromptBuilderTest {
         @DisplayName("returns non-null PromptContent")
         void returnsNonNull() {
             PromptContent content = new PromptBuilder()
-                    .build(minimalResults(), 90, PromptRequest.empty(), java.util.Collections.emptyList(), PromptBuilder.LatencyContext.ABSENT);
+                .build(minimalResults(), 90, PromptRequest.empty(), java.util.Collections.emptyList(), PromptBuilder.LatencyContext.ABSENT);
             assertNotNull(content);
         }
 
@@ -131,18 +131,18 @@ class PromptBuilderTest {
         @DisplayName("system prompt is non-blank")
         void systemPromptNonBlank() {
             PromptContent content = new PromptBuilder()
-                    .build(minimalResults(), 90, PromptRequest.empty(), java.util.Collections.emptyList(), PromptBuilder.LatencyContext.ABSENT);
+                .build(minimalResults(), 90, PromptRequest.empty(), java.util.Collections.emptyList(), PromptBuilder.LatencyContext.ABSENT);
             assertFalse(content.systemPrompt().isBlank(),
-                    "systemPrompt must not be blank");
+                "systemPrompt must not be blank");
         }
 
         @Test
         @DisplayName("user message is non-blank")
         void userMessageNonBlank() {
             PromptContent content = new PromptBuilder()
-                    .build(minimalResults(), 90, PromptRequest.empty(), java.util.Collections.emptyList(), PromptBuilder.LatencyContext.ABSENT);
+                .build(minimalResults(), 90, PromptRequest.empty(), java.util.Collections.emptyList(), PromptBuilder.LatencyContext.ABSENT);
             assertFalse(content.userMessage().isBlank(),
-                    "userMessage must not be blank");
+                "userMessage must not be blank");
         }
 
         @Test
@@ -152,7 +152,7 @@ class PromptBuilderTest {
             String first = builder.build(minimalResults(), 90, PromptRequest.empty(), java.util.Collections.emptyList(), PromptBuilder.LatencyContext.ABSENT).systemPrompt();
             String second = builder.build(minimalResults(), 50, PromptRequest.empty(), java.util.Collections.emptyList(), PromptBuilder.LatencyContext.ABSENT).systemPrompt();
             assertEquals(first, second,
-                    "systemPrompt must be the static constant regardless of input");
+                "systemPrompt must be the static constant regardless of input");
         }
     }
 
@@ -169,10 +169,10 @@ class PromptBuilderTest {
         void embedsScenarioName() {
             PromptRequest req = new PromptRequest("50", "Checkout Flow", "", "", "", "", "", 90, "Not configured", "Not configured", "Not configured", "Not configured");
             String msg = new PromptBuilder()
-                    .build(minimalResults(), 90, req, java.util.Collections.emptyList(), PromptBuilder.LatencyContext.ABSENT)
-                    .userMessage();
+                .build(minimalResults(), 90, req, java.util.Collections.emptyList(), PromptBuilder.LatencyContext.ABSENT)
+                .userMessage();
             assertTrue(msg.contains("Checkout Flow"),
-                    "userMessage must contain the scenario name");
+                "userMessage must contain the scenario name");
         }
 
         @Test
@@ -180,30 +180,30 @@ class PromptBuilderTest {
         void embedsUserCount() {
             PromptRequest req = new PromptRequest("200", "", "", "", "", "", "", 90, "Not configured", "Not configured", "Not configured", "Not configured");
             String msg = new PromptBuilder()
-                    .build(minimalResults(), 90, req, java.util.Collections.emptyList(), PromptBuilder.LatencyContext.ABSENT)
-                    .userMessage();
+                .build(minimalResults(), 90, req, java.util.Collections.emptyList(), PromptBuilder.LatencyContext.ABSENT)
+                .userMessage();
             assertTrue(msg.contains("200"),
-                    "userMessage must contain the user count");
+                "userMessage must contain the user count");
         }
 
         @Test
         @DisplayName("user message contains globalStats JSON section")
         void containsGlobalStatsJson() {
             String msg = new PromptBuilder()
-                    .build(minimalResults(), 90, PromptRequest.empty(), java.util.Collections.emptyList(), PromptBuilder.LatencyContext.ABSENT)
-                    .userMessage();
+                .build(minimalResults(), 90, PromptRequest.empty(), java.util.Collections.emptyList(), PromptBuilder.LatencyContext.ABSENT)
+                .userMessage();
             assertTrue(msg.contains("globalStats"),
-                    "userMessage must include the globalStats JSON section");
+                "userMessage must include the globalStats JSON section");
         }
 
         @Test
         @DisplayName("blank PromptRequest fields render as 'Not provided'")
         void blankFieldsRenderAsNotProvided() {
             String msg = new PromptBuilder()
-                    .build(minimalResults(), 90, PromptRequest.empty(), java.util.Collections.emptyList(), PromptBuilder.LatencyContext.ABSENT)
-                    .userMessage();
+                .build(minimalResults(), 90, PromptRequest.empty(), java.util.Collections.emptyList(), PromptBuilder.LatencyContext.ABSENT)
+                .userMessage();
             assertTrue(msg.contains("Not provided"),
-                    "blank PromptRequest fields must appear as 'Not provided'");
+                "blank PromptRequest fields must appear as 'Not provided'");
         }
     }
 
@@ -219,7 +219,7 @@ class PromptBuilderTest {
         @DisplayName("empty results map (no TOTAL row) — returns valid PromptContent without throwing")
         void emptyResultsNoThrow() {
             assertDoesNotThrow(() ->
-                    new PromptBuilder().build(new LinkedHashMap<>(), 90, PromptRequest.empty(), java.util.Collections.emptyList(), PromptBuilder.LatencyContext.ABSENT));
+                new PromptBuilder().build(new LinkedHashMap<>(), 90, PromptRequest.empty(), java.util.Collections.emptyList(), PromptBuilder.LatencyContext.ABSENT));
         }
 
         @Test
@@ -237,25 +237,25 @@ class PromptBuilderTest {
             results.put("Search", search);
 
             String msg = new PromptBuilder()
-                    .build(results, 90, PromptRequest.empty(), java.util.Collections.emptyList(), PromptBuilder.LatencyContext.ABSENT)
-                    .userMessage();
+                .build(results, 90, PromptRequest.empty(), java.util.Collections.emptyList(), PromptBuilder.LatencyContext.ABSENT)
+                .userMessage();
 
             assertTrue(msg.contains("errorEndpoints"),
-                    "userMessage must include the errorEndpoints JSON section");
+                "userMessage must include the errorEndpoints JSON section");
         }
 
         @Test
         @DisplayName("build rejects null results with NullPointerException")
         void nullResultsThrows() {
             assertThrows(NullPointerException.class, () ->
-                    new PromptBuilder().build(null, 90, PromptRequest.empty(), java.util.Collections.emptyList(), PromptBuilder.LatencyContext.ABSENT));
+                new PromptBuilder().build(null, 90, PromptRequest.empty(), java.util.Collections.emptyList(), PromptBuilder.LatencyContext.ABSENT));
         }
 
         @Test
         @DisplayName("build rejects null PromptRequest with NullPointerException")
         void nullRequestThrows() {
             assertThrows(NullPointerException.class, () ->
-                    new PromptBuilder().build(minimalResults(), 90, null, java.util.Collections.emptyList(), PromptBuilder.LatencyContext.ABSENT));
+                new PromptBuilder().build(minimalResults(), 90, null, java.util.Collections.emptyList(), PromptBuilder.LatencyContext.ABSENT));
         }
     }
 
@@ -272,10 +272,10 @@ class PromptBuilderTest {
         void latencyPresentIncludesAvgLatency() {
             PromptBuilder.LatencyContext present = new PromptBuilder.LatencyContext(150L, 40L, true);
             String msg = new PromptBuilder()
-                    .build(minimalResults(), 90, PromptRequest.empty(), java.util.Collections.emptyList(), present)
-                    .userMessage();
+                .build(minimalResults(), 90, PromptRequest.empty(), java.util.Collections.emptyList(), present)
+                .userMessage();
             assertTrue(msg.contains("avgLatencyMs"),
-                    "userMessage must include avgLatencyMs when latencyPresent=true");
+                "userMessage must include avgLatencyMs when latencyPresent=true");
         }
 
         @Test
@@ -283,10 +283,10 @@ class PromptBuilderTest {
         void latencyPresentIncludesAvgConnect() {
             PromptBuilder.LatencyContext present = new PromptBuilder.LatencyContext(150L, 40L, true);
             String msg = new PromptBuilder()
-                    .build(minimalResults(), 90, PromptRequest.empty(), java.util.Collections.emptyList(), present)
-                    .userMessage();
+                .build(minimalResults(), 90, PromptRequest.empty(), java.util.Collections.emptyList(), present)
+                .userMessage();
             assertTrue(msg.contains("avgConnectMs"),
-                    "userMessage must include avgConnectMs when latencyPresent=true");
+                "userMessage must include avgConnectMs when latencyPresent=true");
         }
 
         @Test
@@ -294,20 +294,20 @@ class PromptBuilderTest {
         void latencyPresentFlagInJson() {
             PromptBuilder.LatencyContext present = new PromptBuilder.LatencyContext(100L, 50L, true);
             String msg = new PromptBuilder()
-                    .build(minimalResults(), 90, PromptRequest.empty(), java.util.Collections.emptyList(), present)
-                    .userMessage();
+                .build(minimalResults(), 90, PromptRequest.empty(), java.util.Collections.emptyList(), present)
+                .userMessage();
             assertTrue(msg.contains("\"latencyPresent\":true"),
-                    "userMessage JSON must contain latencyPresent: true");
+                "userMessage JSON must contain latencyPresent: true");
         }
 
         @Test
         @DisplayName("latencyPresent=false (ABSENT) — user message contains latencyPresent: false in JSON")
         void latencyAbsentFlagInJson() {
             String msg = new PromptBuilder()
-                    .build(minimalResults(), 90, PromptRequest.empty(), java.util.Collections.emptyList(), PromptBuilder.LatencyContext.ABSENT)
-                    .userMessage();
+                .build(minimalResults(), 90, PromptRequest.empty(), java.util.Collections.emptyList(), PromptBuilder.LatencyContext.ABSENT)
+                .userMessage();
             assertTrue(msg.contains("\"latencyPresent\":false"),
-                    "userMessage JSON must contain latencyPresent: false when ABSENT");
+                "userMessage JSON must contain latencyPresent: false when ABSENT");
         }
 
         @Test
@@ -315,12 +315,12 @@ class PromptBuilderTest {
         void latencyNumericValuesInJson() {
             PromptBuilder.LatencyContext ctx = new PromptBuilder.LatencyContext(225L, 75L, true);
             String msg = new PromptBuilder()
-                    .build(minimalResults(), 90, PromptRequest.empty(), java.util.Collections.emptyList(), ctx)
-                    .userMessage();
+                .build(minimalResults(), 90, PromptRequest.empty(), java.util.Collections.emptyList(), ctx)
+                .userMessage();
             assertTrue(msg.contains("\"avgLatencyMs\":225"),
-                    "userMessage JSON must contain the exact avgLatencyMs value");
+                "userMessage JSON must contain the exact avgLatencyMs value");
             assertTrue(msg.contains("\"avgConnectMs\":75"),
-                    "userMessage JSON must contain the exact avgConnectMs value");
+                "userMessage JSON must contain the exact avgConnectMs value");
         }
     }
 
@@ -332,39 +332,39 @@ class PromptBuilderTest {
         @DisplayName("user message contains mandatedHypothesisTargets key when errors present")
         void keyPresentWhenErrorsExist() {
             String msg = new PromptBuilder()
-                    .build(resultsWithErrorTransactions(3), 90,
-                            PromptRequest.empty(),
-                            java.util.Collections.emptyList(),
-                            PromptBuilder.LatencyContext.ABSENT)
-                    .userMessage();
+                .build(resultsWithErrorTransactions(3), 90,
+                    PromptRequest.empty(),
+                    java.util.Collections.emptyList(),
+                    PromptBuilder.LatencyContext.ABSENT)
+                .userMessage();
             assertTrue(msg.contains("mandatedHypothesisTargets"),
-                    "userMessage must include mandatedHypothesisTargets when error transactions exist");
+                "userMessage must include mandatedHypothesisTargets when error transactions exist");
         }
 
         @Test
         @DisplayName("user message contains mandatedHypothesisTargets key even when no errors")
         void keyPresentWhenNoErrors() {
             String msg = new PromptBuilder()
-                    .build(minimalResults(), 90,
-                            PromptRequest.empty(),
-                            java.util.Collections.emptyList(),
-                            PromptBuilder.LatencyContext.ABSENT)
-                    .userMessage();
+                .build(minimalResults(), 90,
+                    PromptRequest.empty(),
+                    java.util.Collections.emptyList(),
+                    PromptBuilder.LatencyContext.ABSENT)
+                .userMessage();
             assertTrue(msg.contains("mandatedHypothesisTargets"),
-                    "mandatedHypothesisTargets key must always be present (empty list when no errors)");
+                "mandatedHypothesisTargets key must always be present (empty list when no errors)");
         }
 
         @Test
         @DisplayName("transaction labels appear in mandatedHypothesisTargets when errors present")
         void transactionLabelsPresent() {
             String msg = new PromptBuilder()
-                    .build(resultsWithErrorTransactions(3), 90,
-                            PromptRequest.empty(),
-                            java.util.Collections.emptyList(),
-                            PromptBuilder.LatencyContext.ABSENT)
-                    .userMessage();
+                .build(resultsWithErrorTransactions(3), 90,
+                    PromptRequest.empty(),
+                    java.util.Collections.emptyList(),
+                    PromptBuilder.LatencyContext.ABSENT)
+                .userMessage();
             assertTrue(msg.contains("Txn-1") && msg.contains("Txn-2") && msg.contains("Txn-3"),
-                    "mandatedHypothesisTargets must include labels for all error transactions (<=5)");
+                "mandatedHypothesisTargets must include labels for all error transactions (<=5)");
         }
 
         @Test
@@ -372,46 +372,46 @@ class PromptBuilderTest {
         void cappedAtFiveEntries() {
             // Build 7 error transactions — only top 5 should appear in mandated list
             String msg = new PromptBuilder()
-                    .build(resultsWithErrorTransactions(7), 90,
-                            PromptRequest.empty(),
-                            java.util.Collections.emptyList(),
-                            PromptBuilder.LatencyContext.ABSENT)
-                    .userMessage();
+                .build(resultsWithErrorTransactions(7), 90,
+                    PromptRequest.empty(),
+                    java.util.Collections.emptyList(),
+                    PromptBuilder.LatencyContext.ABSENT)
+                .userMessage();
             // All 7 appear somewhere in userMessage (errorEndpoints contains all),
             // but mandatedHypothesisTargets is capped — verify the key is present
             // and the list is non-empty (exact count verified by JSON structure check)
             assertTrue(msg.contains("mandatedHypothesisTargets"),
-                    "mandatedHypothesisTargets must be present even when >5 error transactions exist");
+                "mandatedHypothesisTargets must be present even when >5 error transactions exist");
             assertTrue(msg.contains("Txn-1"),
-                    "highest-error transaction must appear in mandatedHypothesisTargets");
+                "highest-error transaction must appear in mandatedHypothesisTargets");
         }
 
         @Test
         @DisplayName("errorRatePct field present inside mandatedHypothesisTargets entries")
         void errorRatePctFieldPresent() {
             String msg = new PromptBuilder()
-                    .build(resultsWithErrorTransactions(2), 90,
-                            PromptRequest.empty(),
-                            java.util.Collections.emptyList(),
-                            PromptBuilder.LatencyContext.ABSENT)
-                    .userMessage();
+                .build(resultsWithErrorTransactions(2), 90,
+                    PromptRequest.empty(),
+                    java.util.Collections.emptyList(),
+                    PromptBuilder.LatencyContext.ABSENT)
+                .userMessage();
             assertTrue(msg.contains("errorRatePct"),
-                    "mandatedHypothesisTargets entries must include errorRatePct field");
+                "mandatedHypothesisTargets entries must include errorRatePct field");
         }
 
         @Test
         @DisplayName("exactly 5 entries when exactly 5 error transactions exist")
         void exactlyFiveWhenFiveErrors() {
             String msg = new PromptBuilder()
-                    .build(resultsWithErrorTransactions(5), 90,
-                            PromptRequest.empty(),
-                            java.util.Collections.emptyList(),
-                            PromptBuilder.LatencyContext.ABSENT)
-                    .userMessage();
+                .build(resultsWithErrorTransactions(5), 90,
+                    PromptRequest.empty(),
+                    java.util.Collections.emptyList(),
+                    PromptBuilder.LatencyContext.ABSENT)
+                .userMessage();
             // All 5 transaction labels must appear
             for (int i = 1; i <= 5; i++) {
                 assertTrue(msg.contains("Txn-" + i),
-                        "mandatedHypothesisTargets must include Txn-" + i + " when exactly 5 error transactions exist");
+                    "mandatedHypothesisTargets must include Txn-" + i + " when exactly 5 error transactions exist");
             }
         }
     }
@@ -427,11 +427,11 @@ class PromptBuilderTest {
         @ParameterizedTest(name = "[{index}] input=''{0}'' → {1}")
         @DisplayName("valid values parsed correctly")
         @CsvSource({
-                "5%,    5.0",
-                "5,     5.0",
-                "10%,   10.0",
-                "0.5%,  0.5",
-                "99%,   99.0",
+            "5%,    5.0",
+            "5,     5.0",
+            "10%,   10.0",
+            "0.5%,  0.5",
+            "99%,   99.0",
         })
         void validValues(String input, double expected) {
             assertEquals(expected, PromptBuilder.parseErrorSlaThreshold(input), 0.0001);
@@ -440,9 +440,9 @@ class PromptBuilderTest {
         @ParameterizedTest(name = "[{index}] input=''{0}'' → -1.0 (no SLA)")
         @DisplayName("absent / sentinel values return -1")
         @CsvSource({
-                "Not configured",
-                "NOT CONFIGURED",
-                "not configured",
+            "Not configured",
+            "NOT CONFIGURED",
+            "not configured",
         })
         void sentinelValues(String input) {
             assertEquals(-1.0, PromptBuilder.parseErrorSlaThreshold(input), 0.0001);
@@ -491,11 +491,11 @@ class PromptBuilderTest {
         @ParameterizedTest(name = "[{index}] input=''{0}'' → {1}")
         @DisplayName("valid values parsed correctly")
         @CsvSource({
-                "2000 ms,  2000.0",
-                "2000ms,   2000.0",
-                "500 ms,   500.0",
-                "100,      100.0",
-                "1,        1.0",
+            "2000 ms,  2000.0",
+            "2000ms,   2000.0",
+            "500 ms,   500.0",
+            "100,      100.0",
+            "1,        1.0",
         })
         void validValues(String input, double expected) {
             assertEquals(expected, PromptBuilder.parseRtSlaThreshold(input), 0.0001);
@@ -504,8 +504,8 @@ class PromptBuilderTest {
         @ParameterizedTest(name = "[{index}] input=''{0}'' → -1.0 (no SLA)")
         @DisplayName("sentinel values return -1")
         @CsvSource({
-                "Not configured",
-                "NOT CONFIGURED",
+            "Not configured",
+            "NOT CONFIGURED",
         })
         void sentinelValues(String input) {
             assertEquals(-1.0, PromptBuilder.parseRtSlaThreshold(input), 0.0001);
@@ -549,13 +549,13 @@ class PromptBuilderTest {
         @DisplayName("user message includes TPS SLA threshold when configured")
         void tpsSlaThresholdInUserMessage() {
             PromptRequest req = new PromptRequest(
-                    "10", "Test", "", "", "", "", "", 90,
-                    "Not configured", "Not configured", "Not configured", "0.5/sec");
+                "10", "Test", "", "", "", "", "", 90,
+                "Not configured", "Not configured", "Not configured", "0.5/sec");
             String msg = new PromptBuilder()
-                    .build(minimalResults(), 90, req,
-                            java.util.Collections.emptyList(),
-                            PromptBuilder.LatencyContext.ABSENT)
-                    .userMessage();
+                .build(minimalResults(), 90, req,
+                    java.util.Collections.emptyList(),
+                    PromptBuilder.LatencyContext.ABSENT)
+                .userMessage();
             assertTrue(msg.contains("TPS SLA"), "user message must contain TPS SLA label");
             assertTrue(msg.contains("0.5/sec"), "user message must contain TPS SLA threshold value");
         }
@@ -564,10 +564,10 @@ class PromptBuilderTest {
         @DisplayName("user message shows 'Not configured' when TPS SLA absent")
         void tpsSlaNotConfiguredInUserMessage() {
             String msg = new PromptBuilder()
-                    .build(minimalResults(), 90, PromptRequest.empty(),
-                            java.util.Collections.emptyList(),
-                            PromptBuilder.LatencyContext.ABSENT)
-                    .userMessage();
+                .build(minimalResults(), 90, PromptRequest.empty(),
+                    java.util.Collections.emptyList(),
+                    PromptBuilder.LatencyContext.ABSENT)
+                .userMessage();
             assertTrue(msg.contains("TPS SLA"), "user message must contain TPS SLA label");
         }
 
@@ -576,16 +576,16 @@ class PromptBuilderTest {
         void tpsSlaSummaryBreachInJson() {
             // Login TPS will be very low — should breach a high threshold
             PromptRequest req = new PromptRequest(
-                    "10", "Test", "", "", "", "", "", 90,
-                    "Not configured", "Not configured", "Not configured", "999/sec");
+                "10", "Test", "", "", "", "", "", 90,
+                "Not configured", "Not configured", "Not configured", "999/sec");
             String msg = new PromptBuilder()
-                    .build(minimalResults(), 90, req,
-                            java.util.Collections.emptyList(),
-                            PromptBuilder.LatencyContext.ABSENT)
-                    .userMessage();
+                .build(minimalResults(), 90, req,
+                    java.util.Collections.emptyList(),
+                    PromptBuilder.LatencyContext.ABSENT)
+                .userMessage();
             assertTrue(msg.contains("tpsSlaSummary"), "JSON must contain tpsSlaSummary key");
             assertTrue(msg.contains("\"verdict\":\"BREACH\""),
-                    "TPS SLA with unreachable threshold should produce BREACH verdict");
+                "TPS SLA with unreachable threshold should produce BREACH verdict");
         }
 
         @Test
@@ -593,46 +593,46 @@ class PromptBuilderTest {
         void tpsSlaSummaryWithinInJson() {
             // Very low threshold — should pass
             PromptRequest req = new PromptRequest(
-                    "10", "Test", "", "", "", "", "", 90,
-                    "Not configured", "Not configured", "Not configured", "0.0001/sec");
+                "10", "Test", "", "", "", "", "", 90,
+                "Not configured", "Not configured", "Not configured", "0.0001/sec");
             String msg = new PromptBuilder()
-                    .build(minimalResults(), 90, req,
-                            java.util.Collections.emptyList(),
-                            PromptBuilder.LatencyContext.ABSENT)
-                    .userMessage();
+                .build(minimalResults(), 90, req,
+                    java.util.Collections.emptyList(),
+                    PromptBuilder.LatencyContext.ABSENT)
+                .userMessage();
             assertTrue(msg.contains("tpsSlaSummary"), "JSON must contain tpsSlaSummary key");
             assertTrue(msg.contains("\"verdict\":\"WITHIN\""),
-                    "TPS SLA with very low threshold should produce WITHIN verdict");
+                "TPS SLA with very low threshold should produce WITHIN verdict");
         }
 
         @Test
         @DisplayName("tpsSlaSummary NOT_CONFIGURED when TPS SLA absent")
         void tpsSlaSummaryNotConfiguredInJson() {
             String msg = new PromptBuilder()
-                    .build(minimalResults(), 90, PromptRequest.empty(),
-                            java.util.Collections.emptyList(),
-                            PromptBuilder.LatencyContext.ABSENT)
-                    .userMessage();
+                .build(minimalResults(), 90, PromptRequest.empty(),
+                    java.util.Collections.emptyList(),
+                    PromptBuilder.LatencyContext.ABSENT)
+                .userMessage();
             assertTrue(msg.contains("tpsSlaSummary"), "JSON must contain tpsSlaSummary key");
             assertTrue(msg.contains("\"verdict\":\"NOT_CONFIGURED\"") || msg.contains("NOT_CONFIGURED"),
-                    "TPS SLA absent should produce NOT_CONFIGURED verdict");
+                "TPS SLA absent should produce NOT_CONFIGURED verdict");
         }
 
         @Test
         @DisplayName("TPS SLA BREACH verdict block text includes worst transaction")
         void tpsSlaVerdictBlockContainsWorstTransaction() {
             PromptRequest req = new PromptRequest(
-                    "10", "Test", "", "", "", "", "", 90,
-                    "Not configured", "Not configured", "Not configured", "999/sec");
+                "10", "Test", "", "", "", "", "", 90,
+                "Not configured", "Not configured", "Not configured", "999/sec");
             String msg = new PromptBuilder()
-                    .build(minimalResults(), 90, req,
-                            java.util.Collections.emptyList(),
-                            PromptBuilder.LatencyContext.ABSENT)
-                    .userMessage();
+                .build(minimalResults(), 90, req,
+                    java.util.Collections.emptyList(),
+                    PromptBuilder.LatencyContext.ABSENT)
+                .userMessage();
             assertTrue(msg.contains("TPS SLA           : BREACH"),
-                    "verdict block must show TPS SLA BREACH");
+                "verdict block must show TPS SLA BREACH");
             assertTrue(msg.contains("worst transaction:"),
-                    "verdict block must identify worst transaction");
+                "verdict block must identify worst transaction");
         }
     }
 }

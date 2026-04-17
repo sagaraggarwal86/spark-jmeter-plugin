@@ -2,7 +2,7 @@
 <project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xmlns="http://maven.apache.org/POM/4.0.0"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
-             http://maven.apache.org/xsd/maven-4.0.0.xsd">
+             https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <groupId>io.github.sagaraggarwal86</groupId>
     <artifactId>jaar-jmeter-plugin</artifactId>
@@ -216,6 +216,13 @@
 
     <build>
         <plugins>
+            <!-- Java 17 compiler — pinned so upgrades don't drift with Maven's super-POM default -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.15.0</version>
+            </plugin>
+
             <!-- exec:java uses the test classpath so that logback-classic (test scope)
                  is available when running UIPreview standalone.
                  Without this, slf4j-api has no provider and emits NOP warnings. -->
@@ -235,9 +242,13 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>3.5.5</version>
                 <configuration>
+                    <!-- Disable JPMS module path; JMeter plugins use flat classpath -->
+                    <useModulePath>false</useModulePath>
                     <!-- Fail the build if no tests are found — prevents a broken
                          test suite from producing a silently green CI build.    -->
                     <failIfNoTests>true</failIfNoTests>
+                    <!-- argLine property populated by jacoco:prepare-agent below -->
+                    <argLine>@{argLine} -Djava.awt.headless=true</argLine>
                 </configuration>
             </plugin>
 
@@ -276,49 +287,27 @@
                                 </rule>
                             </rules>
                             <excludes>
-                                <!-- Swing GUI classes require a display — excluded
-                                     until a headless GUI-test strategy is in place -->
-                                <exclude>io/github/sagaraggarwal86/jmeter/listener/gui/AggregateReportPanel.class
-                                </exclude>
-                                <exclude>io/github/sagaraggarwal86/jmeter/listener/gui/AggregateReportPanel$*.class
-                                </exclude>
-                                <exclude>io/github/sagaraggarwal86/jmeter/listener/gui/ListenerGUI.class</exclude>
-                                <exclude>io/github/sagaraggarwal86/jmeter/listener/gui/ListenerGUI$*.class</exclude>
-                                <exclude>io/github/sagaraggarwal86/jmeter/listener/gui/ReportPanelBuilder.class
-                                </exclude>
-                                <exclude>io/github/sagaraggarwal86/jmeter/listener/gui/ReportPanelBuilder$*.class
-                                </exclude>
-                                <exclude>io/github/sagaraggarwal86/jmeter/listener/gui/FilePanelCustomizer.class
-                                </exclude>
-                                <exclude>io/github/sagaraggarwal86/jmeter/listener/core/SlaRowRenderer.class</exclude>
-                                <exclude>io/github/sagaraggarwal86/jmeter/listener/gui/AiReportLauncher.class</exclude>
-                                <exclude>io/github/sagaraggarwal86/jmeter/listener/gui/AiReportLauncher$*.class
-                                </exclude>
-                                <exclude>io/github/sagaraggarwal86/jmeter/ai/report/AiReportCoordinator.class</exclude>
-                                <exclude>io/github/sagaraggarwal86/jmeter/ai/report/AiReportCoordinator$*.class
-                                </exclude>
-                                <!-- HTML report rendering — requires live file system and full render pipeline -->
-                                <exclude>io/github/sagaraggarwal86/jmeter/ai/report/HtmlReportRenderer.class</exclude>
-                                <exclude>io/github/sagaraggarwal86/jmeter/ai/report/HtmlReportRenderer$*.class</exclude>
-                                <!-- Swing/JMeter boilerplate — no testable logic -->
-                                <exclude>io/github/sagaraggarwal86/jmeter/listener/gui/ListenerCollector.class</exclude>
-                                <exclude>io/github/sagaraggarwal86/jmeter/listener/gui/SimpleDocListener.class</exclude>
-                                <!-- Constants-only class — no executable logic -->
-                                <exclude>io/github/sagaraggarwal86/jmeter/listener/core/ColumnIndex.class</exclude>
-                                <!-- Live-network classes — require real AI provider endpoints -->
-                                <!-- CHANGED: AiReportService removed from exclusions; extractAndValidateContent is unit-tested in AiReportServiceTest -->
-                                <exclude>io/github/sagaraggarwal86/jmeter/ai/provider/AiProviderRegistry.class</exclude>
-                                <exclude>io/github/sagaraggarwal86/jmeter/ai/provider/SharedHttpClient.class</exclude>
-                                <!-- CLI pipeline — requires live API + full JMeter runtime -->
-                                <exclude>io/github/sagaraggarwal86/jmeter/cli/CliReportPipeline.class</exclude>
-                                <exclude>io/github/sagaraggarwal86/jmeter/cli/CliReportPipeline$*.class</exclude>
-                                <!-- Entry point — System.exit calls prevent unit testing -->
-                                <exclude>io/github/sagaraggarwal86/jmeter/cli/Main.class</exclude>
-                                <!-- Requires live JMeter properties files and runtime context -->
-                                <exclude>io/github/sagaraggarwal86/jmeter/parser/TimestampFormatResolver.class</exclude>
-                                <!-- Trivial exception wrapper — no executable logic to test -->
-                                <exclude>io/github/sagaraggarwal86/jmeter/ai/provider/AiProviderException.class
-                                </exclude>
+                                <!-- Swing GUI — requires display -->
+                                <exclude>**/listener/gui/**</exclude>
+
+                                <!-- HTML report rendering — requires file system + render pipeline -->
+                                <exclude>**/ai/report/AiReportCoordinator.class</exclude>
+                                <exclude>**/ai/report/AiReportCoordinator$*.class</exclude>
+                                <exclude>**/ai/report/HtmlReportRenderer.class</exclude>
+                                <exclude>**/ai/report/HtmlReportRenderer$*.class</exclude>
+
+                                <!-- CLI — System.exit prevents unit testing; CliArgs is tested -->
+                                <exclude>**/cli/CliReportPipeline.class</exclude>
+                                <exclude>**/cli/CliReportPipeline$*.class</exclude>
+                                <exclude>**/cli/Main.class</exclude>
+
+                                <!-- Live-network / JMeter runtime / constants-only classes -->
+                                <exclude>**/SlaRowRenderer.class</exclude>
+                                <exclude>**/ColumnIndex.class</exclude>
+                                <exclude>**/AiProviderRegistry.class</exclude>
+                                <exclude>**/SharedHttpClient.class</exclude>
+                                <exclude>**/AiProviderException.class</exclude>
+                                <exclude>**/TimestampFormatResolver.class</exclude>
                             </excludes>
                         </configuration>
                     </execution>
@@ -364,10 +353,37 @@
                             <transformers>
                                 <!-- Generates a valid merged MANIFEST.MF in the shaded JAR -->
                                 <transformer
-                                        implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer"/>
+                                    implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer"/>
                                 <transformer
-                                        implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
+                                    implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
                             </transformers>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- Build environment guard — Java 17+, Maven 3.8+ -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-enforcer-plugin</artifactId>
+                <version>3.6.2</version>
+                <executions>
+                    <execution>
+                        <id>enforce-build-environment</id>
+                        <phase>validate</phase>
+                        <goals>
+                            <goal>enforce</goal>
+                        </goals>
+                        <configuration>
+                            <fail>true</fail>
+                            <rules>
+                                <requireJavaVersion>
+                                    <version>[17,)</version>
+                                </requireJavaVersion>
+                                <requireMavenVersion>
+                                    <version>[3.8,)</version>
+                                </requireMavenVersion>
+                            </rules>
                         </configuration>
                     </execution>
                 </executions>
@@ -469,7 +485,7 @@
                             </execution>
                         </executions>
                         <configuration>
-                            <doclint>none</doclint>
+                            <doclint>all,-missing</doclint>
                         </configuration>
                     </plugin>
 

@@ -7,11 +7,13 @@
 | 6.0.x   | Yes       |
 | < 6.0   | No        |
 
-## Threat Surface
+## Security Model
 
 JAAR is a **local-first** JMeter listener plugin. It does not open inbound sockets, run a server, perform reflection, or
 emit telemetry. Outbound calls happen only when generating an AI report — aggregated test statistics sent to the AI
 provider endpoint configured in the user's `ai-reporter.properties`.
+
+### Threat Surface
 
 | Area               | Design                                                                                                                                         |
 |--------------------|------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -22,7 +24,7 @@ provider endpoint configured in the user's `ai-reporter.properties`.
 | **HTML report**    | Static file on local disk. References Chart.js (cdnjs) and xlsx-js-style (jsdelivr) — fetched by the user's browser.                           |
 | **API keys**       | Read from user-managed `ai-reporter.properties`. Never logged, never embedded in reports, never transmitted except to the configured provider. |
 
-## What JAAR Does NOT Protect Against
+### What JAAR Does NOT Protect Against
 
 - **AI provider trust**: Data from the Prompt payload above is transmitted to the third-party endpoint you configure.
   Review the provider's data-handling terms before sending sensitive workloads. Transaction labels often contain URLs or
@@ -39,13 +41,15 @@ provider endpoint configured in the user's `ai-reporter.properties`.
 1. **Do not** open a public GitHub issue.
 2. Use
    GitHub's [private vulnerability reporting](https://docs.github.com/en/code-security/security-advisories/guidance-on-reporting-and-writing-information-about-vulnerabilities/privately-reporting-a-security-vulnerability)
-   on this repository with a description, reproduction steps, and potential impact.
+   on this repository. Include a description, reproduction steps, and potential impact.
 
-## Bundled Dependencies
+## Dependencies
+
+Bundled (shaded) runtime deps:
 
 | Dependency | Purpose                   |
 |------------|---------------------------|
 | Gson       | JSON request/response     |
 | Commonmark | Markdown → HTML rendering |
 
-All other dependencies are `provided` scope (resolved from JMeter's classpath).
+All other runtime deps are `provided` scope (resolved from JMeter's classpath). Updates tracked via Dependabot.

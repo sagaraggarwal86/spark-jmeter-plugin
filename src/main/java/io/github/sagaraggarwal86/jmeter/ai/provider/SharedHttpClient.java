@@ -30,8 +30,8 @@ public final class SharedHttpClient {
      * Long-lived singleton — thread-safe and connection-pooled.
      */
     private static final HttpClient INSTANCE = HttpClient.newBuilder()
-            .connectTimeout(CONNECT_TIMEOUT)
-            .build();
+        .connectTimeout(CONNECT_TIMEOUT)
+        .build();
 
     private SharedHttpClient() { /* static utility — not instantiable */ }
 

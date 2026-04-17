@@ -284,8 +284,8 @@ class CsvExporterTest {
         @DisplayName("TOTAL row always gets dash regardless of values")
         void totalRowAlwaysDash() throws IOException {
             DefaultTableModel model = modelWith(
-                    dataRow("Login", "200", "3000", "8.00%"),
-                    totalRow("200", "3000", "8.00%"));
+                dataRow("Login", "200", "3000", "8.00%"),
+                totalRow("200", "3000", "8.00%"));
             SlaConfig sla = SlaConfig.from("", "5", "2000", SlaConfig.RtMetric.PNN, 90);
             List<String> lines = writeCsv(buildExporter(model, sla));
 
@@ -340,8 +340,8 @@ class CsvExporterTest {
         @DisplayName("all three SLAs — TOTAL row gets three dashes")
         void allThreeSlaTotalDashes() throws IOException {
             DefaultTableModel model = modelWith(
-                    dataRow("Login", "200", "300", "1.00%"),
-                    totalRow("200", "300", "1.00%"));
+                dataRow("Login", "200", "300", "1.00%"),
+                totalRow("200", "300", "1.00%"));
             SlaConfig sla = SlaConfig.from("5", "5", "2000", SlaConfig.RtMetric.PNN, 90);
             List<String> lines = writeCsv(buildExporter(model, sla));
 
@@ -354,9 +354,9 @@ class CsvExporterTest {
         @DisplayName("multiple rows with different SLA outcomes")
         void multipleRows() throws IOException {
             DefaultTableModel model = modelWith(
-                    dataRow("Login", "200", "1500", "2.00%"),
-                    dataRow("Checkout", "200", "3000", "8.00%"),
-                    totalRow("200", "2000", "5.00%"));
+                dataRow("Login", "200", "1500", "2.00%"),
+                dataRow("Checkout", "200", "3000", "8.00%"),
+                totalRow("200", "2000", "5.00%"));
             SlaConfig sla = SlaConfig.from("", "5", "2000", SlaConfig.RtMetric.PNN, 90);
             List<String> lines = writeCsv(buildExporter(model, sla));
 

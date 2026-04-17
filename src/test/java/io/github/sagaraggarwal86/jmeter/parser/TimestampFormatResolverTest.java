@@ -30,7 +30,7 @@ class TimestampFormatResolverTest {
      * jmeter.properties containing the given content.
      */
     private static File writeProps(Path tempDir, String userContent, String jmeterContent)
-            throws IOException {
+        throws IOException {
         File home = tempDir.toFile();
         Path binDir = tempDir.resolve("bin");
         Files.createDirectories(binDir);
@@ -68,7 +68,7 @@ class TimestampFormatResolverTest {
         @DisplayName("valid format in user.properties returns formatter")
         void validFormatInUserPropsReturnsFormatter(@TempDir Path dir) throws IOException {
             File home = writeProps(dir,
-                    KEY + "=yyyy/MM/dd HH:mm:ss", null);
+                KEY + "=yyyy/MM/dd HH:mm:ss", null);
             DateTimeFormatter result = TimestampFormatResolver.resolve(home);
             assertNotNull(result, "Should return a formatter for valid pattern");
         }
@@ -77,7 +77,7 @@ class TimestampFormatResolverTest {
         @DisplayName("valid format in jmeter.properties returns formatter")
         void validFormatInJmeterPropsReturnsFormatter(@TempDir Path dir) throws IOException {
             File home = writeProps(dir,
-                    null, KEY + "=yyyy-MM-dd HH:mm:ss.SSS");
+                null, KEY + "=yyyy-MM-dd HH:mm:ss.SSS");
             DateTimeFormatter result = TimestampFormatResolver.resolve(home);
             assertNotNull(result, "Should return a formatter from jmeter.properties");
         }
@@ -86,13 +86,13 @@ class TimestampFormatResolverTest {
         @DisplayName("user.properties takes priority over jmeter.properties")
         void userPropsTakesPriority(@TempDir Path dir) throws IOException {
             File home = writeProps(dir,
-                    KEY + "=yyyy/MM/dd HH:mm:ss",
-                    KEY + "=MM/dd/yyyy HH:mm:ss");
+                KEY + "=yyyy/MM/dd HH:mm:ss",
+                KEY + "=MM/dd/yyyy HH:mm:ss");
             DateTimeFormatter result = TimestampFormatResolver.resolve(home);
             assertNotNull(result);
             // Verify the user.properties format is used by parsing a matching date
             assertDoesNotThrow(() ->
-                    java.time.LocalDateTime.parse("2026/03/20 14:30:00", result));
+                java.time.LocalDateTime.parse("2026/03/20 14:30:00", result));
         }
 
         @Test
@@ -100,7 +100,7 @@ class TimestampFormatResolverTest {
         void msSentinelReturnsNull(@TempDir Path dir) throws IOException {
             File home = writeProps(dir, KEY + "=ms", null);
             assertNull(TimestampFormatResolver.resolve(home),
-                    "'ms' is the epoch-ms sentinel — should return null");
+                "'ms' is the epoch-ms sentinel — should return null");
         }
 
         @Test
@@ -115,7 +115,7 @@ class TimestampFormatResolverTest {
         void invalidPatternReturnsNull(@TempDir Path dir) throws IOException {
             File home = writeProps(dir, KEY + "=ZZZZZINVALID", null);
             assertNull(TimestampFormatResolver.resolve(home),
-                    "Invalid pattern should return null gracefully");
+                "Invalid pattern should return null gracefully");
         }
     }
 
@@ -149,7 +149,7 @@ class TimestampFormatResolverTest {
         @DisplayName("active line returns format string")
         void activeLineReturnsFormat() {
             assertEquals("yyyy/MM/dd HH:mm:ss",
-                    TimestampFormatResolver.parseLine(KEY + "=yyyy/MM/dd HH:mm:ss"));
+                TimestampFormatResolver.parseLine(KEY + "=yyyy/MM/dd HH:mm:ss"));
         }
 
         @Test
@@ -174,7 +174,7 @@ class TimestampFormatResolverTest {
         @DisplayName("whitespace around value is trimmed")
         void whitespaceAroundValueTrimmed() {
             assertEquals("yyyy-MM-dd",
-                    TimestampFormatResolver.parseLine(KEY + "=  yyyy-MM-dd  "));
+                TimestampFormatResolver.parseLine(KEY + "=  yyyy-MM-dd  "));
         }
     }
 
@@ -191,11 +191,11 @@ class TimestampFormatResolverTest {
         void lastOccurrenceWins(@TempDir Path dir) throws IOException {
             Path file = dir.resolve("test.properties");
             Files.writeString(file,
-                    KEY + "=yyyy/MM/dd HH:mm:ss\n"
-                            + KEY + "=MM/dd/yyyy HH:mm:ss\n",
-                    StandardCharsets.UTF_8);
+                KEY + "=yyyy/MM/dd HH:mm:ss\n"
+                    + KEY + "=MM/dd/yyyy HH:mm:ss\n",
+                StandardCharsets.UTF_8);
             assertEquals("MM/dd/yyyy HH:mm:ss",
-                    TimestampFormatResolver.readFormatFromFile(file.toFile()));
+                TimestampFormatResolver.readFormatFromFile(file.toFile()));
         }
 
         @Test
@@ -208,7 +208,7 @@ class TimestampFormatResolverTest {
         @DisplayName("non-existent file returns null")
         void nonExistentFileReturnsNull(@TempDir Path dir) {
             assertNull(TimestampFormatResolver.readFormatFromFile(
-                    dir.resolve("does-not-exist.properties").toFile()));
+                dir.resolve("does-not-exist.properties").toFile()));
         }
 
         @Test

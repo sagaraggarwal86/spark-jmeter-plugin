@@ -28,12 +28,12 @@ final class JtlParserCore {
      * Epoch-ms timestamps are handled separately via {@link Long#parseLong}.
      */
     private static final DateTimeFormatter[] KNOWN_TS_FORMATTERS = {
-            DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm:ss.SSS"),
-            DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm:ss"),
-            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS"),
-            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"),
-            DateTimeFormatter.ofPattern("MM/dd/yyyy HH:mm:ss.SSS"),
-            DateTimeFormatter.ofPattern("MM/dd/yyyy HH:mm:ss"),
+        DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm:ss.SSS"),
+        DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm:ss"),
+        DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS"),
+        DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"),
+        DateTimeFormatter.ofPattern("MM/dd/yyyy HH:mm:ss.SSS"),
+        DateTimeFormatter.ofPattern("MM/dd/yyyy HH:mm:ss"),
     };
 
     // ─────────────────────────────────────────────────────────────
@@ -81,14 +81,14 @@ final class JtlParserCore {
             try {
                 LocalDateTime.parse(rawTs, fmt);
                 log.info("detectTimestampFormatter: detected format '{}' from sample '{}'",
-                        fmt, rawTs);
+                    fmt, rawTs);
                 return fmt;
             } catch (DateTimeParseException ignored) {
             }
         }
 
         log.warn("detectTimestampFormatter: unrecognised timestamp format '{}' — " +
-                "falling back to epoch-ms mode.", rawTs);
+            "falling back to epoch-ms mode.", rawTs);
         return null;
     }
 
@@ -126,7 +126,7 @@ final class JtlParserCore {
         if (formatter != null) {
             try {
                 return LocalDateTime.parse(raw, formatter)
-                        .atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
+                    .atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
             } catch (DateTimeParseException ignored) {
             }
         }
@@ -168,7 +168,7 @@ final class JtlParserCore {
         // partial edge buckets to drop — every bucket IS the complete data.
         // Skip the coverage check entirely in this case.
         long testDurationMs = (testStartMs > 0 && testEndMs > testStartMs)
-                ? testEndMs - testStartMs : 0L;
+            ? testEndMs - testStartMs : 0L;
         boolean applyCoverageFilter = testDurationMs > bucketSizeMs;
 
         for (Map.Entry<Long, long[]> e : bucketMap.entrySet()) {
@@ -184,8 +184,8 @@ final class JtlParserCore {
 
             if (applyCoverageFilter && effectiveCoverageMs < minCoverageMs) {
                 log.debug("buildTimeBuckets: dropping partial bucket at {}ms " +
-                                "(coverage {}ms < minimum {}ms)",
-                        bucketStart, effectiveCoverageMs, minCoverageMs);
+                        "(coverage {}ms < minimum {}ms)",
+                    bucketStart, effectiveCoverageMs, minCoverageMs);
                 continue;
             }
 
@@ -196,8 +196,8 @@ final class JtlParserCore {
             // Fall back to full bucketSizeMs for short tests where the single
             // bucket represents the whole test — avoids artificially inflating TPS.
             double effectiveSec = (applyCoverageFilter && effectiveCoverageMs > 0)
-                    ? effectiveCoverageMs / 1000.0
-                    : bucketSizeMs / 1000.0;
+                ? effectiveCoverageMs / 1000.0
+                : bucketSizeMs / 1000.0;
             double avgRt = count > 0 ? (double) acc[0] / count : 0.0;
             double errPct = count > 0 ? (double) acc[2] / count * 100.0 : 0.0;
             double tps = count / effectiveSec;
@@ -476,9 +476,9 @@ final class JtlParserCore {
      */
     static boolean shouldInclude(SampleResult sr, JTLParser.FilterOptions options) {
         return shouldInclude(sr, options,
-                !options.includeLabels.isBlank(),
-                !options.excludeLabels.isBlank(),
-                options.startOffset > 0 || options.endOffset > 0);
+            !options.includeLabels.isBlank(),
+            !options.excludeLabels.isBlank(),
+            options.startOffset > 0 || options.endOffset > 0);
     }
 
     /**

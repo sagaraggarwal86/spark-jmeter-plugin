@@ -109,13 +109,13 @@ public final class DelimiterResolver {
     static char readDelimiterFromFile(File file) {
         if (file == null || !file.isFile()) {
             log.debug("readDelimiterFromFile: file not found or not a file: {}",
-                    file != null ? file.getAbsolutePath() : "null");
+                file != null ? file.getAbsolutePath() : "null");
             return '\0';
         }
 
         char result = '\0';
         try (BufferedReader reader = new BufferedReader(
-                new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8))) {
+            new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8))) {
             String line;
             while ((line = reader.readLine()) != null) {
                 char parsed = parseLine(line);
@@ -125,7 +125,7 @@ public final class DelimiterResolver {
             }
         } catch (IOException e) {
             log.warn("readDelimiterFromFile: failed to read {}",
-                    file.getAbsolutePath(), e);
+                file.getAbsolutePath(), e);
             return '\0';
         }
         return result;

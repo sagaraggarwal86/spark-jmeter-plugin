@@ -71,84 +71,84 @@ final class CliArgs {
 
     static String helpText() {
         return """
-                JAAR — JTL AI Analysis & Reporting  (CLI Mode)
-                
-                Usage:
-                  jaar-cli-report.sh  [options]     (macOS / Linux)
-                  jaar-cli-report.bat [options]     (Windows)
-                
-                  Place the wrapper script in $JMETER_HOME/bin/.
-                  The plugin JAR must be in $JMETER_HOME/lib/ext/.
-                
-                Required:
-                  -i, --input FILE            JTL/CSV file path
-                
-                AI Provider (required unless SLA thresholds are specified):
-                  --provider STRING           provider name, case-insensitive
-                                              (groq, openai, claude, gemini, mistral, deepseek)
-                  --config FILE               path to ai-reporter.properties
-                
-                Output:
-                  -o, --output FILE           HTML report output path (default: ./report.html)
-                
-                Filter Options:
-                  --start-offset INT          seconds to trim from start
-                  --end-offset INT            seconds to trim from end
-                  --percentile INT            percentile 1-99 (default: 90)
-                  --chart-interval INT        seconds per chart bucket, 0=auto (default: 0)
-                  --search STRING             label filter text (include mode by default)
-                  --regex                     treat --search as regex
-                  --exclude                   exclude matching transactions (default: include)
-                
-                Report Metadata:
-                  --scenario-name STRING      scenario name for report header
-                  --description STRING        scenario description
-                  --virtual-users INT         virtual user count for report header
-                
-                SLA Thresholds (optional — when omitted, verdict derived from workload classification):
-                  --tps-sla DOUBLE            minimum TPS threshold (positive number)
-                  --error-sla INT             error rate threshold % (1-99)
-                  --rt-sla LONG               response time threshold in ms
-                  --rt-metric avg|percentile  which RT column for --rt-sla (default: percentile)
-                
-                Help:
-                  -h, --help                  print this message and exit
-                
-                Modes:
-                  1. Analysis only  — no --provider, no SLA: classification-based verdict
-                  2. SLA only       — no --provider, with SLA: SLA threshold evaluation
-                  3. AI only        — --provider, no SLA: AI report + classification verdict
-                  4. AI + SLA       — --provider, with SLA: AI report + SLA verdict
-                
-                Exit Codes:
-                  0   Verdict PASS
-                  1   Verdict FAIL
-                  2   Verdict UNDECISIVE (AI mode only)
-                  3   Invalid arguments
-                  4   JTL parse error
-                  5   AI provider error (key, ping, or API failure)
-                  6   Report write error
-                  7   Unexpected error — full stack trace printed to stderr
-                
-                Examples:
-                  # Analysis only (no AI, no SLA — classification-based verdict)
-                  jaar-cli-report.sh -i results.jtl
-                
-                  # SLA-only (no AI — fast, free)
-                  jaar-cli-report.sh -i results.jtl --tps-sla 10 --error-sla 5 --rt-sla 2000
-                
-                  # AI report with provider
-                  jaar-cli-report.sh -i results.jtl --provider groq --config ai-reporter.properties
-                
-                  # Full (AI + SLA)
-                  jaar-cli-report.sh \\
-                    -i results.jtl -o report.html \\
-                    --provider openai --config /path/to/ai-reporter.properties \\
-                    --start-offset 10 --end-offset 300 --percentile 95 \\
-                    --chart-interval 60 --search "Login" \\
-                    --scenario-name "Load Test" --description "Peak hour" --virtual-users 200 \\
-                    --tps-sla 10 --error-sla 5 --rt-sla 2000 --rt-metric percentile
-                """;
+            JAAR — JTL AI Analysis & Reporting  (CLI Mode)
+
+            Usage:
+              jaar-cli-report.sh  [options]     (macOS / Linux)
+              jaar-cli-report.bat [options]     (Windows)
+
+              Place the wrapper script in $JMETER_HOME/bin/.
+              The plugin JAR must be in $JMETER_HOME/lib/ext/.
+
+            Required:
+              -i, --input FILE            JTL/CSV file path
+
+            AI Provider (required unless SLA thresholds are specified):
+              --provider STRING           provider name, case-insensitive
+                                          (groq, openai, claude, gemini, mistral, deepseek)
+              --config FILE               path to ai-reporter.properties
+
+            Output:
+              -o, --output FILE           HTML report output path (default: ./report.html)
+
+            Filter Options:
+              --start-offset INT          seconds to trim from start
+              --end-offset INT            seconds to trim from end
+              --percentile INT            percentile 1-99 (default: 90)
+              --chart-interval INT        seconds per chart bucket, 0=auto (default: 0)
+              --search STRING             label filter text (include mode by default)
+              --regex                     treat --search as regex
+              --exclude                   exclude matching transactions (default: include)
+
+            Report Metadata:
+              --scenario-name STRING      scenario name for report header
+              --description STRING        scenario description
+              --virtual-users INT         virtual user count for report header
+
+            SLA Thresholds (optional — when omitted, verdict derived from workload classification):
+              --tps-sla DOUBLE            minimum TPS threshold (positive number)
+              --error-sla INT             error rate threshold % (1-99)
+              --rt-sla LONG               response time threshold in ms
+              --rt-metric avg|percentile  which RT column for --rt-sla (default: percentile)
+
+            Help:
+              -h, --help                  print this message and exit
+
+            Modes:
+              1. Analysis only  — no --provider, no SLA: classification-based verdict
+              2. SLA only       — no --provider, with SLA: SLA threshold evaluation
+              3. AI only        — --provider, no SLA: AI report + classification verdict
+              4. AI + SLA       — --provider, with SLA: AI report + SLA verdict
+
+            Exit Codes:
+              0   Verdict PASS
+              1   Verdict FAIL
+              2   Verdict UNDECISIVE (AI mode only)
+              3   Invalid arguments
+              4   JTL parse error
+              5   AI provider error (key, ping, or API failure)
+              6   Report write error
+              7   Unexpected error — full stack trace printed to stderr
+
+            Examples:
+              # Analysis only (no AI, no SLA — classification-based verdict)
+              jaar-cli-report.sh -i results.jtl
+
+              # SLA-only (no AI — fast, free)
+              jaar-cli-report.sh -i results.jtl --tps-sla 10 --error-sla 5 --rt-sla 2000
+
+              # AI report with provider
+              jaar-cli-report.sh -i results.jtl --provider groq --config ai-reporter.properties
+
+              # Full (AI + SLA)
+              jaar-cli-report.sh \\
+                -i results.jtl -o report.html \\
+                --provider openai --config /path/to/ai-reporter.properties \\
+                --start-offset 10 --end-offset 300 --percentile 95 \\
+                --chart-interval 60 --search "Login" \\
+                --scenario-name "Load Test" --description "Peak hour" --virtual-users 200 \\
+                --tps-sla 10 --error-sla 5 --rt-sla 2000 --rt-metric percentile
+            """;
     }
 
     String inputFile() {
@@ -301,9 +301,9 @@ final class CliArgs {
             // OR is exactly two characters: "-" + a single letter (e.g. -i, -o, -h).
             // Everything else — including "-MyTest", "-5", or "--" — is a valid value.
             boolean looksLikeFlag = next.startsWith("--")
-                    || (next.length() == 2
-                    && next.charAt(0) == '-'
-                    && Character.isLetter(next.charAt(1)));
+                || (next.length() == 2
+                && next.charAt(0) == '-'
+                && Character.isLetter(next.charAt(1)));
             if (!looksLikeFlag) {
                 return next;
             }

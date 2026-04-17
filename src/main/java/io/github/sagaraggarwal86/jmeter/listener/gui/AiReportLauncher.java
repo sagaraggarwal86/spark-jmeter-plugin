@@ -99,7 +99,7 @@ public final class AiReportLauncher {
 
     private static String deriveOutputPath(String jtlPath) {
         String timestamp = LocalDateTime.now()
-                .format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
+            .format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
         Path parent = Path.of(jtlPath).toAbsolutePath().getParent();
         Path dir = (parent != null) ? parent : Path.of(".");
         return dir.resolve("JAAR_Report_" + timestamp + ".html").toString();
@@ -120,29 +120,29 @@ public final class AiReportLauncher {
     void launch(JButton triggerBtn) {
         if (dataProvider.getCachedResults().isEmpty()) {
             JOptionPane.showMessageDialog(parent,
-                    "No data available. Please load a JTL file first.",
-                    "No Data", JOptionPane.WARNING_MESSAGE);
+                "No data available. Please load a JTL file first.",
+                "No Data", JOptionPane.WARNING_MESSAGE);
             return;
         }
 
         AiProviderConfig providerConfig = dataProvider.getSelectedProvider();
         if (providerConfig == null) {
             JOptionPane.showMessageDialog(parent,
-                    "<html>No AI provider configured.<br><br>"
-                            + "Add your API key to:<br>"
-                            + "&nbsp;&nbsp;<tt>$JMETER_HOME/bin/ai-reporter.properties</tt><br><br>"
-                            + "Set at least one provider's <tt>api.key</tt> to enable this feature.</html>",
-                    "No Provider Configured", JOptionPane.WARNING_MESSAGE);
+                "<html>No AI provider configured.<br><br>"
+                    + "Add your API key to:<br>"
+                    + "&nbsp;&nbsp;<tt>$JMETER_HOME/bin/ai-reporter.properties</tt><br><br>"
+                    + "Set at least one provider's <tt>api.key</tt> to enable this feature.</html>",
+                "No Provider Configured", JOptionPane.WARNING_MESSAGE);
             return;
         }
 
         String systemPrompt = PromptLoader.load();
         if (systemPrompt == null) {
             JOptionPane.showMessageDialog(parent,
-                    "<html><b>Could not load AI prompt.</b><br><br>"
-                            + "The bundled prompt resource is missing or empty.<br>"
-                            + "Please verify the plugin JAR is intact and reinstall if needed.</html>",
-                    "Prompt Resource Missing", JOptionPane.ERROR_MESSAGE);
+                "<html><b>Could not load AI prompt.</b><br><br>"
+                    + "The bundled prompt resource is missing or empty.<br>"
+                    + "Please verify the plugin JAR is intact and reinstall if needed.</html>",
+                "Prompt Resource Missing", JOptionPane.ERROR_MESSAGE);
             return;
         }
 
@@ -165,8 +165,8 @@ public final class AiReportLauncher {
 
         // CHANGED: executor removed from coordinator constructor
         AiReportCoordinator coordinator = new AiReportCoordinator(
-                new AiReportService(providerConfig),
-                new HtmlReportRenderer());
+            new AiReportService(providerConfig),
+            new HtmlReportRenderer());
 
         executor.submit(() -> {
             bgThread.set(Thread.currentThread()); // CHANGED: register thread for interrupt
@@ -183,9 +183,9 @@ public final class AiReportLauncher {
                         triggerBtn.setEnabled(true);
                         if (!cancelled.get()) { // CHANGED: skip error dialog on cancel
                             JOptionPane.showMessageDialog(parent,
-                                    "<html><b>Cannot connect to " + providerConfig.displayName + ".</b><br><br>"
-                                            + pingError.replace("\n", "<br>") + "</html>",
-                                    "Provider Validation Failed", JOptionPane.ERROR_MESSAGE);
+                                "<html><b>Cannot connect to " + providerConfig.displayName + ".</b><br><br>"
+                                    + pingError.replace("\n", "<br>") + "</html>",
+                                "Provider Validation Failed", JOptionPane.ERROR_MESSAGE);
                         }
                     });
                     return;
@@ -199,8 +199,8 @@ public final class AiReportLauncher {
                     triggerBtn.setEnabled(true);
                     if (!cancelled.get()) { // CHANGED: skip error dialog on cancel
                         JOptionPane.showMessageDialog(parent,
-                                "Unexpected error during report generation:\n\n" + ex.getMessage(),
-                                "Unexpected Error", JOptionPane.ERROR_MESSAGE);
+                            "Unexpected error during report generation:\n\n" + ex.getMessage(),
+                            "Unexpected Error", JOptionPane.ERROR_MESSAGE);
                     }
                 });
             }
@@ -218,16 +218,16 @@ public final class AiReportLauncher {
     void launchSlaOnly(JButton triggerBtn) {
         if (dataProvider.getCachedResults().isEmpty()) {
             JOptionPane.showMessageDialog(parent,
-                    "No data available. Please load a JTL file first.",
-                    "No Data", JOptionPane.WARNING_MESSAGE);
+                "No data available. Please load a JTL file first.",
+                "No Data", JOptionPane.WARNING_MESSAGE);
             return;
         }
 
         String jtlPath = dataProvider.getLastLoadedFilePath();
         if (jtlPath == null || jtlPath.isBlank()) {
             JOptionPane.showMessageDialog(parent,
-                    "No JTL file loaded. Please load a file first.",
-                    "No Data", JOptionPane.WARNING_MESSAGE);
+                "No JTL file loaded. Please load a file first.",
+                "No Data", JOptionPane.WARNING_MESSAGE);
             return;
         }
 
@@ -244,12 +244,12 @@ public final class AiReportLauncher {
 
         double pFraction = percentile / 100.0;
         Map<String, Object> globalStats = PromptBuilder.buildGlobalStats(
-                dataProvider.getCachedResults(), percentile, pFraction,
-                new PromptBuilder.LatencyContext(
-                        dataProvider.getAvgLatencyMs(), dataProvider.getAvgConnectMs(),
-                        dataProvider.isLatencyPresent()));
+            dataProvider.getCachedResults(), percentile, pFraction,
+            new PromptBuilder.LatencyContext(
+                dataProvider.getAvgLatencyMs(), dataProvider.getAvgConnectMs(),
+                dataProvider.isLatencyPresent()));
         Map<String, Object> classification = PromptBuilder.buildClassificationSummary(
-                globalStats, buckets);
+            globalStats, buckets);
 
         executor.submit(() -> {
             try {
@@ -257,37 +257,37 @@ public final class AiReportLauncher {
                 // SLA evaluation — only when thresholds configured
                 boolean useAvg = "avg".equals(config.rtSlaMetric);
                 boolean hasSla = config.tpsSlaThreshold >= 0
-                        || config.errorSlaThreshold >= 0
-                        || config.rtSlaThresholdMs >= 0;
+                    || config.errorSlaThreshold >= 0
+                    || config.rtSlaThresholdMs >= 0;
                 String slaVerdictHtml = null;
                 String verdict;
 
                 if (hasSla) {
                     SlaEvaluator.SlaResult slaResult = SlaEvaluator.evaluate(
-                            tableRows, config.tpsSlaThreshold, config.errorSlaThreshold,
-                            config.rtSlaThresholdMs, useAvg);
+                        tableRows, config.tpsSlaThreshold, config.errorSlaThreshold,
+                        config.rtSlaThresholdMs, useAvg);
                     verdict = slaResult.verdict();
                     slaVerdictHtml = SlaEvaluator.buildVerdictHtml(slaResult,
-                            config.tpsSlaThreshold, config.errorSlaThreshold,
-                            config.rtSlaThresholdMs, useAvg, percentile)
-                            + DataReportBuilder.buildSlaBreachDetails(tableRows,
-                            config.tpsSlaThreshold, config.errorSlaThreshold,
-                            config.rtSlaThresholdMs, useAvg ? "avg" : "pnn");
+                        config.tpsSlaThreshold, config.errorSlaThreshold,
+                        config.rtSlaThresholdMs, useAvg, percentile)
+                        + DataReportBuilder.buildSlaBreachDetails(tableRows,
+                        config.tpsSlaThreshold, config.errorSlaThreshold,
+                        config.rtSlaThresholdMs, useAvg ? "avg" : "pnn");
                 } else {
                     Map<String, Object> verdictResult = PromptBuilder.buildOverallVerdictSummary(
-                            null, null, null, classification, globalStats);
+                        null, null, null, classification, globalStats);
                     verdict = String.valueOf(verdictResult.getOrDefault("verdict", "PASS"));
                 }
 
                 // Build data-only report sections
                 String rtMetric = useAvg ? "avg" : "pnn";
                 List<String[]> contentSections = DataReportBuilder.buildSections(
-                        classification, globalStats, slaVerdictHtml,
-                        tableRows, percentile, rtMetric);
+                    classification, globalStats, slaVerdictHtml,
+                    tableRows, percentile, rtMetric);
 
                 String outputPath = new HtmlReportRenderer().renderDataReport(
-                        deriveOutputPath(jtlPath),
-                        config, tableRows, buckets, verdict, contentSections);
+                    deriveOutputPath(jtlPath),
+                    config, tableRows, buckets, verdict, contentSections);
 
                 SwingUtilities.invokeLater(() -> {
                     triggerBtn.setEnabled(true);
@@ -295,7 +295,7 @@ public final class AiReportLauncher {
                         Desktop.getDesktop().browse(Path.of(outputPath).toUri());
                     } catch (Exception ex) {
                         log.warn("launchSlaOnly: could not open browser. path={}, reason={}",
-                                outputPath, ex.getMessage());
+                            outputPath, ex.getMessage());
                     }
                 });
             } catch (Exception ex) {
@@ -303,8 +303,8 @@ public final class AiReportLauncher {
                 SwingUtilities.invokeLater(() -> {
                     triggerBtn.setEnabled(true);
                     JOptionPane.showMessageDialog(parent,
-                            "Error generating report:\n\n" + ex.getMessage(),
-                            "Report Error", JOptionPane.ERROR_MESSAGE);
+                        "Error generating report:\n\n" + ex.getMessage(),
+                        "Report Error", JOptionPane.ERROR_MESSAGE);
                 });
             }
         });
@@ -324,14 +324,14 @@ public final class AiReportLauncher {
         String modeName = hasSla ? "SLA Evaluation Mode" : "Classification Analysis Mode";
 
         return new HtmlReportRenderer.RenderConfig(
-                metadata.users, metadata.scenarioName, metadata.scenarioDesc,
-                metadata.threadGroupName,
-                dataProvider.getStartTime(), dataProvider.getEndTime(),
-                dataProvider.getDuration(), percentile, modeName,
-                tpsSla, errorSla, rtSla, rtMetric,
-                dataProvider.getErrorTypeSummary(),
-                dataProvider.getAvgLatencyMs(), dataProvider.getAvgConnectMs(),
-                dataProvider.isLatencyPresent());
+            metadata.users, metadata.scenarioName, metadata.scenarioDesc,
+            metadata.threadGroupName,
+            dataProvider.getStartTime(), dataProvider.getEndTime(),
+            dataProvider.getDuration(), percentile, modeName,
+            tpsSla, errorSla, rtSla, rtMetric,
+            dataProvider.getErrorTypeSummary(),
+            dataProvider.getAvgLatencyMs(), dataProvider.getAvgConnectMs(),
+            dataProvider.isLatencyPresent());
     }
 
     /**
@@ -352,28 +352,28 @@ public final class AiReportLauncher {
         final SlaConfig sla = dataProvider.getSlaConfig();
 
         final String slaErrorPct = sla.isErrorPctEnabled()
-                ? sla.errorPctThreshold + "%" : "Not configured";
+            ? sla.errorPctThreshold + "%" : "Not configured";
         final String slaRtMs = sla.isRtEnabled()
-                ? sla.rtThresholdMs + " ms" : "Not configured";
+            ? sla.rtThresholdMs + " ms" : "Not configured";
         final String slaRtMetric = sla.rtMetric == SlaConfig.RtMetric.AVG
-                ? "Avg (ms)" : "P" + percentile + " (ms)";
+            ? "Avg (ms)" : "P" + percentile + " (ms)";
         final String slaTps = sla.isTpsEnabled()
-                ? sla.tpsThreshold + "/sec" : "Not configured";
+            ? sla.tpsThreshold + "/sec" : "Not configured";
 
         PromptRequest request = new PromptRequest(
-                metadata.users, metadata.scenarioName, metadata.scenarioDesc,
-                dataProvider.getStartTime(), dataProvider.getEndTime(),
-                dataProvider.getDuration(), metadata.threadGroupName,
-                percentile, slaErrorPct, slaRtMs, slaRtMetric, slaTps);
+            metadata.users, metadata.scenarioName, metadata.scenarioDesc,
+            dataProvider.getStartTime(), dataProvider.getEndTime(),
+            dataProvider.getDuration(), metadata.threadGroupName,
+            percentile, slaErrorPct, slaRtMs, slaRtMetric, slaTps);
 
         PromptBuilder.LatencyContext latency = new PromptBuilder.LatencyContext(
-                dataProvider.getAvgLatencyMs(), dataProvider.getAvgConnectMs(),
-                dataProvider.isLatencyPresent());
+            dataProvider.getAvgLatencyMs(), dataProvider.getAvgConnectMs(),
+            dataProvider.isLatencyPresent());
 
         return new PromptBuilder(systemPrompt).build(
-                dataProvider.getCachedResults(), percentile, request,
-                dataProvider.getErrorTypeSummary(), latency,
-                dataProvider.getCachedBuckets());
+            dataProvider.getCachedResults(), percentile, request,
+            dataProvider.getErrorTypeSummary(), latency,
+            dataProvider.getCachedBuckets());
     }
 
     private AiReportCoordinator.ReportContext buildReportContext(AiProviderConfig providerConfig) {
@@ -385,25 +385,25 @@ public final class AiReportLauncher {
         double errorSla = sla.isErrorPctEnabled() ? sla.errorPctThreshold : -1.0;
         long rtSla = sla.isRtEnabled() ? sla.rtThresholdMs : -1L;
         String rtMetric = sla.rtMetric == SlaConfig.RtMetric.AVG
-                ? "avg" : "pnn";
+            ? "avg" : "pnn";
 
         final HtmlReportRenderer.RenderConfig config = new HtmlReportRenderer.RenderConfig(
-                metadata.users, metadata.scenarioName, metadata.scenarioDesc,
-                metadata.threadGroupName,
-                dataProvider.getStartTime(), dataProvider.getEndTime(),
-                dataProvider.getDuration(), percentile, providerConfig.displayName,
-                tpsSla, errorSla, rtSla, rtMetric,
-                dataProvider.getErrorTypeSummary(),
-                dataProvider.getAvgLatencyMs(), dataProvider.getAvgConnectMs(),
-                dataProvider.isLatencyPresent());
+            metadata.users, metadata.scenarioName, metadata.scenarioDesc,
+            metadata.threadGroupName,
+            dataProvider.getStartTime(), dataProvider.getEndTime(),
+            dataProvider.getDuration(), percentile, providerConfig.displayName,
+            tpsSla, errorSla, rtSla, rtMetric,
+            dataProvider.getErrorTypeSummary(),
+            dataProvider.getAvgLatencyMs(), dataProvider.getAvgConnectMs(),
+            dataProvider.isLatencyPresent());
 
         return new AiReportCoordinator.ReportContext(
-                dataProvider.getVisibleTableRows(),
-                List.copyOf(dataProvider.getCachedBuckets()),
-                config,
-                dataProvider.getLastLoadedFilePath(),
-                providerConfig.displayName,
-                providerConfig);
+            dataProvider.getVisibleTableRows(),
+            List.copyOf(dataProvider.getCachedBuckets()),
+            config,
+            dataProvider.getLastLoadedFilePath(),
+            providerConfig.displayName,
+            providerConfig);
     }
 
     // CHANGED: accepts cancelled + bgThread to wire the close listener
@@ -412,7 +412,7 @@ public final class AiReportLauncher {
                                         AtomicReference<Thread> bgThread) {
         Window parentWindow = SwingUtilities.getWindowAncestor(parent);
         JDialog dialog = new JDialog(parentWindow, "Generating AI Report",
-                Dialog.ModalityType.MODELESS);
+            Dialog.ModalityType.MODELESS);
         dialog.setDefaultCloseOperation(JDialog.DO_NOTHING_ON_CLOSE);
 
         // CHANGED: close listener — sets flag, interrupts thread, cleans up UI
@@ -440,7 +440,7 @@ public final class AiReportLauncher {
 
     private JLabel extractProgressLabel(JDialog dialog) {
         return (JLabel) ((BorderLayout) dialog.getContentPane().getLayout())
-                .getLayoutComponent(BorderLayout.CENTER);
+            .getLayoutComponent(BorderLayout.CENTER);
     }
 
     /**

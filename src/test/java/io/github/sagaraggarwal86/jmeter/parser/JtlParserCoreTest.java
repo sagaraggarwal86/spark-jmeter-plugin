@@ -95,7 +95,7 @@ class JtlParserCoreTest {
         @DisplayName("null input throws NullPointerException — null is not a valid line")
         void nullInputThrowsNullPointerException() {
             assertThrows(NullPointerException.class,
-                    () -> JtlParserCore.splitCsvLine(null));
+                () -> JtlParserCore.splitCsvLine(null));
         }
 
         @Test
@@ -138,7 +138,7 @@ class JtlParserCoreTest {
             @DisplayName("maps header names to zero-based indices")
             void mapsHeadersToIndices() {
                 Map<String, Integer> map = JtlParserCore.buildColumnMap(
-                        new String[]{"timeStamp", "elapsed", "label"});
+                    new String[]{"timeStamp", "elapsed", "label"});
                 assertEquals(0, map.get("timeStamp"));
                 assertEquals(1, map.get("elapsed"));
                 assertEquals(2, map.get("label"));
@@ -148,7 +148,7 @@ class JtlParserCoreTest {
             @DisplayName("header names are trimmed before mapping")
             void headersTrimmed() {
                 Map<String, Integer> map = JtlParserCore.buildColumnMap(
-                        new String[]{" timeStamp ", " label "});
+                    new String[]{" timeStamp ", " label "});
                 assertTrue(map.containsKey("timeStamp"));
                 assertTrue(map.containsKey("label"));
             }
@@ -163,9 +163,9 @@ class JtlParserCoreTest {
         class ParseElapsedTests {
 
             private static final Map<String, Integer> COL_MAP = JtlParserCore.buildColumnMap(
-                    new String[]{"timeStamp", "elapsed", "label", "responseCode",
-                            "responseMessage", "threadName", "dataType",
-                            "success", "bytes", "sentBytes", "Latency", "IdleTime", "Connect"});
+                new String[]{"timeStamp", "elapsed", "label", "responseCode",
+                    "responseMessage", "threadName", "dataType",
+                    "success", "bytes", "sentBytes", "Latency", "IdleTime", "Connect"});
 
             @Test
             @DisplayName("returns elapsed value from a valid CSV line")
@@ -309,7 +309,7 @@ class JtlParserCoreTest {
             @DisplayName("empty bucketMap produces empty list")
             void emptyMapProducesEmptyList() {
                 List<JTLParser.TimeBucket> buckets =
-                        JtlParserCore.buildTimeBuckets(new TreeMap<>(), 30_000L, 0L, Long.MAX_VALUE);
+                    JtlParserCore.buildTimeBuckets(new TreeMap<>(), 30_000L, 0L, Long.MAX_VALUE);
                 assertTrue(buckets.isEmpty());
             }
 
@@ -320,7 +320,7 @@ class JtlParserCoreTest {
                 // acc: [totalElapsed, count, errors, bytes]
                 map.put(0L, new long[]{600L, 2L, 0L, 2048L}); // avg = 300ms
                 List<JTLParser.TimeBucket> buckets =
-                        JtlParserCore.buildTimeBuckets(map, 30_000L, 0L, Long.MAX_VALUE);
+                    JtlParserCore.buildTimeBuckets(map, 30_000L, 0L, Long.MAX_VALUE);
                 assertEquals(1, buckets.size());
                 assertEquals(300.0, buckets.get(0).avgResponseMs, 0.01);
             }
@@ -332,7 +332,7 @@ class JtlParserCoreTest {
                 // 1 error out of 4 samples = 25%
                 map.put(0L, new long[]{400L, 4L, 1L, 1024L});
                 List<JTLParser.TimeBucket> buckets =
-                        JtlParserCore.buildTimeBuckets(map, 30_000L, 0L, Long.MAX_VALUE);
+                    JtlParserCore.buildTimeBuckets(map, 30_000L, 0L, Long.MAX_VALUE);
                 assertEquals(25.0, buckets.get(0).errorPct, 0.01);
             }
 
@@ -343,7 +343,7 @@ class JtlParserCoreTest {
                 // 30 samples in a 30s bucket = 1.0 TPS
                 map.put(0L, new long[]{3000L, 30L, 0L, 0L});
                 List<JTLParser.TimeBucket> buckets =
-                        JtlParserCore.buildTimeBuckets(map, 30_000L, 0L, Long.MAX_VALUE);
+                    JtlParserCore.buildTimeBuckets(map, 30_000L, 0L, Long.MAX_VALUE);
                 assertEquals(1.0, buckets.get(0).tps, 0.01);
             }
 
@@ -355,7 +355,7 @@ class JtlParserCoreTest {
                 map.put(30_000L, new long[]{200L, 1L, 0L, 0L});
                 map.put(0L, new long[]{300L, 1L, 0L, 0L});
                 List<JTLParser.TimeBucket> buckets =
-                        JtlParserCore.buildTimeBuckets(map, 30_000L, 0L, Long.MAX_VALUE);
+                    JtlParserCore.buildTimeBuckets(map, 30_000L, 0L, Long.MAX_VALUE);
                 assertEquals(3, buckets.size());
                 assertEquals(0L, buckets.get(0).epochMs);
                 assertEquals(30_000L, buckets.get(1).epochMs);
@@ -369,7 +369,7 @@ class JtlParserCoreTest {
                 map.put(0L, new long[]{0L, 0L, 0L, 0L});
                 assertDoesNotThrow(() -> JtlParserCore.buildTimeBuckets(map, 30_000L, 0L, Long.MAX_VALUE));
                 List<JTLParser.TimeBucket> buckets =
-                        JtlParserCore.buildTimeBuckets(map, 30_000L, 0L, Long.MAX_VALUE);
+                    JtlParserCore.buildTimeBuckets(map, 30_000L, 0L, Long.MAX_VALUE);
                 assertEquals(0.0, buckets.get(0).avgResponseMs);
             }
 
@@ -380,7 +380,7 @@ class JtlParserCoreTest {
                 // 30720 bytes in a 30s bucket = 1.0 KB/s
                 map.put(0L, new long[]{500L, 1L, 0L, 30_720L});
                 List<JTLParser.TimeBucket> buckets =
-                        JtlParserCore.buildTimeBuckets(map, 30_000L, 0L, Long.MAX_VALUE);
+                    JtlParserCore.buildTimeBuckets(map, 30_000L, 0L, Long.MAX_VALUE);
                 assertEquals(1.0, buckets.get(0).kbps, 0.01);
             }
         }

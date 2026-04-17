@@ -83,11 +83,11 @@ public final class SlaConfig {
             rtThreshold = Long.parseLong(rtThresholdStr.trim());
         }
         return new SlaConfig(
-                tps,
-                errorPct,
-                Objects.requireNonNullElse(rtMetric, RtMetric.PNN),
-                rtThreshold,
-                percentile);
+            tps,
+            errorPct,
+            Objects.requireNonNullElse(rtMetric, RtMetric.PNN),
+            rtThreshold,
+            percentile);
     }
 
     // ─────────────────────────────────────────────────────────────

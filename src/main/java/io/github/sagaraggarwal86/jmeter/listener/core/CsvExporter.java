@@ -87,14 +87,14 @@ public final class CsvExporter {
     public void saveTableData() {
         if (tableModel.getRowCount() == 0) {
             JOptionPane.showMessageDialog(parent,
-                    "No data to save. Load a JTL file first.",
-                    "No Data", JOptionPane.WARNING_MESSAGE);
+                "No data to save. Load a JTL file first.",
+                "No Data", JOptionPane.WARNING_MESSAGE);
             return;
         }
         JFileChooser fc = new JFileChooser();
         fc.setDialogTitle("Save Table Data");
         fc.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter(
-                "CSV Files (*.csv)", "csv"));
+            "CSV Files (*.csv)", "csv"));
         fc.setSelectedFile(new File("aggregate_report.csv"));
 
         if (fc.showSaveDialog(parent) == JFileChooser.APPROVE_OPTION) {
@@ -106,10 +106,10 @@ public final class CsvExporter {
                 saveTableToCSV(file);
             } catch (IOException e) {
                 log.error("saveTableData: error saving CSV. filePath={}, reason={}",
-                        file.getAbsolutePath(), e.getMessage(), e);
+                    file.getAbsolutePath(), e.getMessage(), e);
                 JOptionPane.showMessageDialog(parent,
-                        "Error saving file:\n" + e.getMessage(),
-                        "Error", JOptionPane.ERROR_MESSAGE);
+                    "Error saving file:\n" + e.getMessage(),
+                    "Error", JOptionPane.ERROR_MESSAGE);
             }
         }
     }
@@ -122,18 +122,18 @@ public final class CsvExporter {
         boolean hasErrorSla = sla.isErrorPctEnabled();
         boolean hasRtSla = sla.isRtEnabled();
         try (BufferedWriter writer = new BufferedWriter(
-                new OutputStreamWriter(
-                        java.nio.file.Files.newOutputStream(file.toPath(),
-                                java.nio.file.StandardOpenOption.CREATE,
-                                java.nio.file.StandardOpenOption.TRUNCATE_EXISTING),
-                        StandardCharsets.UTF_8))) {
+            new OutputStreamWriter(
+                java.nio.file.Files.newOutputStream(file.toPath(),
+                    java.nio.file.StandardOpenOption.CREATE,
+                    java.nio.file.StandardOpenOption.TRUNCATE_EXISTING),
+                StandardCharsets.UTF_8))) {
 
             // ── Header row ────────────────────────────────────────────
             StringBuilder header = new StringBuilder();
             for (int i = 0; i < visibleCols.size(); i++) {
                 if (i > 0) header.append(',');
                 header.append(escapeCSV(
-                        allTableColumns[visibleCols.get(i)].getHeaderValue().toString()));
+                    allTableColumns[visibleCols.get(i)].getHeaderValue().toString()));
             }
             if (hasTpsSla) {
                 header.append(',').append(escapeCSV("TPS SLA"));
@@ -180,7 +180,7 @@ public final class CsvExporter {
         if (isTotalRow(row)) return "-";
         if (!sla.isTpsEnabled()) return "-";
         double observed = CellValueParser.parseTps(
-                tableModel.getValueAt(row, ColumnIndex.TPS_COL_INDEX));
+            tableModel.getValueAt(row, ColumnIndex.TPS_COL_INDEX));
         return observed < sla.tpsThreshold ? "FAIL" : "PASS";
     }
 
@@ -193,7 +193,7 @@ public final class CsvExporter {
         if (isTotalRow(row)) return "-";
         if (!sla.isErrorPctEnabled()) return "-";
         double observed = CellValueParser.parseErrorRate( // CHANGED — delegates to shared utility
-                tableModel.getValueAt(row, ColumnIndex.ERROR_RATE_COL_INDEX));
+            tableModel.getValueAt(row, ColumnIndex.ERROR_RATE_COL_INDEX));
         return observed > sla.errorPctThreshold ? "FAIL" : "PASS";
     }
 
@@ -206,8 +206,8 @@ public final class CsvExporter {
         if (isTotalRow(row)) return "-";
         if (!sla.isRtEnabled()) return "-";
         int rtCol = (sla.rtMetric == SlaConfig.RtMetric.AVG)
-                ? ColumnIndex.AVG_COL_INDEX
-                : ColumnIndex.PERCENTILE_COL_INDEX;
+            ? ColumnIndex.AVG_COL_INDEX
+            : ColumnIndex.PERCENTILE_COL_INDEX;
         double observed = CellValueParser.parseDouble(tableModel.getValueAt(row, rtCol)); // CHANGED — delegates to shared utility
         return observed > sla.rtThresholdMs ? "FAIL" : "PASS";
     }

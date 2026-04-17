@@ -53,13 +53,13 @@ public final class AiProviderRegistry {
      * Groq is always first when configured.
      */
     static final List<String> KNOWN_PROVIDERS = List.of(
-            "groq", "gemini", "mistral", "deepseek", "cerebras", "openai", "claude"
+        "groq", "gemini", "mistral", "deepseek", "cerebras", "openai", "claude"
     );
     private static final Logger log = LoggerFactory.getLogger(AiProviderRegistry.class);
     // ── Property key patterns ──────────────────────────────────────────────
     private static final String PREFIX = "ai.reporter.";
     private static final Pattern API_KEY_PATTERN =
-            Pattern.compile("^ai\\.reporter\\.([^.]+)\\.api\\.key$");
+        Pattern.compile("^ai\\.reporter\\.([^.]+)\\.api\\.key$");
     // ── Global defaults ────────────────────────────────────────────────────
     private static final int DEFAULT_TIMEOUT = 120;
     private static final int DEFAULT_MAX_TOKENS = 8192;
@@ -67,49 +67,49 @@ public final class AiProviderRegistry {
     // ── Known-provider metadata ────────────────────────────────────────────
     private static final double DEFAULT_TEMPERATURE = 0.3;
     private static final Map<String, String> KNOWN_LABELS = Map.of(
-            "groq", "Groq (Free)",
-            "gemini", "Gemini (Free)",
-            "mistral", "Mistral (Free)",
-            "deepseek", "DeepSeek (Free)",
-            "cerebras", "Cerebras (Free)",
-            "openai", "OpenAI (Paid)",
-            "claude", "Claude (Paid)"
+        "groq", "Groq (Free)",
+        "gemini", "Gemini (Free)",
+        "mistral", "Mistral (Free)",
+        "deepseek", "DeepSeek (Free)",
+        "cerebras", "Cerebras (Free)",
+        "openai", "OpenAI (Paid)",
+        "claude", "Claude (Paid)"
     );
 
     private static final Map<String, String> KNOWN_DEFAULT_MODELS = Map.of(
-            "groq", "llama-3.3-70b-versatile",
-            "gemini", "gemini-1.5-pro",
-            "mistral", "mistral-large-latest",
-            "deepseek", "deepseek-chat",
-            "cerebras", "qwen-3-235b-a22b-instruct-2507",
-            "openai", "gpt-4o",
-            "claude", "claude-sonnet-4-6"
+        "groq", "llama-3.3-70b-versatile",
+        "gemini", "gemini-1.5-pro",
+        "mistral", "mistral-large-latest",
+        "deepseek", "deepseek-chat",
+        "cerebras", "qwen-3-235b-a22b-instruct-2507",
+        "openai", "gpt-4o",
+        "claude", "claude-sonnet-4-6"
     );
 
     private static final Map<String, String> KNOWN_BASE_URLS = Map.of(
-            "groq", "https://api.groq.com/openai/v1",
-            "gemini", "https://generativelanguage.googleapis.com/v1beta/openai",
-            "mistral", "https://api.mistral.ai/v1",
-            "deepseek", "https://api.deepseek.com/v1",
-            "cerebras", "https://api.cerebras.ai/v1",
-            "openai", "https://api.openai.com/v1",
-            "claude", "https://api.anthropic.com/v1"
+        "groq", "https://api.groq.com/openai/v1",
+        "gemini", "https://generativelanguage.googleapis.com/v1beta/openai",
+        "mistral", "https://api.mistral.ai/v1",
+        "deepseek", "https://api.deepseek.com/v1",
+        "cerebras", "https://api.cerebras.ai/v1",
+        "openai", "https://api.openai.com/v1",
+        "claude", "https://api.anthropic.com/v1"
     );
 
     // ── Known API key format prefixes (for structural validation) ──────────
     private static final Map<String, String> KNOWN_KEY_PREFIXES = Map.of(
-            "groq", "gsk_",
-            "openai", "sk-",
-            "claude", "sk-ant-",
-            "gemini", "AIza",
-            "cerebras", "csk-"
+        "groq", "gsk_",
+        "openai", "sk-",
+        "claude", "sk-ant-",
+        "gemini", "AIza",
+        "cerebras", "csk-"
     );
 
     // ── Ping cache: "providerKey:apiKey" → true (only successful pings are cached).
     //    Composite key ensures a rotated API key always produces a cache miss,
     //    preventing stale validation bypass after key changes. ──────────────────
     private static final ConcurrentHashMap<String, Boolean> PING_CACHE =
-            new ConcurrentHashMap<>();
+        new ConcurrentHashMap<>();
 
     // ── Singleton prevention ───────────────────────────────────────────────
     private AiProviderRegistry() {
@@ -145,7 +145,7 @@ public final class AiProviderRegistry {
      * @throws IOException if the file cannot be read
      */
     public static List<AiProviderConfig> loadConfiguredProviders(java.nio.file.Path configFile)
-            throws IOException {
+        throws IOException {
         Properties props = new Properties();
         try (InputStream in = java.nio.file.Files.newInputStream(configFile)) {
             props.load(in);
@@ -212,7 +212,7 @@ public final class AiProviderRegistry {
                     return p;
                 } catch (IOException e) {
                     log.warn("loadProperties: failed to read {}. Falling back to JAR resource. reason={}",
-                            propsFile.getAbsolutePath(), e.getMessage());
+                        propsFile.getAbsolutePath(), e.getMessage());
                 }
             }
         }
@@ -262,9 +262,9 @@ public final class AiProviderRegistry {
         }
         // Append any configured providers not covered by the canonical order, alphabetically
         allConfigured.stream()
-                .filter(k -> !canonical.contains(k))
-                .sorted()
-                .forEach(ordered::add);
+            .filter(k -> !canonical.contains(k))
+            .sorted()
+            .forEach(ordered::add);
 
         List<AiProviderConfig> result = new ArrayList<>();
         for (String key : ordered) {
@@ -357,7 +357,7 @@ public final class AiProviderRegistry {
             return base + " (" + tier + ")";
         }
         return KNOWN_LABELS.getOrDefault(key,
-                Character.toUpperCase(key.charAt(0)) + key.substring(1));
+            Character.toUpperCase(key.charAt(0)) + key.substring(1));
     }
 
     private static String resolve(Properties props, String providerKey,
@@ -403,10 +403,10 @@ public final class AiProviderRegistry {
         if (expectedPrefix == null) return null; // unknown provider — no format rule
         if (!config.apiKey.startsWith(expectedPrefix)) {
             return "The " + config.displayName + " API key should start with \""
-                    + expectedPrefix + "\".\n\n"
-                    + "Please check the value of:\n"
-                    + "  ai.reporter." + config.providerKey + ".api.key\n"
-                    + "in ai-reporter.properties.";
+                + expectedPrefix + "\".\n\n"
+                + "Please check the value of:\n"
+                + "  ai.reporter." + config.providerKey + ".api.key\n"
+                + "in ai-reporter.properties.";
         }
         return null;
     }
@@ -441,7 +441,7 @@ public final class AiProviderRegistry {
     private static String sha256(String input) {
         try {
             byte[] hash = MessageDigest.getInstance("SHA-256")
-                    .digest(input.getBytes(StandardCharsets.UTF_8));
+                .digest(input.getBytes(StandardCharsets.UTF_8));
             StringBuilder hex = new StringBuilder(hash.length * 2);
             for (byte b : hash) {
                 hex.append(String.format("%02x", b));
@@ -469,27 +469,27 @@ public final class AiProviderRegistry {
         long pingStart = System.currentTimeMillis();
 
         HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(url))
-                .timeout(Duration.ofSeconds(15))
-                .header("Content-Type", "application/json")
-                .header("Authorization", "Bearer " + config.apiKey)
-                .POST(HttpRequest.BodyPublishers.ofString(body))
-                .build();
+            .uri(URI.create(url))
+            .timeout(Duration.ofSeconds(15))
+            .header("Content-Type", "application/json")
+            .header("Authorization", "Bearer " + config.apiKey)
+            .POST(HttpRequest.BodyPublishers.ofString(body))
+            .build();
 
         try {
             HttpResponse<String> response =
-                    SharedHttpClient.get().send(request, HttpResponse.BodyHandlers.ofString());
+                SharedHttpClient.get().send(request, HttpResponse.BodyHandlers.ofString());
             int status = response.statusCode();
             long elapsedMs = System.currentTimeMillis() - pingStart;
 
             if (status >= 200 && status < 300) {
                 PING_CACHE.put(cacheKey(config), Boolean.TRUE);
                 log.info("executePing: provider={} status={} elapsed={}ms — OK",
-                        config.providerKey, status, elapsedMs);
+                    config.providerKey, status, elapsedMs);
                 return null;
             }
             log.warn("executePing: provider={} status={} elapsed={}ms — FAIL",
-                    config.providerKey, status, elapsedMs);
+                config.providerKey, status, elapsedMs);
             PING_CACHE.remove(cacheKey(config));
             return buildPingErrorMessage(config, status, response.body());
 
@@ -501,8 +501,8 @@ public final class AiProviderRegistry {
             PING_CACHE.remove(cacheKey(config));
             log.warn("executePing: network error for provider={}. reason={}", config.providerKey, e.getMessage());
             return "Could not connect to " + config.displayName + ".\n\n"
-                    + "Please check your network connection and that the base URL is correct:\n"
-                    + "  " + config.baseUrl;
+                + "Please check your network connection and that the base URL is correct:\n"
+                + "  " + config.baseUrl;
         } catch (RuntimeException e) {
             PING_CACHE.remove(cacheKey(config));
             log.error("executePing: unexpected runtime error for provider={}. reason={}", config.providerKey, e.getMessage(), e);
@@ -529,44 +529,44 @@ public final class AiProviderRegistry {
     private static String buildPingErrorMessage(AiProviderConfig config, int status, String responseBody) {
         if (status == 401) {
             return "The " + config.displayName + " API key was rejected (HTTP 401).\n\n"
-                    + "The key may have expired or been revoked. Please update:\n"
-                    + "  ai.reporter." + config.providerKey + ".api.key\n"
-                    + "in ai-reporter.properties.";
+                + "The key may have expired or been revoked. Please update:\n"
+                + "  ai.reporter." + config.providerKey + ".api.key\n"
+                + "in ai-reporter.properties.";
         }
         if (status == 403) {
             return "Access denied by " + config.displayName + " (HTTP 403).\n\n"
-                    + "Your account may lack permissions or have exceeded its quota.\n"
-                    + "Please check your account at the provider's dashboard.";
+                + "Your account may lack permissions or have exceeded its quota.\n"
+                + "Please check your account at the provider's dashboard.";
         }
         if (status == 404) {
             return "Endpoint not found for " + config.displayName + " (HTTP 404).\n\n"
-                    + "The base URL may be misconfigured. Please verify:\n"
-                    + "  ai.reporter." + config.providerKey + ".base.url\n"
-                    + "in ai-reporter.properties.\n"
-                    + "Current URL: " + config.chatCompletionsUrl();
+                + "The base URL may be misconfigured. Please verify:\n"
+                + "  ai.reporter." + config.providerKey + ".base.url\n"
+                + "in ai-reporter.properties.\n"
+                + "Current URL: " + config.chatCompletionsUrl();
         }
         if (status == 429) {
             return "Rate limit exceeded for " + config.displayName + " (HTTP 429).\n\n"
-                    + "Too many requests have been sent to the provider.\n"
-                    + "Please wait a moment and try again.";
+                + "Too many requests have been sent to the provider.\n"
+                + "Please wait a moment and try again.";
         }
         if (status == 500) {
             return "Internal server error from " + config.displayName + " (HTTP 500).\n\n"
-                    + "The provider encountered an unexpected error.\n"
-                    + "Please try again or check the provider's status page.";
+                + "The provider encountered an unexpected error.\n"
+                + "Please try again or check the provider's status page.";
         }
         if (status == 503) {
             return "Service temporarily unavailable for " + config.displayName + " (HTTP 503).\n\n"
-                    + "The provider is currently unavailable.\n"
-                    + "Please try again later or check the provider's status page.";
+                + "The provider is currently unavailable.\n"
+                + "Please try again later or check the provider's status page.";
         }
         if (status == 408 || status == 504) {
             return "Request timed out for " + config.displayName + " (HTTP " + status + ").\n\n"
-                    + "The provider did not respond in time.\n"
-                    + "Please check your network connection and try again.";
+                + "The provider did not respond in time.\n"
+                + "Please check your network connection and try again.";
         }
         return "Unexpected response from " + config.displayName + " (HTTP " + status + ").\n\n"
-                + "Provider: " + config.providerKey + "\n\n"
-                + "Response body:\n" + responseBody;
+            + "Provider: " + config.providerKey + "\n\n"
+            + "Response body:\n" + responseBody;
     }
 }

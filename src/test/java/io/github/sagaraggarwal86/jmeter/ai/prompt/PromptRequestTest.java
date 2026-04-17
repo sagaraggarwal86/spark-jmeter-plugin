@@ -30,8 +30,8 @@ class PromptRequestTest {
         @DisplayName("null users normalised to empty string")
         void nullUsersNormalised() {
             PromptRequest r = new PromptRequest(
-                    null, "name", "desc", "start", "end", "dur", "tg",
-                    90, NOT_CONFIGURED, NOT_CONFIGURED, NOT_CONFIGURED, NOT_CONFIGURED);
+                null, "name", "desc", "start", "end", "dur", "tg",
+                90, NOT_CONFIGURED, NOT_CONFIGURED, NOT_CONFIGURED, NOT_CONFIGURED);
             assertEquals("", r.users());
         }
 
@@ -39,8 +39,8 @@ class PromptRequestTest {
         @DisplayName("null scenarioName normalised to empty string")
         void nullScenarioNameNormalised() {
             PromptRequest r = new PromptRequest(
-                    "10", null, "desc", "start", "end", "dur", "tg",
-                    90, NOT_CONFIGURED, NOT_CONFIGURED, NOT_CONFIGURED, NOT_CONFIGURED);
+                "10", null, "desc", "start", "end", "dur", "tg",
+                90, NOT_CONFIGURED, NOT_CONFIGURED, NOT_CONFIGURED, NOT_CONFIGURED);
             assertEquals("", r.scenarioName());
         }
 
@@ -48,8 +48,8 @@ class PromptRequestTest {
         @DisplayName("null scenarioDesc normalised to empty string")
         void nullScenarioDescNormalised() {
             PromptRequest r = new PromptRequest(
-                    "10", "name", null, "start", "end", "dur", "tg",
-                    90, NOT_CONFIGURED, NOT_CONFIGURED, NOT_CONFIGURED, NOT_CONFIGURED);
+                "10", "name", null, "start", "end", "dur", "tg",
+                90, NOT_CONFIGURED, NOT_CONFIGURED, NOT_CONFIGURED, NOT_CONFIGURED);
             assertEquals("", r.scenarioDesc());
         }
 
@@ -57,8 +57,8 @@ class PromptRequestTest {
         @DisplayName("null startTime normalised to empty string")
         void nullStartTimeNormalised() {
             PromptRequest r = new PromptRequest(
-                    "10", "name", "desc", null, "end", "dur", "tg",
-                    90, NOT_CONFIGURED, NOT_CONFIGURED, NOT_CONFIGURED, NOT_CONFIGURED);
+                "10", "name", "desc", null, "end", "dur", "tg",
+                90, NOT_CONFIGURED, NOT_CONFIGURED, NOT_CONFIGURED, NOT_CONFIGURED);
             assertEquals("", r.startTime());
         }
 
@@ -66,8 +66,8 @@ class PromptRequestTest {
         @DisplayName("null endTime normalised to empty string")
         void nullEndTimeNormalised() {
             PromptRequest r = new PromptRequest(
-                    "10", "name", "desc", "start", null, "dur", "tg",
-                    90, NOT_CONFIGURED, NOT_CONFIGURED, NOT_CONFIGURED, NOT_CONFIGURED);
+                "10", "name", "desc", "start", null, "dur", "tg",
+                90, NOT_CONFIGURED, NOT_CONFIGURED, NOT_CONFIGURED, NOT_CONFIGURED);
             assertEquals("", r.endTime());
         }
 
@@ -75,8 +75,8 @@ class PromptRequestTest {
         @DisplayName("null duration normalised to empty string")
         void nullDurationNormalised() {
             PromptRequest r = new PromptRequest(
-                    "10", "name", "desc", "start", "end", null, "tg",
-                    90, NOT_CONFIGURED, NOT_CONFIGURED, NOT_CONFIGURED, NOT_CONFIGURED);
+                "10", "name", "desc", "start", "end", null, "tg",
+                90, NOT_CONFIGURED, NOT_CONFIGURED, NOT_CONFIGURED, NOT_CONFIGURED);
             assertEquals("", r.duration());
         }
 
@@ -84,8 +84,8 @@ class PromptRequestTest {
         @DisplayName("null threadGroupName normalised to empty string")
         void nullThreadGroupNameNormalised() {
             PromptRequest r = new PromptRequest(
-                    "10", "name", "desc", "start", "end", "dur", null,
-                    90, NOT_CONFIGURED, NOT_CONFIGURED, NOT_CONFIGURED, NOT_CONFIGURED);
+                "10", "name", "desc", "start", "end", "dur", null,
+                90, NOT_CONFIGURED, NOT_CONFIGURED, NOT_CONFIGURED, NOT_CONFIGURED);
             assertEquals("", r.threadGroupName());
         }
 
@@ -93,8 +93,8 @@ class PromptRequestTest {
         @DisplayName("null errorSlaThresholdPct normalised to 'Not configured'")
         void nullErrorSlaNormalised() {
             PromptRequest r = new PromptRequest(
-                    "10", "name", "desc", "start", "end", "dur", "tg",
-                    90, null, NOT_CONFIGURED, NOT_CONFIGURED, NOT_CONFIGURED);
+                "10", "name", "desc", "start", "end", "dur", "tg",
+                90, null, NOT_CONFIGURED, NOT_CONFIGURED, NOT_CONFIGURED);
             assertEquals(NOT_CONFIGURED, r.errorSlaThresholdPct());
         }
 
@@ -102,8 +102,8 @@ class PromptRequestTest {
         @DisplayName("null rtSlaThresholdMs normalised to 'Not configured'")
         void nullRtSlaNormalised() {
             PromptRequest r = new PromptRequest(
-                    "10", "name", "desc", "start", "end", "dur", "tg",
-                    90, NOT_CONFIGURED, null, NOT_CONFIGURED, NOT_CONFIGURED);
+                "10", "name", "desc", "start", "end", "dur", "tg",
+                90, NOT_CONFIGURED, null, NOT_CONFIGURED, NOT_CONFIGURED);
             assertEquals(NOT_CONFIGURED, r.rtSlaThresholdMs());
         }
 
@@ -111,8 +111,8 @@ class PromptRequestTest {
         @DisplayName("null rtSlaMetric normalised to 'Not configured'")
         void nullRtMetricNormalised() {
             PromptRequest r = new PromptRequest(
-                    "10", "name", "desc", "start", "end", "dur", "tg",
-                    90, NOT_CONFIGURED, NOT_CONFIGURED, null, NOT_CONFIGURED);
+                "10", "name", "desc", "start", "end", "dur", "tg",
+                90, NOT_CONFIGURED, NOT_CONFIGURED, null, NOT_CONFIGURED);
             assertEquals(NOT_CONFIGURED, r.rtSlaMetric());
         }
 
@@ -120,8 +120,8 @@ class PromptRequestTest {
         @DisplayName("all null strings — no NullPointerException")
         void allNullsNoException() {
             assertDoesNotThrow(() -> new PromptRequest(
-                    null, null, null, null, null, null, null,
-                    90, null, null, null, null));
+                null, null, null, null, null, null, null,
+                90, null, null, null, null));
         }
     }
 
@@ -137,8 +137,8 @@ class PromptRequestTest {
         @DisplayName("non-null values are stored as-is")
         void nonNullValuesStoredAsIs() {
             PromptRequest r = new PromptRequest(
-                    "200", "Load Test", "Soak run", "10:00", "11:00", "60m", "Users",
-                    95, "5%", "2000ms", "P95 (ms)", "0.5/sec");
+                "200", "Load Test", "Soak run", "10:00", "11:00", "60m", "Users",
+                95, "5%", "2000ms", "P95 (ms)", "0.5/sec");
             assertEquals("200", r.users());
             assertEquals("Load Test", r.scenarioName());
             assertEquals("Soak run", r.scenarioDesc());

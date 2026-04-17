@@ -40,10 +40,10 @@ public final class SlaEvaluator {
         int tpsFails = 0, errorFails = 0, rtFails = 0;
         for (String[] row : rows) {
             if (tpsThreshold >= 0
-                    && CellValueParser.parseTps(safeCell(row, TPS_COL)) < tpsThreshold)
+                && CellValueParser.parseTps(safeCell(row, TPS_COL)) < tpsThreshold)
                 tpsFails++;
             if (errorThreshold >= 0
-                    && CellValueParser.parseErrorRate(safeCell(row, ERROR_RATE_COL)) > errorThreshold)
+                && CellValueParser.parseErrorRate(safeCell(row, ERROR_RATE_COL)) > errorThreshold)
                 errorFails++;
             if (rtThresholdMs >= 0) {
                 double rt = CellValueParser.parseMs(safeCell(row, useAvg ? AVG_COL : PNN_COL));
@@ -74,17 +74,17 @@ public final class SlaEvaluator {
         sb.append("<h2>SLA Verdict</h2>\n");
         sb.append("<div class=\"sla-verdict-panel\">\n");
         sb.append("  <div class=\"sla-verdict-badge ").append(verdictClass).append("\">")
-                .append(result.verdict()).append("</div>\n");
+            .append(result.verdict()).append("</div>\n");
         sb.append("  <table class=\"data-table\" style=\"margin-top:16px;max-width:500px\">\n");
         sb.append("    <thead><tr><th>SLA Threshold</th><th>Breaches</th><th>Status</th></tr></thead>\n");
         sb.append("    <tbody>\n");
 
         if (tpsThreshold >= 0)
             appendSlaRow(sb, "TPS (\u2265" + formatThreshold(tpsThreshold) + ")",
-                    result.tpsFails, result.totalRows);
+                result.tpsFails, result.totalRows);
         if (errorThreshold >= 0)
             appendSlaRow(sb, "Error% (\u2264" + formatThreshold(errorThreshold) + "%)",
-                    result.errorFails, result.totalRows);
+                result.errorFails, result.totalRows);
         if (rtThresholdMs >= 0) {
             String label = (useAvg ? "Avg" : "P" + percentile) + " RT (\u2264" + rtThresholdMs + " ms)";
             appendSlaRow(sb, label, result.rtFails, result.totalRows);
@@ -94,13 +94,13 @@ public final class SlaEvaluator {
         boolean noSlaConfigured = tpsThreshold < 0 && errorThreshold < 0 && rtThresholdMs < 0;
         if (noSlaConfigured) {
             sb.append("  <p style=\"margin-top:12px;color:var(--color-text-secondary)\">")
-                    .append("No SLA thresholds configured.</p>\n");
+                .append("No SLA thresholds configured.</p>\n");
         } else {
             int b = result.totalBreaches();
             sb.append("  <p style=\"margin-top:12px;color:var(--color-text-secondary)\">")
-                    .append(b).append(" breach").append(b != 1 ? "es" : "")
-                    .append(" across ").append(result.totalRows).append(" transaction")
-                    .append(result.totalRows != 1 ? "s" : "").append("</p>\n");
+                .append(b).append(" breach").append(b != 1 ? "es" : "")
+                .append(" across ").append(result.totalRows).append(" transaction")
+                .append(result.totalRows != 1 ? "s" : "").append("</p>\n");
         }
         sb.append("</div>\n");
         return sb.toString();
@@ -109,14 +109,14 @@ public final class SlaEvaluator {
     private static void appendSlaRow(StringBuilder sb, String label, int fails, int total) {
         String css = fails > 0 ? "sla-fail" : "sla-pass";
         sb.append("    <tr><td>").append(label).append("</td>")
-                .append("<td class=\"num\">").append(fails).append("/").append(total).append("</td>")
-                .append("<td class=\"").append(css).append("\">")
-                .append(fails > 0 ? "FAIL" : "PASS").append("</td></tr>\n");
+            .append("<td class=\"num\">").append(fails).append("/").append(total).append("</td>")
+            .append("<td class=\"").append(css).append("\">")
+            .append(fails > 0 ? "FAIL" : "PASS").append("</td></tr>\n");
     }
 
     private static String formatThreshold(double value) {
         return (value == Math.floor(value)) ? String.valueOf((long) value)
-                : String.format("%.1f", value);
+            : String.format("%.1f", value);
     }
 
     private static String safeCell(String[] row, int index) {
@@ -139,18 +139,18 @@ public final class SlaEvaluator {
         sb.append("<h2>Classification Verdict</h2>\n");
         sb.append("<div class=\"sla-verdict-panel\">\n");
         sb.append("  <div class=\"sla-verdict-badge ").append(verdictClass).append("\">")
-                .append(verdict).append("</div>\n");
+            .append(verdict).append("</div>\n");
         sb.append("  <table class=\"data-table\" style=\"margin-top:16px;max-width:600px\">\n");
         sb.append("    <thead><tr><th>Property</th><th>Value</th></tr></thead>\n");
         sb.append("    <tbody>\n");
         sb.append("    <tr><td>Classification</td><td><strong>").append(escapeHtml(classification))
-                .append("</strong></td></tr>\n");
+            .append("</strong></td></tr>\n");
         sb.append("    <tr><td>Reasoning</td><td>").append(escapeHtml(reasoning))
-                .append("</td></tr>\n");
+            .append("</td></tr>\n");
         sb.append("    <tr><td>Verdict Source</td><td>CLASSIFICATION</td></tr>\n");
         sb.append("    </tbody>\n  </table>\n");
         sb.append("  <p style=\"margin-top:12px;color:var(--color-text-secondary)\">")
-                .append("No SLA thresholds configured — verdict derived from workload classification.</p>\n");
+            .append("No SLA thresholds configured — verdict derived from workload classification.</p>\n");
         sb.append("</div>\n");
         return sb.toString();
     }
@@ -158,8 +158,8 @@ public final class SlaEvaluator {
     private static String escapeHtml(String text) {
         if (text == null) return "";
         return text.replace("&", "&amp;").replace("<", "&lt;")
-                .replace(">", "&gt;").replace("\"", "&quot;")
-                .replace("'", "&#39;");
+            .replace(">", "&gt;").replace("\"", "&quot;")
+            .replace("'", "&#39;");
     }
 
     /**

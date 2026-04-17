@@ -80,8 +80,8 @@ class HtmlTransactionTableTest {
         @BeforeEach
         void buildHtml() {
             html = renderer.buildTransactionMetricsSection(rows(
-                    new String[]{"Login", "100", "98", "2", "250", "120", "900",
-                            "450", "55.3", "2.00%", "10.0/sec"}
+                new String[]{"Login", "100", "98", "2", "250", "120", "900",
+                    "450", "55.3", "2.00%", "10.0/sec"}
             ));
         }
 
@@ -109,7 +109,7 @@ class HtmlTransactionTableTest {
         void containsAllHeaders() {
             for (String header : HtmlReportRenderer.TABLE_HEADERS) {
                 assertTrue(html.contains(header),
-                        "Expected header not found: " + header);
+                    "Expected header not found: " + header);
             }
         }
 
@@ -139,8 +139,8 @@ class HtmlTransactionTableTest {
         @DisplayName("single row — all cells rendered")
         void singleRowAllCells() {
             String html = renderer.buildTransactionMetricsSection(rows(
-                    new String[]{"Checkout", "500", "495", "5", "300", "100",
-                            "1200", "650", "78.1", "1.00%", "25.0/sec"}
+                new String[]{"Checkout", "500", "495", "5", "300", "100",
+                    "1200", "650", "78.1", "1.00%", "25.0/sec"}
             ));
             assertTrue(html.contains("Checkout"));
             assertTrue(html.contains(">500<"));
@@ -152,10 +152,10 @@ class HtmlTransactionTableTest {
         @DisplayName("multiple rows — both transactions appear")
         void multipleRowsBothPresent() {
             String html = renderer.buildTransactionMetricsSection(rows(
-                    new String[]{"Login", "200", "198", "2", "100", "50", "400",
-                            "180", "22.0", "1.00%", "10.0/sec"},
-                    new String[]{"Checkout", "100", "100", "0", "350", "200", "800",
-                            "600", "60.0", "0.00%", "5.0/sec"}
+                new String[]{"Login", "200", "198", "2", "100", "50", "400",
+                    "180", "22.0", "1.00%", "10.0/sec"},
+                new String[]{"Checkout", "100", "100", "0", "350", "200", "800",
+                    "600", "60.0", "0.00%", "5.0/sec"}
             ));
             assertTrue(html.contains("Login"));
             assertTrue(html.contains("Checkout"));
@@ -165,8 +165,8 @@ class HtmlTransactionTableTest {
         @DisplayName("HTML special characters in transaction name are escaped")
         void htmlCharsEscaped() {
             String html = renderer.buildTransactionMetricsSection(rows(
-                    new String[]{"<Script> & 'Test'", "1", "1", "0",
-                            "200", "200", "200", "200", "0.0", "0.00%", "1.0/sec"}
+                new String[]{"<Script> & 'Test'", "1", "1", "0",
+                    "200", "200", "200", "200", "0.0", "0.00%", "1.0/sec"}
             ));
             assertFalse(html.contains("<Script>"), "Raw <Script> tag must be escaped");
             assertTrue(html.contains("&lt;Script&gt;"), "Expected HTML-escaped tag");
@@ -187,7 +187,7 @@ class HtmlTransactionTableTest {
         void shortRowNoException() {
             String[] shortRow = {"ShortRow", "50"}; // only 2 of 13 cells supplied
             assertDoesNotThrow(() ->
-                    renderer.buildTransactionMetricsSection(rows(shortRow)));
+                renderer.buildTransactionMetricsSection(rows(shortRow)));
         }
     }
 
@@ -239,7 +239,7 @@ class HtmlTransactionTableTest {
         @DisplayName("all special chars escaped together")
         void allSpecialCharsEscaped() {
             assertEquals("&lt;a&gt; &amp; &lt;b&gt;",
-                    HtmlReportRenderer.escapeHtml("<a> & <b>"));
+                HtmlReportRenderer.escapeHtml("<a> & <b>"));
         }
     }
 }
