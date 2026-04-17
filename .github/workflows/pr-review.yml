@@ -47,7 +47,7 @@ jobs:
 
               diff = pathlib.Path("pr.diff").read_text()[:60000]
 
-              system_prompt = f"""You are a senior code reviewer for a JMeter listener plugin (Java, JMeter 5.6.3).
+              system_prompt = """You are a senior code reviewer for a JMeter listener plugin (Java, JMeter 5.6.3).
 
           Review the diff. Focus ONLY on:
           1. Violations of the project invariants (listed below) — reference by invariant number.
@@ -64,17 +64,18 @@ jobs:
               ai.prompt -> parser
               report -> listener.core
               ai.provider -> ai.prompt
-              ai.report -> {{ai.prompt, ai.provider, parser}}
+              ai.report -> {ai.prompt, ai.provider, parser}
               Entry points cli and listener.gui may import any package.
           - JaCoCo 80% BUNDLE line coverage gate; flag new code without tests.
 
-          {invariants}
+          __INVARIANTS__
 
           Output format:
           - First line: verdict = PASS | CHANGES REQUESTED | BLOCKER.
           - Then findings grouped as **Invariants**, **Bugs**, **Security**.
           - If nothing to flag, say "Nothing to flag." concisely.
           """
+              system_prompt = system_prompt.replace("__INVARIANTS__", invariants)
 
               req = urllib.request.Request(
                   "https://api.mistral.ai/v1/chat/completions",
