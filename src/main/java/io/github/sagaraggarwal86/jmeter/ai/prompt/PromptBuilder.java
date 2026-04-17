@@ -445,8 +445,8 @@ public class PromptBuilder {
      * TPS against the threshold itself. TPS SLA breaches when observed TPS is
      * <em>below</em> the configured minimum threshold.</p>
      *
-     * @param allStats             per-label compact stats (must include {@code tps} field)
-     * @param userTpsSlaThreshold  parsed TPS SLA threshold (min TPS); &le; 0 if absent
+     * @param allStats            per-label compact stats (must include {@code tps} field)
+     * @param userTpsSlaThreshold parsed TPS SLA threshold (min TPS); &le; 0 if absent
      * @return pre-computed TPS SLA summary map
      */
     private static Map<String, Object> buildTpsSlaSummary(
@@ -777,7 +777,6 @@ public class PromptBuilder {
     // ─────────────────────────────────────────────────────────────
     // RT SLA summary — pre-computed verdict, eliminates model arithmetic
     // ─────────────────────────────────────────────────────────────
-
     public static Map<String, Object> buildGlobalStats(Map<String, SamplingStatCalculator> results,
                                                        int percentile, double pFraction,
                                                        LatencyContext latency) {
@@ -906,7 +905,7 @@ public class PromptBuilder {
                 percentile have already been applied to the dataset. \
                 Do not adjust, extrapolate, or question the scope. \
                 Report on what is provided.
-
+                
                 Scenario              : %s
                 Thread Group          : %s
                 Description           : %s
@@ -915,7 +914,7 @@ public class PromptBuilder {
                 End Time              : %s
                 Duration              : %s
                 Configured Percentile : P%d
-
+                
                 SLA Thresholds (user-configured):
                   Error Rate SLA      : %s
                   Response Time SLA   : %s on %s

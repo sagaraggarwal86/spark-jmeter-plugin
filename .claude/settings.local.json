@@ -14,7 +14,8 @@
       "Bash(mvn help:evaluate:*)",
       "Bash(awk END{print FILENAME\": \"NR} *)",
       "Bash(cmd.exe *)",
-      "Bash(powershell.exe *)"
+      "Bash(powershell.exe *)",
+      "Bash(awk END { print NR } *)"
     ]
   }
 }

@@ -441,8 +441,8 @@ final class HtmlPageBuilder {
         return "<p style=\"font-size:13px;color:var(--color-text-secondary);margin:4px 0 12px\">"
                 + String.format("%,d", totalErrors) + " errors recorded"
                 + (errorTypeSummary.size() > 1
-                        ? " (top " + errorTypeSummary.size() + " error types shown below)"
-                        : "")
+                ? " (top " + errorTypeSummary.size() + " error types shown below)"
+                : "")
                 + ".</p>\n";
     }
 
