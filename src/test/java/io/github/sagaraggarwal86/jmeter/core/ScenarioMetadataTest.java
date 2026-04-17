@@ -70,7 +70,7 @@ class ScenarioMetadataTest {
         @DisplayName("non-null values are stored as-is")
         void nonNullValuesStoredAsIs() {
             ScenarioMetadata m = new ScenarioMetadata(
-                    "Load Test", "Soak run", "200", "Users Thread Group");
+                "Load Test", "Soak run", "200", "Users Thread Group");
             assertEquals("Load Test", m.scenarioName);
             assertEquals("Soak run", m.scenarioDesc);
             assertEquals("200", m.users);

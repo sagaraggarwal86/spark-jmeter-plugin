@@ -138,8 +138,8 @@ class SlaEvaluatorTest {
         @DisplayName("multiple rows — mixed results")
         void multipleRowsMixed() {
             List<String[]> rows = Arrays.asList(
-                    row("Login", "200", "1500", "2.00%", "15.0/sec"),
-                    row("Checkout", "200", "3000", "8.00%", "5.0/sec"));
+                row("Login", "200", "1500", "2.00%", "15.0/sec"),
+                row("Checkout", "200", "3000", "8.00%", "5.0/sec"));
             SlaResult r = SlaEvaluator.evaluate(rows, 10.0, 5.0, 2000, false);
             assertEquals(1, r.tpsFails());    // Checkout TPS 5 < 10
             assertEquals(1, r.errorFails());  // Checkout error 8% > 5%
@@ -282,7 +282,7 @@ class SlaEvaluatorTest {
         @DisplayName("PASS verdict with THROUGHPUT-BOUND")
         void passThroughputBound() {
             String html = SlaEvaluator.buildClassificationVerdictHtml(
-                    "PASS", "THROUGHPUT-BOUND", "Healthy plateau");
+                "PASS", "THROUGHPUT-BOUND", "Healthy plateau");
             assertTrue(html.contains("sla-pass"));
             assertTrue(html.contains("PASS"));
             assertTrue(html.contains("THROUGHPUT-BOUND"));
@@ -294,7 +294,7 @@ class SlaEvaluatorTest {
         @DisplayName("FAIL verdict with ERROR-BOUND")
         void failErrorBound() {
             String html = SlaEvaluator.buildClassificationVerdictHtml(
-                    "FAIL", "ERROR-BOUND", "Error rate > 2%");
+                "FAIL", "ERROR-BOUND", "Error rate > 2%");
             assertTrue(html.contains("sla-fail"));
             assertTrue(html.contains("FAIL"));
             assertTrue(html.contains("ERROR-BOUND"));
@@ -304,7 +304,7 @@ class SlaEvaluatorTest {
         @DisplayName("HTML escapes special characters in reasoning")
         void htmlEscapesSpecialChars() {
             String html = SlaEvaluator.buildClassificationVerdictHtml(
-                    "PASS", "TEST", "ratio < 3 & value > 5");
+                "PASS", "TEST", "ratio < 3 & value > 5");
             assertTrue(html.contains("&lt;"));
             assertTrue(html.contains("&amp;"));
             assertTrue(html.contains("&gt;"));

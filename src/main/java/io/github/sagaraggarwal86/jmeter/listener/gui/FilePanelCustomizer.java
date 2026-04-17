@@ -30,17 +30,17 @@ final class FilePanelCustomizer {
             if (comp instanceof JCheckBox cb) {
                 String text = cb.getText();
                 if (text != null && (text.contains("Log")
-                        || text.contains("Errors")
-                        || text.contains("Successes"))) {
+                    || text.contains("Errors")
+                    || text.contains("Successes"))) {
                     cb.setVisible(false);
                 }
             } else if (comp instanceof JButton btn
-                    && btn.getText() != null
-                    && btn.getText().contains("Configure")) {
+                && btn.getText() != null
+                && btn.getText().contains("Configure")) {
                 btn.setVisible(false);
             } else if (comp instanceof JLabel lbl
-                    && lbl.getText() != null
-                    && (lbl.getText().contains("Log") || lbl.getText().contains("Display"))) {
+                && lbl.getText() != null
+                && (lbl.getText().contains("Log") || lbl.getText().contains("Display"))) {
                 lbl.setVisible(false);
             }
             if (comp instanceof Container c) {
@@ -74,8 +74,8 @@ final class FilePanelCustomizer {
                                      Runnable onLoadFn) {
         for (Component comp : container.getComponents()) {
             if (comp instanceof JButton btn
-                    && btn.getText() != null
-                    && btn.getText().contains("Browse")) {
+                && btn.getText() != null
+                && btn.getText().contains("Browse")) {
                 for (java.awt.event.ActionListener al : btn.getActionListeners()) {
                     btn.removeActionListener(al);
                 }
@@ -83,7 +83,7 @@ final class FilePanelCustomizer {
                     File startDir = resolveStartDirectory(currentFileFn.get());
                     JFileChooser fc = new JFileChooser(startDir);
                     fc.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter(
-                            "JMeter [.jtl, .csv]", "jtl", "csv"));
+                        "JMeter [.jtl, .csv]", "jtl", "csv"));
                     fc.setAcceptAllFileFilterUsed(false);
                     if (fc.showOpenDialog(ownerComp) == JFileChooser.APPROVE_OPTION) {
                         setFileFn.accept(fc.getSelectedFile().getAbsolutePath());
@@ -117,8 +117,8 @@ final class FilePanelCustomizer {
     static void wireEnterKeyOnFilenameField(Container container, Runnable onLoadFn) {
         for (Component comp : container.getComponents()) {
             if (comp instanceof JButton btn
-                    && btn.getText() != null
-                    && btn.getText().contains("Browse")) {
+                && btn.getText() != null
+                && btn.getText().contains("Browse")) {
                 // Browse button found — filename field is a JTextField sibling
                 Container parent = btn.getParent();
                 if (parent != null) {

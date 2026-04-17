@@ -1,5 +1,8 @@
 # CLAUDE.md
 
+You are a contributor to a JMeter listener plugin for post-test JTL analysis (GUI tables + CSV + optional AI-generated
+HTML). Pure post-processor — never writes back to the source JTL. Stability over novelty, correctness over features.
+
 ## Rules
 
 **Behavioral**
@@ -11,11 +14,14 @@
 - On conflicting requirements: flag, pause, wait for decision.
 - On obstacles: fix the root cause, not the symptom. Never bypass safety checks (`--no-verify`, `git reset --hard`,
   disabling tests).
+- Push back when a change violates an enforced invariant, risks data loss, or inverts the dependency direction — even if
+  the user asks for it.
 
 **Technical**
 
-- Target JMeter 5.6.3 exclusively. Verify every API exists in 5.6.3 before using it.
-- Java 17, Maven 3.6+.
+- Target JMeter 5.6.3 exclusively. Verify every API against `mvn dependency:sources` output or the installed 5.6.3
+  source JARs under `~/.m2/repository/org/apache/jmeter/` — never from training memory.
+- Java 17, Maven 3.8+.
 - Do not rewrite git history.
 - Decision priority: **Correctness → Security → Performance → Readability → Simplicity**.
 - Before proposing changes, trace impact along the dependency direction (see Architecture).
@@ -27,13 +33,14 @@
 - Rollback: revert to the last explicitly approved file set, then ask.
 - After changes: self-check for regressions, naming consistency, and rule adherence.
 - Summarize confirmed state if context grows large; suggest `/compact` proactively.
-- Responses: concise. No filler, no restating the request.
+- Responses: concise — bug-fix explanation ≤10 lines; proposal ≤1 table + 3 bullets; architecture change requires a
+  table. No filler, no restating the request.
 - Feedback: direct, not diplomatic. Flag concrete concerns even when not asked.
 - For non-trivial decisions (≥2 options with materially different risk/effort/impact), present a table and highlight the
   recommendation. Trivial choices use prose.
 
   | Option | Risk | Effort | Impact | Recommendation |
-    |--------|------|--------|--------|----------------|
+      |--------|------|--------|--------|----------------|
 
 ## Examples
 
@@ -90,16 +97,18 @@ mvn clean deploy -Prelease                # Release to Maven Central
   `parser/TimestampFormatResolver`.
 - Report: `target/site/jacoco/index.html`.
 
-### Definition of Done
+## Definition of Done
 
-A code change is complete only when all apply:
+A task is complete only when all apply:
 
-- `mvn clean verify` passes (build + tests + JaCoCo gate).
-- Every touched invariant re-verified against current code (grep, not memory).
+- `mvn clean verify` passes (build + tests + JaCoCo ≥80% gate).
+- No new compiler warnings or deprecation notices.
+- No invariant from *Enforced invariants* violated; touched invariants re-verified against current code (grep, not
+  memory).
+- Dependency direction preserved (see Architecture — `parser` is the leaf; no cycles).
 - Regression scan: callers of every modified public method reviewed.
-- CLAUDE.md sync reviewed **if** architecture, invariants, dependency direction, or class responsibilities changed.
-- README.md sync reviewed **if** user-facing behaviour changed (feature, flag, exit code, config key, UI element).
-  Otherwise skip.
+- CLAUDE.md reviewed and updated if architecture, invariants, dependency direction, or class responsibilities changed.
+- README.md reviewed and updated if user-facing behaviour changed (feature, flag, exit code, config key, UI element).
 - Self-check pass: regressions, naming consistency, rule adherence.
 
 ## Architecture
@@ -203,43 +212,59 @@ error · `7` unexpected.
 
 ## Enforced invariants (do not violate)
 
-- **`.jmx` property keys in `ListenerCollector` are frozen** — renames break backward compatibility with saved test
-  plans.
-- **`ColumnIndex.ALL_COLUMNS` order is fixed** — CSV export and HTML column mapping depend on positional indices. Column
-  0 (Transaction Name) must always remain visible.
-- **`JTLParser.TOTAL_LABEL = "TOTAL"` row must never be excluded** from the results map.
-- **Exit codes 0–7 are public contract** — documented in README and consumed by CI; renumbering breaks pipelines.
-- **`SECTION_SKELETON` and `EXPECTED_SECTION_HEADINGS` in `AiReportService` are the provider contract** — changing
-  either breaks all providers.
-- **Cerebras must NOT receive assistant prefill.**
-- **`PromptContent` must be built on the EDT** — `SamplingStatCalculator` values have no cross-thread JMM visibility
-  guarantee.
-- **`AggregateReportPanel` SRP extraction is blocked** on a headless GUI-test harness. Until then, changes land
-  in-place.
+1. **`.jmx` property keys in `ListenerCollector` are frozen** — renames break backward compatibility with saved test
+   plans.
+2. **`ColumnIndex.ALL_COLUMNS` order is fixed** — CSV export and HTML column mapping depend on positional indices.
+   Column 0 (Transaction Name) must always remain visible.
+3. **`JTLParser.TOTAL_LABEL = "TOTAL"` row must never be excluded** from the results map.
+4. **Exit codes 0–7 are public contract** — documented in README and consumed by CI; renumbering breaks pipelines.
+5. **`SECTION_SKELETON` and `EXPECTED_SECTION_HEADINGS` in `AiReportService` are the provider contract** — changing
+   either breaks all providers.
+6. **Cerebras must NOT receive assistant prefill.**
+7. **`PromptContent` must be built on the EDT** — `SamplingStatCalculator` values have no cross-thread JMM visibility
+   guarantee.
+8. **`AggregateReportPanel` SRP extraction is blocked** on a headless GUI-test harness. Until then, changes land
+   in-place.
+9. **`## Enforced invariants` heading is load-bearing** — extracted verbatim by `.github/workflows/pr-review.yml`. Do
+   not rename, split, or change its position relative to the next `##` heading.
 
 ## Self-Maintenance
 
 - **Ownership split**: `CLAUDE.md` = rules and context for Claude. `README.md` = user-facing features, install, config.
   When both need updating, change each in its own lane — do not duplicate content across files.
-- **Auto-update CLAUDE.md**: after a session that changes design, architecture, invariants, or class responsibilities,
-  review this file in the same session.
-    - Remove stale entries, dedupe, confirm every line still carries actionable information.
-    - After the update, perform **one** re-review pass (not recursive) and verify all 5 dimensions:
-        - **100% accuracy** — every claim matches current code. *Check:* grep each class/method/flag name; confirm each
-          version matches `pom.xml`; confirm each file path resolves.
-        - **100% completeness** — every material code truth is covered. *Check:* for each package under `src/main/java`,
-          confirm it appears in the dependency graph and class inventory; for each public invariant in code (frozen key,
-          fixed order, contract), confirm it appears in Invariants.
-        - **100% consistency** — no two rules contradict. *Check:* scan for rules on the same topic in different
-          sections; confirm priority-ordered rules (e.g. `Correctness → Security → …`) resolve conflicts
-          deterministically.
-        - **100% optimization** — no line can be tightened further.
-        - **0% redundancy** — no fact stated more than once.
-- **Auto-update README.md**: after feature changes, keep README current — feature tables, filters, GUI overview,
-  configuration, CLI options, exit codes, troubleshooting. Apply the README update rules below.
 - **Auto-compact**: suggest `/compact` before context becomes unwieldy.
 
+### CLAUDE.md update rules
+
+Trigger: session changes design, architecture, invariants, or class responsibilities.
+
+- Review this file in the same session. Remove stale entries, dedupe, confirm every line still carries actionable
+  information.
+
+**Do not put in CLAUDE.md**:
+
+- Implementation details that rot on refactor (method signatures, minor helper behaviors).
+- Facts derivable from `git log` / `git blame` / current code.
+- Ephemeral task state (in-progress work, TODOs).
+- Restatement of README content (user-facing features, install steps).
+- Duplicates of facts already stated elsewhere in this file.
+
+**Final pass — every item must hold**:
+
+- **100% accuracy** — every claim matches current code. *Check:* grep each class/method/flag name; confirm each version
+  matches `pom.xml`; confirm each file path resolves.
+- **100% completeness** — every material code truth is covered. *Check:* for each package under `src/main/java`, confirm
+  it appears in the dependency graph and class inventory; for each public invariant in code (frozen key, fixed order,
+  contract), confirm it appears in Invariants.
+- **100% consistency** — no two rules contradict. *Check:* scan for rules on the same topic in different sections;
+  confirm priority-ordered rules (e.g. `Correctness → Security → …`) resolve conflicts deterministically.
+- **100% optimization** — no line can be tightened further.
+- **0% redundancy** — no fact stated more than once.
+
 ### README update rules
+
+Trigger: user-facing feature changes (feature tables, filters, GUI overview, configuration, CLI options, exit codes,
+troubleshooting).
 
 Every change to `README.md` must satisfy:
 
@@ -256,10 +281,14 @@ Every change to `README.md` must satisfy:
    fallback behaviour), say *when* it appears: "Always" / "Only when X configured" / "When present".
 6. **Self-updating references over hardcoded strings** — prefer badges and `*.jar` wildcards to literal version numbers.
    `maven-antrun-plugin` auto-rewrites `jaar-jmeter-plugin-X.Y.Z.jar` in `README.md` on build.
-7. **Link CLAUDE.md, do not duplicate** — architecture, dependency graph, design decisions, and invariants live only in
+7. **Badges: maven-metadata over maven-central** — for release/version badges, use the
+   `maven-metadata/v?metadataUrl=…repo1.maven.org…/maven-metadata.xml` variant rather than `maven-central/v/…`. The
+   latter hits `search.maven.org`'s stale Solr index; the former reads the authoritative `maven-metadata.xml` and
+   updates within minutes of a deploy.
+8. **Link CLAUDE.md, do not duplicate** — architecture, dependency graph, design decisions, and invariants live only in
    CLAUDE.md. README links to it from Contributing.
-8. **Required top-level sections** — Badges, Contents, Features, Requirements, Installation, Quick Start, feature
+9. **Required top-level sections** — Badges, Contents, Features, Requirements, Installation, Quick Start, feature
    sections, Known Limitations, Troubleshooting, Uninstall, Contributing, License.
-9. **Exact versions, no `+`** — Java 17, JMeter 5.6.3 (not 17+, 5.6.3+) — matches the JMeter-5.6.3-exclusive invariant.
-10. **Post-edit review** — verify all 5 dimensions: **100% accuracy**, **100% completeness**, **100% consistency**, *
+10. **Exact versions, no `+`** — Java 17, JMeter 5.6.3 (not 17+, 5.6.3+) — matches the JMeter-5.6.3-exclusive invariant.
+11. **Post-edit review** — verify all 5 dimensions: **100% accuracy**, **100% completeness**, **100% consistency**, *
     *100% optimization**, **0% redundancy**. See Self-Maintenance for procedural checks.

@@ -25,8 +25,8 @@ import static org.junit.jupiter.api.Assertions.*;
 class JTLParserTest {
 
     private static final String CSV_HEADER =
-            "timeStamp,elapsed,label,responseCode,responseMessage,"
-                    + "threadName,dataType,success,bytes,sentBytes,Latency,IdleTime,Connect";
+        "timeStamp,elapsed,label,responseCode,responseMessage,"
+            + "threadName,dataType,success,bytes,sentBytes,Latency,IdleTime,Connect";
     @TempDir
     Path tempDir;
 
@@ -67,7 +67,7 @@ class JTLParserTest {
     void nullFilePathThrows() {
         JTLParser parser = new JTLParser();
         assertThrows(NullPointerException.class,
-                () -> parser.parse(null, new JTLParser.FilterOptions()));
+            () -> parser.parse(null, new JTLParser.FilterOptions()));
     }
 
     @Test
@@ -77,7 +77,7 @@ class JTLParserTest {
         Files.writeString(f, CSV_HEADER, StandardCharsets.UTF_8);
         JTLParser parser = new JTLParser();
         assertThrows(NullPointerException.class,
-                () -> parser.parse(f.toString(), null));
+            () -> parser.parse(f.toString(), null));
     }
 
     @Test
@@ -87,7 +87,7 @@ class JTLParserTest {
         Files.writeString(file, "", StandardCharsets.UTF_8);
         JTLParser parser = new JTLParser();
         assertThrows(IOException.class,
-                () -> parser.parse(file.toString(), new JTLParser.FilterOptions()));
+            () -> parser.parse(file.toString(), new JTLParser.FilterOptions()));
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -101,7 +101,7 @@ class JTLParserTest {
         Path file = writeCsv(ts + ",250,Login,200,OK,t-1,text,true,1024,512,200,0,50");
 
         JTLParser.ParseResult result = new JTLParser().parse(
-                file.toString(), new JTLParser.FilterOptions());
+            file.toString(), new JTLParser.FilterOptions());
 
         assertTrue(result.results.containsKey("Login"), "Login label expected");
         assertTrue(result.results.containsKey("TOTAL"), "TOTAL label expected");
@@ -116,7 +116,7 @@ class JTLParserTest {
         Path file = writeCsv(ts + ",500,Login,500,Error,t-1,text,false,100,50,450,0,30");
 
         JTLParser.ParseResult result = new JTLParser().parse(
-                file.toString(), new JTLParser.FilterOptions());
+            file.toString(), new JTLParser.FilterOptions());
 
         var calc = result.results.get("Login");
         assertNotNull(calc);
@@ -132,12 +132,12 @@ class JTLParserTest {
     void subResultsExcluded() throws IOException {
         long ts = System.currentTimeMillis();
         Path file = writeCsv(
-                ts + ",100,Login,200,OK,t-1,text,true,512,128,80,0,20",
-                (ts + 50) + ",40,Login-1,200,OK,t-1,text,true,200,64,35,0,10",
-                (ts + 90) + ",60,Login-2,200,OK,t-1,text,true,312,64,55,0,10");
+            ts + ",100,Login,200,OK,t-1,text,true,512,128,80,0,20",
+            (ts + 50) + ",40,Login-1,200,OK,t-1,text,true,200,64,35,0,10",
+            (ts + 90) + ",60,Login-2,200,OK,t-1,text,true,312,64,55,0,10");
 
         JTLParser.ParseResult result = new JTLParser().parse(
-                file.toString(), new JTLParser.FilterOptions());
+            file.toString(), new JTLParser.FilterOptions());
 
         assertFalse(result.results.containsKey("Login-1"), "Login-1 is a sub-result");
         assertFalse(result.results.containsKey("Login-2"), "Login-2 is a sub-result");
@@ -154,8 +154,8 @@ class JTLParserTest {
         long baseTs = System.currentTimeMillis();
         // sample at t=0s (before offset) and t=10s (after offset)
         Path file = writeCsv(
-                baseTs + ",100,EarlyTx,200,OK,t-1,text,true,512,128,90,0,20",
-                (baseTs + 10_000L) + ",100,LateTx,200,OK,t-1,text,true,512,128,90,0,20");
+            baseTs + ",100,EarlyTx,200,OK,t-1,text,true,512,128,90,0,20",
+            (baseTs + 10_000L) + ",100,LateTx,200,OK,t-1,text,true,512,128,90,0,20");
 
         JTLParser.FilterOptions opts = new JTLParser.FilterOptions();
         opts.startOffset = 5; // 5 seconds
@@ -176,11 +176,11 @@ class JTLParserTest {
         long baseTs = System.currentTimeMillis();
         long bucket = (baseTs / 30_000L) * 30_000L; // align to bucket boundary
         Path file = writeCsv(
-                (bucket + 1000) + ",200,Tx,200,OK,t-1,text,true,512,128,180,0,20",
-                (bucket + 5000) + ",300,Tx,200,OK,t-1,text,true,512,128,280,0,20");
+            (bucket + 1000) + ",200,Tx,200,OK,t-1,text,true,512,128,180,0,20",
+            (bucket + 5000) + ",300,Tx,200,OK,t-1,text,true,512,128,280,0,20");
 
         JTLParser.ParseResult result = new JTLParser().parse(
-                file.toString(), new JTLParser.FilterOptions());
+            file.toString(), new JTLParser.FilterOptions());
 
         assertEquals(1, result.timeBuckets.size(), "Expected exactly one time bucket");
     }
@@ -192,7 +192,7 @@ class JTLParserTest {
         Path file = writeCsv(ts + ",500,Tx,200,OK,t-1,text,true,512,128,450,0,30");
 
         JTLParser.ParseResult result = new JTLParser().parse(
-                file.toString(), new JTLParser.FilterOptions());
+            file.toString(), new JTLParser.FilterOptions());
 
         assertTrue(result.startTimeMs > 0, "startTimeMs should be set");
         assertTrue(result.endTimeMs > 0, "endTimeMs should be set");
@@ -219,8 +219,8 @@ class JTLParserTest {
         // Row 2: HTTP Request child          — dataType="text",           same ts+elapsed as parent
         // The parser must identify row 2 as a sub-result and drop it.
         Path file = writeCsv(
-                ts + ",100,Login - TC,200,OK,t-1,,true,512,128,80,0,20",   // controller, dataType=""
-                ts + ",100,Login,200,OK,t-1,text,true,512,128,80,0,20");   // child, same ts+el
+            ts + ",100,Login - TC,200,OK,t-1,,true,512,128,80,0,20",   // controller, dataType=""
+            ts + ",100,Login,200,OK,t-1,text,true,512,128,80,0,20");   // child, same ts+el
 
         JTLParser.FilterOptions opts = new JTLParser.FilterOptions();
         opts.generateParentSample = true;   // default — explicit for clarity
@@ -228,9 +228,9 @@ class JTLParserTest {
         JTLParser.ParseResult result = new JTLParser().parse(file.toString(), opts);
 
         assertTrue(result.results.containsKey("Login - TC"),
-                "Transaction Controller parent must be present");
+            "Transaction Controller parent must be present");
         assertFalse(result.results.containsKey("Login"),
-                "Child row must be excluded when it follows a controller with same ts/elapsed");
+            "Child row must be excluded when it follows a controller with same ts/elapsed");
     }
 
     @Test
@@ -238,8 +238,8 @@ class JTLParserTest {
     void generateParentSampleOffKeepsTransactionControllerChild() throws IOException {
         long ts = System.currentTimeMillis();
         Path file = writeCsv(
-                ts + ",100,Login - TC,200,OK,t-1,,true,512,128,80,0,20",
-                ts + ",100,Login,200,OK,t-1,text,true,512,128,80,0,20");
+            ts + ",100,Login - TC,200,OK,t-1,,true,512,128,80,0,20",
+            ts + ",100,Login,200,OK,t-1,text,true,512,128,80,0,20");
 
         JTLParser.FilterOptions opts = new JTLParser.FilterOptions();
         opts.generateParentSample = false;
@@ -256,8 +256,8 @@ class JTLParserTest {
         long ts = System.currentTimeMillis();
         // Two rows: first has empty dataType but different elapsed → should NOT trigger detection
         Path file = writeCsv(
-                ts + ",100,Some - TC,200,OK,t-1,,true,512,128,80,0,20",   // controller
-                (ts + 50) + ",75,Some,200,OK,t-1,text,true,512,128,70,0,10");    // different ts → not a child
+            ts + ",100,Some - TC,200,OK,t-1,,true,512,128,80,0,20",   // controller
+            (ts + 50) + ",75,Some,200,OK,t-1,text,true,512,128,70,0,10");    // different ts → not a child
 
         JTLParser.FilterOptions opts = new JTLParser.FilterOptions();
         opts.generateParentSample = true;
@@ -266,7 +266,7 @@ class JTLParserTest {
 
         assertTrue(result.results.containsKey("Some - TC"), "Controller row must be present");
         assertTrue(result.results.containsKey("Some"),
-                "Row with different ts must NOT be excluded — it is not a child of the controller");
+            "Row with different ts must NOT be excluded — it is not a child of the controller");
     }
 
     @Test
@@ -276,8 +276,8 @@ class JTLParserTest {
         // JMeter sometimes writes the child row 1 ms after the parent's timestamp
         // even though they represent the same transaction. The parser must tolerate this.
         Path file = writeCsv(
-                ts + ",100,Login - TC,200,OK,t-1,,true,512,128,80,0,20",    // controller
-                (ts + 1) + ",100,Login,200,OK,t-1,text,true,512,128,80,0,20");    // child ts + 1 ms
+            ts + ",100,Login - TC,200,OK,t-1,,true,512,128,80,0,20",    // controller
+            (ts + 1) + ",100,Login,200,OK,t-1,text,true,512,128,80,0,20");    // child ts + 1 ms
 
         JTLParser.FilterOptions opts = new JTLParser.FilterOptions();
         opts.generateParentSample = true;
@@ -286,7 +286,7 @@ class JTLParserTest {
 
         assertTrue(result.results.containsKey("Login - TC"), "Controller row must be present");
         assertFalse(result.results.containsKey("Login"),
-                "Child row must be excluded even when its ts is 1 ms after the controller's ts");
+            "Child row must be excluded even when its ts is 1 ms after the controller's ts");
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -353,10 +353,10 @@ class JTLParserTest {
         Path file = writeCsv(ts + ",250,Login,200,OK,t-1,text,true,1024,512,200,0,50");
 
         JTLParser.ParseResult result = new JTLParser().parse(
-                file.toString(), new JTLParser.FilterOptions());
+            file.toString(), new JTLParser.FilterOptions());
 
         assertTrue(result.latencyPresent,
-                "latencyPresent must be true when at least one Latency value is non-zero");
+            "latencyPresent must be true when at least one Latency value is non-zero");
     }
 
     @Test
@@ -367,17 +367,17 @@ class JTLParserTest {
         // Sample 2: Latency=100, Connect=30
         // Averages over 2 total samples: avgLatency = (200+100)/2 = 150, avgConnect = (50+30)/2 = 40
         Path file = writeCsv(
-                ts + ",250,Login,200,OK,t-1,text,true,1024,512,200,0,50",
-                (ts + 1000) + ",300,Checkout,200,OK,t-1,text,true,1024,512,100,0,30");
+            ts + ",250,Login,200,OK,t-1,text,true,1024,512,200,0,50",
+            (ts + 1000) + ",300,Checkout,200,OK,t-1,text,true,1024,512,100,0,30");
 
         JTLParser.ParseResult result = new JTLParser().parse(
-                file.toString(), new JTLParser.FilterOptions());
+            file.toString(), new JTLParser.FilterOptions());
 
         assertTrue(result.latencyPresent, "latencyPresent must be true");
         assertEquals(150L, result.avgLatencyMs,
-                "avgLatencyMs should be (200+100)/2 = 150");
+            "avgLatencyMs should be (200+100)/2 = 150");
         assertEquals(40L, result.avgConnectMs,
-                "avgConnectMs should be (50+30)/2 = 40");
+            "avgConnectMs should be (50+30)/2 = 40");
     }
 
     @Test
@@ -386,18 +386,18 @@ class JTLParserTest {
         long ts = System.currentTimeMillis();
         // Latency=0, Connect=0 for all rows
         Path file = writeCsv(
-                ts + ",250,Login,200,OK,t-1,text,true,1024,512,0,0,0",
-                (ts + 1000) + ",300,Checkout,200,OK,t-1,text,true,1024,512,0,0,0");
+            ts + ",250,Login,200,OK,t-1,text,true,1024,512,0,0,0",
+            (ts + 1000) + ",300,Checkout,200,OK,t-1,text,true,1024,512,0,0,0");
 
         JTLParser.ParseResult result = new JTLParser().parse(
-                file.toString(), new JTLParser.FilterOptions());
+            file.toString(), new JTLParser.FilterOptions());
 
         assertFalse(result.latencyPresent,
-                "latencyPresent must be false when all Latency values are zero");
+            "latencyPresent must be false when all Latency values are zero");
         assertEquals(0L, result.avgLatencyMs,
-                "avgLatencyMs must be 0 when latencyPresent is false");
+            "avgLatencyMs must be 0 when latencyPresent is false");
         assertEquals(0L, result.avgConnectMs,
-                "avgConnectMs must be 0 when latencyPresent is false");
+            "avgConnectMs must be 0 when latencyPresent is false");
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -411,8 +411,8 @@ class JTLParserTest {
         // sample at t=0s (relativeSec=0, within endOffset=30) — included
         // sample at t=40s (relativeSec=40, beyond endOffset=30) — excluded
         Path file = writeCsv(
-                baseTs + ",100,EarlyTx,200,OK,t-1,text,true,512,128,90,0,20",
-                (baseTs + 40_000L) + ",100,LateTx,200,OK,t-1,text,true,512,128,90,0,20");
+            baseTs + ",100,EarlyTx,200,OK,t-1,text,true,512,128,90,0,20",
+            (baseTs + 40_000L) + ",100,LateTx,200,OK,t-1,text,true,512,128,90,0,20");
 
         JTLParser.FilterOptions opts = new JTLParser.FilterOptions();
         opts.endOffset = 30; // exclude samples more than 30s after first sample
@@ -432,12 +432,12 @@ class JTLParserTest {
     void errorTypeSummaryPopulated() throws IOException {
         long ts = System.currentTimeMillis();
         Path file = writeCsv(
-                ts + ",300,Login,500,Internal Server Error,t-1,text,false,100,50,280,0,20",
-                (ts + 1000) + ",200,Login,500,Internal Server Error,t-1,text,false,100,50,180,0,20",
-                (ts + 2000) + ",150,Checkout,404,Not Found,t-1,text,false,100,50,130,0,20");
+            ts + ",300,Login,500,Internal Server Error,t-1,text,false,100,50,280,0,20",
+            (ts + 1000) + ",200,Login,500,Internal Server Error,t-1,text,false,100,50,180,0,20",
+            (ts + 2000) + ",150,Checkout,404,Not Found,t-1,text,false,100,50,130,0,20");
 
         JTLParser.ParseResult result = new JTLParser().parse(
-                file.toString(), new JTLParser.FilterOptions());
+            file.toString(), new JTLParser.FilterOptions());
 
         assertNotNull(result.errorTypeSummary, "errorTypeSummary must not be null");
         assertFalse(result.errorTypeSummary.isEmpty(), "errorTypeSummary must not be empty");
@@ -452,11 +452,11 @@ class JTLParserTest {
     void skippedRowCountZeroForValidData() throws IOException {
         long ts = System.currentTimeMillis();
         Path file = writeCsv(
-                ts + ",250,Login,200,OK,t-1,text,true,1024,512,200,0,50",
-                (ts + 1000) + ",300,Checkout,200,OK,t-1,text,true,1024,512,250,0,40");
+            ts + ",250,Login,200,OK,t-1,text,true,1024,512,200,0,50",
+            (ts + 1000) + ",300,Checkout,200,OK,t-1,text,true,1024,512,250,0,40");
 
         JTLParser.ParseResult result = new JTLParser().parse(
-                file.toString(), new JTLParser.FilterOptions());
+            file.toString(), new JTLParser.FilterOptions());
 
         assertEquals(0, result.skippedRowCount, "No rows should be skipped for valid data");
     }
@@ -467,12 +467,12 @@ class JTLParserTest {
         long ts = System.currentTimeMillis();
         // Row 2 has a non-numeric timestamp and no valid fields — will fail parseLineTokens
         Path file = writeCsv(
-                ts + ",250,Login,200,OK,t-1,text,true,1024,512,200,0,50",
-                "not-a-timestamp,abc,,,,,,,,,,,",
-                (ts + 2000) + ",300,Checkout,200,OK,t-1,text,true,1024,512,250,0,40");
+            ts + ",250,Login,200,OK,t-1,text,true,1024,512,200,0,50",
+            "not-a-timestamp,abc,,,,,,,,,,,",
+            (ts + 2000) + ",300,Checkout,200,OK,t-1,text,true,1024,512,250,0,40");
 
         JTLParser.ParseResult result = new JTLParser().parse(
-                file.toString(), new JTLParser.FilterOptions());
+            file.toString(), new JTLParser.FilterOptions());
 
         assertTrue(result.results.containsKey("Login"), "Valid Login row should be parsed");
         assertTrue(result.results.containsKey("Checkout"), "Valid Checkout row should be parsed");
@@ -490,12 +490,12 @@ class JTLParserTest {
     void multipleDistinctLabels() throws IOException {
         long ts = System.currentTimeMillis();
         Path file = writeCsv(
-                ts + ",100,Login,200,OK,t-1,text,true,512,128,90,0,20",
-                (ts + 1000) + ",200,Checkout,200,OK,t-1,text,true,512,128,180,0,20",
-                (ts + 2000) + ",150,Search,200,OK,t-1,text,true,512,128,130,0,20");
+            ts + ",100,Login,200,OK,t-1,text,true,512,128,90,0,20",
+            (ts + 1000) + ",200,Checkout,200,OK,t-1,text,true,512,128,180,0,20",
+            (ts + 2000) + ",150,Search,200,OK,t-1,text,true,512,128,130,0,20");
 
         JTLParser.ParseResult result = new JTLParser().parse(
-                file.toString(), new JTLParser.FilterOptions());
+            file.toString(), new JTLParser.FilterOptions());
 
         assertTrue(result.results.containsKey("Login"), "Login must be present");
         assertTrue(result.results.containsKey("Checkout"), "Checkout must be present");
@@ -561,13 +561,13 @@ class JTLParserTest {
         @DisplayName("result is always one of the defined snap intervals")
         void resultIsAlwaysASnapInterval() {
             long[] snapIntervals = {10_000L, 30_000L, 60_000L, 120_000L,
-                    300_000L, 600_000L, 1_800_000L, 3_600_000L};
+                300_000L, 600_000L, 1_800_000L, 3_600_000L};
             long[] testDurations = {
-                    5 * 60 * 1000L,       // 5 min
-                    30 * 60 * 1000L,      // 30 min
-                    2 * 60 * 60 * 1000L,  // 2 hours
-                    8 * 60 * 60 * 1000L,  // 8 hours
-                    24 * 60 * 60 * 1000L  // 24 hours
+                5 * 60 * 1000L,       // 5 min
+                30 * 60 * 1000L,      // 30 min
+                2 * 60 * 60 * 1000L,  // 2 hours
+                8 * 60 * 60 * 1000L,  // 8 hours
+                24 * 60 * 60 * 1000L  // 24 hours
             };
             for (long dur : testDurations) {
                 long minTs = System.currentTimeMillis() - dur;
@@ -580,7 +580,7 @@ class JTLParserTest {
                     }
                 }
                 assertTrue(found, "result " + result + "ms for duration " + dur
-                        + "ms must be one of the defined snap intervals");
+                    + "ms must be one of the defined snap intervals");
             }
         }
     }

@@ -48,7 +48,7 @@ public final class PromptLoader {
         }
 
         log.error("load: bundled JAR resource {} not found or empty. "
-                + "Plugin JAR may be corrupt.", RESOURCE_PATH);
+            + "Plugin JAR may be corrupt.", RESOURCE_PATH);
         return null;
     }
 

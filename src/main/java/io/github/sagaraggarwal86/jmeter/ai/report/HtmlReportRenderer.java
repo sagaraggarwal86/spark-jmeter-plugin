@@ -51,9 +51,9 @@ public class HtmlReportRenderer {
      * {@value #PERCENTILE_COL_INDEX} when a different percentile is configured.
      */
     static final String[] TABLE_HEADERS = {
-            "Transaction", "Count", "Passed", "Failed",
-            "Avg RT (ms)", "Min RT (ms)", "Max RT (ms)", "90th Pct (ms)",
-            "Std Dev", "Error Rate", "TPS", "Received KB/Sec", "Avg Bytes"
+        "Transaction", "Count", "Passed", "Failed",
+        "Avg RT (ms)", "Min RT (ms)", "Max RT (ms)", "90th Pct (ms)",
+        "Std Dev", "Error Rate", "TPS", "Received KB/Sec", "Avg Bytes"
     };
     static final String TD_CLOSE = "</td>";
     private static final Logger log = LoggerFactory.getLogger(HtmlReportRenderer.class);
@@ -69,10 +69,10 @@ public class HtmlReportRenderer {
     // ─────────────────────────────────────────────────────────────
 
     private static final String NO_ERROR_CARD =
-            "<div class=\"no-err\">\n"
-                    + "  <div class=\"no-err-icon\">&#10003;</div>\n"
-                    + "  <div class=\"no-err-text\">Zero errors recorded \u2014 all requests completed successfully.</div>\n"
-                    + "</div>\n";
+        "<div class=\"no-err\">\n"
+            + "  <div class=\"no-err-icon\">&#10003;</div>\n"
+            + "  <div class=\"no-err-text\">Zero errors recorded \u2014 all requests completed successfully.</div>\n"
+            + "</div>\n";
 
     // ─────────────────────────────────────────────────────────────
     // Page assembly
@@ -90,8 +90,8 @@ public class HtmlReportRenderer {
                                        boolean breachWhenBelow) {
         boolean breach = breachWhenBelow ? observed < threshold : observed > threshold;
         return breach
-                ? "<td class=\"sla-fail\">FAIL" + TD_CLOSE
-                : "<td class=\"sla-pass\">PASS" + TD_CLOSE;
+            ? "<td class=\"sla-fail\">FAIL" + TD_CLOSE
+            : "<td class=\"sla-pass\">PASS" + TD_CLOSE;
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -155,7 +155,7 @@ public class HtmlReportRenderer {
      */
     private static String formatThreshold(double value) {
         return (value == Math.floor(value)) ? String.valueOf((long) value)
-                : String.format("%.1f", value);
+            : String.format("%.1f", value);
     }
 
     /**
@@ -167,10 +167,10 @@ public class HtmlReportRenderer {
     public static String escapeHtml(String s) {
         if (s == null) return "";
         return s.replace("&", "&amp;")
-                .replace("<", "&lt;")
-                .replace(">", "&gt;")
-                .replace("\"", "&quot;")
-                .replace("'", "&#39;");
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+            .replace("\"", "&quot;")
+            .replace("'", "&#39;");
     }
 
     private static String[] buildTableHeaders(int percentile) {
@@ -188,18 +188,18 @@ public class HtmlReportRenderer {
         if (errorTypeSummary == null || errorTypeSummary.isEmpty()) return NO_ERROR_CARD;
 
         long totalErrors = errorTypeSummary.stream()
-                .mapToLong(e -> ((Number) e.getOrDefault("count", 0L)).longValue())
-                .sum();
+            .mapToLong(e -> ((Number) e.getOrDefault("count", 0L)).longValue())
+            .sum();
         if (totalErrors == 0) return NO_ERROR_CARD;
 
         StringBuilder sb = new StringBuilder(512);
         sb.append("<div class=\"error-breakdown\">\n")
-                .append("  <h3>Error Breakdown</h3>\n")
-                .append("  <table class=\"data-table\">\n")
-                .append("    <thead><tr>\n")
-                .append("      <th>Status Code</th><th>Message</th><th>Count</th><th>% of Errors</th>\n")
-                .append("    </tr></thead>\n")
-                .append("    <tbody>\n");
+            .append("  <h3>Error Breakdown</h3>\n")
+            .append("  <table class=\"data-table\">\n")
+            .append("    <thead><tr>\n")
+            .append("      <th>Status Code</th><th>Message</th><th>Count</th><th>% of Errors</th>\n")
+            .append("    </tr></thead>\n")
+            .append("    <tbody>\n");
 
         for (Map<String, Object> entry : errorTypeSummary) {
             String code = escapeHtml(String.valueOf(entry.getOrDefault("responseCode", "")));
@@ -207,16 +207,16 @@ public class HtmlReportRenderer {
             long count = ((Number) entry.getOrDefault("count", 0L)).longValue();
             double pct = totalErrors > 0 ? (double) count / totalErrors * 100.0 : 0.0;
             sb.append("    <tr>")
-                    .append("<td>").append(code).append(TD_CLOSE)
-                    .append("<td>").append(msg).append(TD_CLOSE)
-                    .append("<td class=\"num\">").append(count).append(TD_CLOSE)
-                    .append("<td class=\"num\">").append(String.format("%.1f%%", pct)).append(TD_CLOSE)
-                    .append("</tr>\n");
+                .append("<td>").append(code).append(TD_CLOSE)
+                .append("<td>").append(msg).append(TD_CLOSE)
+                .append("<td class=\"num\">").append(count).append(TD_CLOSE)
+                .append("<td class=\"num\">").append(String.format("%.1f%%", pct)).append(TD_CLOSE)
+                .append("</tr>\n");
         }
 
         sb.append("    </tbody>\n")
-                .append("  </table>\n")
-                .append("</div>\n");
+            .append("  </table>\n")
+            .append("</div>\n");
         return sb.toString();
     }
 
@@ -233,37 +233,37 @@ public class HtmlReportRenderer {
 
         StringBuilder sb = new StringBuilder(512);
         sb.append("<div class=\"latency-panel\">\n")
-                .append("  <h3>Network &amp; Server Timing</h3>\n")
-                .append("  <div class=\"latency-cards\">\n");
+            .append("  <h3>Network &amp; Server Timing</h3>\n")
+            .append("  <div class=\"latency-cards\">\n");
 
         appendLatencyCard(sb, "Avg Latency (TTFB)", avgLatencyMs,
-                "Time to First Byte — time from request sent to first byte received. "
-                        + "Includes DNS, TCP, TLS handshake, and server processing. "
-                        + "High values indicate network or server-side delays.");
+            "Time to First Byte — time from request sent to first byte received. "
+                + "Includes DNS, TCP, TLS handshake, and server processing. "
+                + "High values indicate network or server-side delays.");
 
         appendLatencyCard(sb, "Avg Connect Time", avgConnectMs,
-                "Time to establish TCP connection (includes DNS + TLS if applicable). "
-                        + "High values suggest network latency, DNS resolution issues, "
-                        + "or TLS negotiation overhead.");
+            "Time to establish TCP connection (includes DNS + TLS if applicable). "
+                + "High values suggest network latency, DNS resolution issues, "
+                + "or TLS negotiation overhead.");
 
         appendLatencyCard(sb, "Avg Server Processing", serverProcessingMs,
-                "Latency minus Connect — time the server spent processing the request "
-                        + "after connection was established. High values point to slow backend "
-                        + "logic, database queries, or resource contention.");
+            "Latency minus Connect — time the server spent processing the request "
+                + "after connection was established. High values point to slow backend "
+                + "logic, database queries, or resource contention.");
 
         sb.append("  </div>\n")
-                .append("</div>\n");
+            .append("</div>\n");
         return sb.toString();
     }
 
     private static void appendLatencyCard(StringBuilder sb, String label, long valueMs,
                                           String tooltip) {
         sb.append("    <div class=\"latency-card\" title=\"")
-                .append(escapeHtml(tooltip)).append("\">\n")
-                .append("      <div class=\"latency-label\">").append(escapeHtml(label))
-                .append(" <span class=\"info-icon\">\u24D8</span></div>\n")
-                .append("      <div class=\"latency-value\">").append(valueMs).append(" ms</div>\n")
-                .append("    </div>\n");
+            .append(escapeHtml(tooltip)).append("\">\n")
+            .append("      <div class=\"latency-label\">").append(escapeHtml(label))
+            .append(" <span class=\"info-icon\">\u24D8</span></div>\n")
+            .append("      <div class=\"latency-value\">").append(valueMs).append(" ms</div>\n")
+            .append("    </div>\n");
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -336,17 +336,17 @@ public class HtmlReportRenderer {
 
         String safeVerdict = verdict != null ? verdict : "UNDECISIVE";
         String metricsTable = buildTransactionMetricsSection(
-                tableRows, config.percentile,
-                config.tpsSlaThreshold, config.errorSlaThreshold,
-                config.rtSlaThresholdMs, config.rtSlaMetric);
+            tableRows, config.percentile,
+            config.tpsSlaThreshold, config.errorSlaThreshold,
+            config.rtSlaThresholdMs, config.rtSlaMetric);
         String chartsBlock = HtmlPageBuilder.buildChartsSection(timeBuckets);
         String errorBreakdown = buildErrorBreakdownHtml(config.errorTypeSummary);
         String latencyPanel = buildLatencyPanelHtml(
-                config.avgLatencyMs, config.avgConnectMs, config.latencyPresent);
+            config.avgLatencyMs, config.avgConnectMs, config.latencyPresent);
 
         String page = HtmlPageBuilder.buildDataOnlyPage(
-                contentSections, metricsTable, chartsBlock, config,
-                errorBreakdown, latencyPanel, safeVerdict);
+            contentSections, metricsTable, chartsBlock, config,
+            errorBreakdown, latencyPanel, safeVerdict);
         writeReport(page, Path.of(outputPath));
         log.info("renderDataReport: data-only HTML report written. outputPath={}", outputPath);
         return outputPath;
@@ -362,15 +362,15 @@ public class HtmlReportRenderer {
                                  String verdict) {
         String htmlBody = HtmlPageBuilder.markdownToHtml(markdownContent);
         String metricsTable = buildTransactionMetricsSection(
-                tableRows, config.percentile,
-                config.tpsSlaThreshold,
-                config.errorSlaThreshold, config.rtSlaThresholdMs, config.rtSlaMetric);
+            tableRows, config.percentile,
+            config.tpsSlaThreshold,
+            config.errorSlaThreshold, config.rtSlaThresholdMs, config.rtSlaMetric);
         String chartsBlock = HtmlPageBuilder.buildChartsSection(timeBuckets);
         String errorBreakdown = buildErrorBreakdownHtml(config.errorTypeSummary);
         String latencyPanel = buildLatencyPanelHtml(
-                config.avgLatencyMs, config.avgConnectMs, config.latencyPresent);
+            config.avgLatencyMs, config.avgConnectMs, config.latencyPresent);
         return HtmlPageBuilder.buildPage(htmlBody, metricsTable, chartsBlock, config,
-                errorBreakdown, latencyPanel, verdict);
+            errorBreakdown, latencyPanel, verdict);
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -401,7 +401,7 @@ public class HtmlReportRenderer {
      */
     String buildTransactionMetricsSection(List<String[]> rows, int percentile) {
         return buildTransactionMetricsSection(rows, percentile,
-                -1, -1, -1, "pnn");
+            -1, -1, -1, "pnn");
     }
 
     /**
@@ -440,38 +440,38 @@ public class HtmlReportRenderer {
         String[] baseHeaders = buildTableHeaders(percentile);
         // TPS SLA column header: "TPS SLA (≥N)" or "TPS SLA"
         String tpsSlaHeader = hasTpsSla
-                ? "TPS SLA (\u2265" + formatThreshold(tpsSlaThreshold) + ")"
-                : "TPS SLA";
+            ? "TPS SLA (\u2265" + formatThreshold(tpsSlaThreshold) + ")"
+            : "TPS SLA";
         // Error SLA column header: "Error% SLA (≤N%)" or "Error% SLA"
         boolean useAvg = "avg".equalsIgnoreCase(rtSlaMetric);
         String errorSlaHeader = hasErrorSla
-                ? "Error% SLA (\u2264" + formatThreshold(errorSlaThreshold) + "%)"
-                : "Error% SLA";
+            ? "Error% SLA (\u2264" + formatThreshold(errorSlaThreshold) + "%)"
+            : "Error% SLA";
         // RT SLA column header reflects the configured metric and threshold
         String rtSlaHeader = hasRtSla
-                ? (useAvg ? "Avg" : "P" + percentile) + " RT SLA (\u2264" + rtSlaThresholdMs + " ms)"
-                : (useAvg ? "Avg" : "P" + percentile) + " RT SLA";
+            ? (useAvg ? "Avg" : "P" + percentile) + " RT SLA (\u2264" + rtSlaThresholdMs + " ms)"
+            : (useAvg ? "Avg" : "P" + percentile) + " RT SLA";
 
         StringBuilder sb = new StringBuilder(512 + rows.size() * 200);
         sb.append("<div class=\"metrics-section\">\n")
-                .append("  <h2>Transaction Metrics</h2>\n")
-                .append("  <div class=\"metrics-toolbar\">\n")
-                .append("    <input type=\"text\" id=\"metricsSearch\" placeholder=\"Search transaction names\u2026\">\n")
-                .append("    <div class=\"metrics-toolbar-right\">\n")
-                .append("      <label>Show\n")
-                .append("        <select id=\"metricsPageSize\">\n")
-                .append("          <option value=\"10\" selected>10</option>\n")
-                .append("          <option value=\"25\">25</option>\n")
-                .append("          <option value=\"50\">50</option>\n")
-                .append("          <option value=\"100\">100</option>\n")
-                .append("        </select> entries\n")
-                .append("      </label>\n")
-                .append("    </div>\n")
-                .append("  </div>\n")
-                .append("  <div class=\"sort-hint\" id=\"sortHint\">Click column headers to sort</div>\n")
-                .append("  <div class=\"tbl-wrap\">\n")
-                .append("  <table id=\"metricsTable\">\n")
-                .append("    <thead><tr>\n");
+            .append("  <h2>Transaction Metrics</h2>\n")
+            .append("  <div class=\"metrics-toolbar\">\n")
+            .append("    <input type=\"text\" id=\"metricsSearch\" placeholder=\"Search transaction names\u2026\">\n")
+            .append("    <div class=\"metrics-toolbar-right\">\n")
+            .append("      <label>Show\n")
+            .append("        <select id=\"metricsPageSize\">\n")
+            .append("          <option value=\"10\" selected>10</option>\n")
+            .append("          <option value=\"25\">25</option>\n")
+            .append("          <option value=\"50\">50</option>\n")
+            .append("          <option value=\"100\">100</option>\n")
+            .append("        </select> entries\n")
+            .append("      </label>\n")
+            .append("    </div>\n")
+            .append("  </div>\n")
+            .append("  <div class=\"sort-hint\" id=\"sortHint\">Click column headers to sort</div>\n")
+            .append("  <div class=\"tbl-wrap\">\n")
+            .append("  <table id=\"metricsTable\">\n")
+            .append("    <thead><tr>\n");
 
         for (String h : baseHeaders) {
             sb.append("      <th>").append(escapeHtml(h)).append("</th>\n");
@@ -504,37 +504,37 @@ public class HtmlReportRenderer {
                 String cell = (row != null && i < row.length && row[i] != null) ? row[i] : "";
                 String align = (i == 0) ? "" : " class=\"num\"";
                 sb.append("      <td").append(align).append(">")
-                        .append(escapeHtml(cell))
-                        .append(TD_CLOSE).append("\n");
+                    .append(escapeHtml(cell))
+                    .append(TD_CLOSE).append("\n");
             }
             if (hasTpsSla) {
                 sb.append("      ").append(buildSlaCell(
-                        parseTps(safeCell(row, TPS_COL)),
-                        tpsSlaThreshold, true)).append("\n");
+                    parseTps(safeCell(row, TPS_COL)),
+                    tpsSlaThreshold, true)).append("\n");
             }
             if (hasErrorSla) {
                 sb.append("      ").append(buildSlaCell(
-                        parseErrorRate(safeCell(row, ERROR_RATE_COL)),
-                        errorSlaThreshold, false)).append("\n");
+                    parseErrorRate(safeCell(row, ERROR_RATE_COL)),
+                    errorSlaThreshold, false)).append("\n");
             }
             if (hasRtSla) {
                 int rtCol = useAvg ? AVG_RT_COL : PNN_RT_COL;
                 sb.append("      ").append(buildSlaCell(
-                        parseMs(safeCell(row, rtCol)),
-                        rtSlaThresholdMs, false)).append("\n");
+                    parseMs(safeCell(row, rtCol)),
+                    rtSlaThresholdMs, false)).append("\n");
             }
 
             sb.append("    </tr>\n");
         }
         sb.append("    </tbody>\n").append("  </table>\n").append("  </div>\n");
         sb.append("  <div class=\"metrics-paging\">\n")
-                .append("    <span id=\"metricsInfo\"></span>\n")
-                .append("    <div id=\"metricsPages\"></div>\n")
-                .append("  </div>\n");
+            .append("    <span id=\"metricsInfo\"></span>\n")
+            .append("    <div id=\"metricsPages\"></div>\n")
+            .append("  </div>\n");
         if (!hasSla) {
             sb.append("  <p style=\"font-size:11px;color:var(--color-text-tertiary)\">")
-                    .append("SLA Columns Hidden \u2014 No SLA Thresholds Were Configured For This Run.")
-                    .append("</p>\n");
+                .append("SLA Columns Hidden \u2014 No SLA Thresholds Were Configured For This Run.")
+                .append("</p>\n");
         }
         sb.append("</div>\n");
         return sb.toString();
@@ -556,8 +556,8 @@ public class HtmlReportRenderer {
     private void writeReport(String content, Path finalPath) throws IOException {
         // Step 1: null-safe parent resolution
         Path parentDir = Objects.requireNonNull(
-                finalPath.toAbsolutePath().getParent(),
-                "finalPath must include a parent directory: " + finalPath);
+            finalPath.toAbsolutePath().getParent(),
+            "finalPath must include a parent directory: " + finalPath);
 
         // Step 2: ensure parent directory exists, then check disk space.
         // Files.getFileStore() throws NoSuchFileException if parentDir does not exist —
@@ -566,8 +566,8 @@ public class HtmlReportRenderer {
         long usable = Files.getFileStore(parentDir).getUsableSpace();
         if (usable < MIN_FREE_BYTES) {
             throw new IOException(String.format(
-                    "Insufficient disk space — %.1f MB available, 10 MB required on %s",
-                    usable / (1024.0 * 1024.0), parentDir));
+                "Insufficient disk space — %.1f MB available, 10 MB required on %s",
+                usable / (1024.0 * 1024.0), parentDir));
         }
 
         // Step 3: write to sibling .tmp — same filesystem as finalPath, required for ATOMIC_MOVE

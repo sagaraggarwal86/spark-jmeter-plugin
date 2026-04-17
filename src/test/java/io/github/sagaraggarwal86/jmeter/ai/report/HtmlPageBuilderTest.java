@@ -81,7 +81,7 @@ class HtmlPageBuilderTest {
             String result = HtmlPageBuilder.convertPipeTablesToHtml(input);
             // Without a separator row (|---|---|) on line 2, this is not a table
             assertFalse(result.contains("<table>"),
-                    "Without a separator row after the header, no table should be generated");
+                "Without a separator row after the header, no table should be generated");
         }
     }
 
@@ -124,7 +124,7 @@ class HtmlPageBuilderTest {
             String input = "| Left | Center | Right |\n|:---|:---:|---:|\n| a | b | c |";
             String result = HtmlPageBuilder.convertPipeTablesToHtml(input);
             assertTrue(result.contains("<table>"),
-                    "Separator with colons should still be recognised as a valid separator");
+                "Separator with colons should still be recognised as a valid separator");
         }
 
         @Test
@@ -180,9 +180,9 @@ class HtmlPageBuilderTest {
             String input = "| Header |\n|---|\n| <script>alert('xss')</script> |";
             String result = HtmlPageBuilder.convertPipeTablesToHtml(input);
             assertFalse(result.contains("<script>"),
-                    "Script tags in cell content must be escaped");
+                "Script tags in cell content must be escaped");
             assertTrue(result.contains("&lt;script&gt;"),
-                    "Escaped script tag should appear in output");
+                "Escaped script tag should appear in output");
         }
 
         @Test
@@ -307,9 +307,9 @@ class HtmlPageBuilderTest {
             String result = HtmlPageBuilder.buildChartsSection(null);
             assertFalse(result.isEmpty(), "Result must never be empty");
             assertTrue(result.contains("<h2>Performance Charts Over Time</h2>"),
-                    "Section header must always be present");
+                "Section header must always be present");
             assertTrue(result.contains("charts-warn"),
-                    "Placeholder CSS class must be applied");
+                "Placeholder CSS class must be applied");
         }
 
         @Test
@@ -318,22 +318,22 @@ class HtmlPageBuilderTest {
             String result = HtmlPageBuilder.buildChartsSection(Collections.emptyList());
             assertFalse(result.isEmpty(), "Result must never be empty");
             assertTrue(result.contains("<h2>Performance Charts Over Time</h2>"),
-                    "Section header must always be present");
+                "Section header must always be present");
             assertTrue(result.contains("charts-warn"),
-                    "Placeholder CSS class must be applied");
+                "Placeholder CSS class must be applied");
         }
 
         @Test
         @DisplayName("single bucket renders placeholder — insufficient for time-series")
         void singleBucketRendersPlaceholder() {
             JTLParser.TimeBucket bucket = new JTLParser.TimeBucket(
-                    System.currentTimeMillis(), 250.0, 2.5, 10.0, 50.0);
+                System.currentTimeMillis(), 250.0, 2.5, 10.0, 50.0);
             String result = HtmlPageBuilder.buildChartsSection(List.of(bucket));
             assertFalse(result.isEmpty(), "Result must never be empty");
             assertTrue(result.contains("charts-warn"),
-                    "Single-bucket result must use the placeholder");
+                "Single-bucket result must use the placeholder");
             assertFalse(result.contains("<canvas"),
-                    "Single bucket must not render Chart.js canvas elements");
+                "Single bucket must not render Chart.js canvas elements");
         }
 
         @Test
@@ -341,13 +341,13 @@ class HtmlPageBuilderTest {
         void twoBucketsRendersCharts() {
             long now = System.currentTimeMillis();
             List<JTLParser.TimeBucket> buckets = List.of(
-                    new JTLParser.TimeBucket(now, 250.0, 0.0, 10.0, 50.0),
-                    new JTLParser.TimeBucket(now + 30_000, 300.0, 1.0, 12.0, 60.0));
+                new JTLParser.TimeBucket(now, 250.0, 0.0, 10.0, 50.0),
+                new JTLParser.TimeBucket(now + 30_000, 300.0, 1.0, 12.0, 60.0));
             String result = HtmlPageBuilder.buildChartsSection(buckets);
             assertTrue(result.contains("<canvas"),
-                    "Two buckets must render Chart.js canvas elements");
+                "Two buckets must render Chart.js canvas elements");
             assertFalse(result.contains("charts-warn"),
-                    "Full chart must not use the placeholder CSS class");
+                "Full chart must not use the placeholder CSS class");
             assertTrue(result.contains("chartAvgRt"), "Avg RT chart must be present");
             assertTrue(result.contains("chartErrPct"), "Error rate chart must be present");
             assertTrue(result.contains("chartTps"), "Throughput chart must be present");
@@ -383,7 +383,7 @@ class HtmlPageBuilderTest {
             assertEquals(1, sections.size());
             assertEquals("Executive Summary", sections.get(0)[0]);
             assertTrue(sections.get(0)[1].contains("<h2>Executive Summary</h2>"),
-                    "h2 tag must be retained in panel content");
+                "h2 tag must be retained in panel content");
             assertTrue(sections.get(0)[1].contains("Test passed."));
         }
 
@@ -391,12 +391,12 @@ class HtmlPageBuilderTest {
         @DisplayName("seven AI sections are split correctly")
         void sevenSections() {
             String html = "<h2>Executive Summary</h2><p>A</p>"
-                    + "<h2>Bottleneck Analysis</h2><p>B</p>"
-                    + "<h2>Error Analysis</h2><p>C</p>"
-                    + "<h2>Advanced Web Diagnostics</h2><p>D</p>"
-                    + "<h2>Root Cause Hypotheses</h2><p>E</p>"
-                    + "<h2>Recommendations</h2><p>F</p>"
-                    + "<h2>Verdict</h2><p>PASS</p>";
+                + "<h2>Bottleneck Analysis</h2><p>B</p>"
+                + "<h2>Error Analysis</h2><p>C</p>"
+                + "<h2>Advanced Web Diagnostics</h2><p>D</p>"
+                + "<h2>Root Cause Hypotheses</h2><p>E</p>"
+                + "<h2>Recommendations</h2><p>F</p>"
+                + "<h2>Verdict</h2><p>PASS</p>";
             List<String[]> sections = HtmlPageBuilder.splitAtH2(html);
             assertEquals(7, sections.size());
             assertEquals("Executive Summary", sections.get(0)[0]);
@@ -415,7 +415,7 @@ class HtmlPageBuilderTest {
             List<String[]> sections = HtmlPageBuilder.splitAtH2(html);
             assertEquals(1, sections.size());
             assertTrue(sections.get(0)[1].contains("Preamble text."),
-                    "Preamble must be included in the first section content");
+                "Preamble must be included in the first section content");
             assertTrue(sections.get(0)[1].contains("<h2>Section One</h2>"));
         }
 
@@ -423,8 +423,8 @@ class HtmlPageBuilderTest {
         @DisplayName("truncated report with 3 sections produces 3 entries")
         void truncatedReportThreeSections() {
             String html = "<h2>Executive Summary</h2><p>A</p>"
-                    + "<h2>Bottleneck Analysis</h2><p>B</p>"
-                    + "<h2>Error Analysis</h2><p>C</p>";
+                + "<h2>Bottleneck Analysis</h2><p>B</p>"
+                + "<h2>Error Analysis</h2><p>C</p>";
             List<String[]> sections = HtmlPageBuilder.splitAtH2(html);
             assertEquals(3, sections.size());
         }
@@ -446,7 +446,7 @@ class HtmlPageBuilderTest {
             List<String[]> sections = HtmlPageBuilder.splitAtH2(html);
             assertEquals(1, sections.size());
             assertEquals("Executive Summary", sections.get(0)[0],
-                    "Inner strong tag must be stripped from tab title");
+                "Inner strong tag must be stripped from tab title");
         }
 
         @Test
@@ -455,7 +455,7 @@ class HtmlPageBuilderTest {
             String html = "<h2>Verdict</h2><p>PASS</p>";
             List<String[]> sections = HtmlPageBuilder.splitAtH2(html);
             assertTrue(sections.get(0)[1].contains("<h2>"),
-                    "The h2 opening tag must be kept in panel content");
+                "The h2 opening tag must be kept in panel content");
         }
 
         @Test
@@ -464,7 +464,7 @@ class HtmlPageBuilderTest {
             String html = "<h2>Executive Summary</h2><p>Content.</p>";
             List<String[]> sections = HtmlPageBuilder.splitAtH2(html);
             assertDoesNotThrow(() -> sections.add(new String[]{"Extra", "<p>extra</p>"}),
-                    "List must be mutable so buildPage() can append Metrics and Charts tabs");
+                "List must be mutable so buildPage() can append Metrics and Charts tabs");
             assertEquals(2, sections.size());
         }
     }
@@ -519,8 +519,8 @@ class HtmlPageBuilderTest {
         void realChartsSectionIsSplit() {
             long now = System.currentTimeMillis();
             List<JTLParser.TimeBucket> buckets = List.of(
-                    new JTLParser.TimeBucket(now, 250.0, 0.0, 10.0, 50.0),
-                    new JTLParser.TimeBucket(now + 30_000, 300.0, 1.0, 12.0, 60.0));
+                new JTLParser.TimeBucket(now, 250.0, 0.0, 10.0, 50.0),
+                new JTLParser.TimeBucket(now + 30_000, 300.0, 1.0, 12.0, 60.0));
             String chartsBlock = HtmlPageBuilder.buildChartsSection(buckets);
             String[] parts = HtmlPageBuilder.splitChartsBlock(chartsBlock);
             assertTrue(parts[0].contains("<canvas"), "Panel part must contain canvas elements");
@@ -551,20 +551,20 @@ class HtmlPageBuilderTest {
          */
         private HtmlReportRenderer.RenderConfig minimalConfig() {
             return new HtmlReportRenderer.RenderConfig(
-                    "100", "Load Test", "Peak hour test",
-                    "Thread Group 1", "01/01/25 09:00:00", "01/01/25 10:00:00",
-                    "1h 0m 0s", 90, "Groq (Free)", -1, -1, -1, "pnn",
-                    java.util.Collections.emptyList(), 0L, 0L, false);
+                "100", "Load Test", "Peak hour test",
+                "Thread Group 1", "01/01/25 09:00:00", "01/01/25 10:00:00",
+                "1h 0m 0s", 90, "Groq (Free)", -1, -1, -1, "pnn",
+                java.util.Collections.emptyList(), 0L, 0L, false);
         }
 
         private String sevenSectionBody() {
             return "<h2>Executive Summary</h2><p>A</p>"
-                    + "<h2>Bottleneck Analysis</h2><p>B</p>"
-                    + "<h2>Error Analysis</h2><p>C</p>"
-                    + "<h2>Advanced Web Diagnostics</h2><p>D</p>"
-                    + "<h2>Root Cause Hypotheses</h2><p>E</p>"
-                    + "<h2>Recommendations</h2><p>F</p>"
-                    + "<h2>Verdict</h2><p>PASS</p>";
+                + "<h2>Bottleneck Analysis</h2><p>B</p>"
+                + "<h2>Error Analysis</h2><p>C</p>"
+                + "<h2>Advanced Web Diagnostics</h2><p>D</p>"
+                + "<h2>Root Cause Hypotheses</h2><p>E</p>"
+                + "<h2>Recommendations</h2><p>F</p>"
+                + "<h2>Verdict</h2><p>PASS</p>";
         }
 
         @Test
@@ -586,7 +586,7 @@ class HtmlPageBuilderTest {
             // First occurrence of tab-btn must carry the active class
             int firstBtn = page.indexOf("class=\"nav-item");
             assertTrue(page.substring(firstBtn, firstBtn + 30).contains("active"),
-                    "First tab button must have the active class");
+                "First tab button must have the active class");
         }
 
         @Test
@@ -595,7 +595,7 @@ class HtmlPageBuilderTest {
             String page = HtmlPageBuilder.buildPage(sevenSectionBody(), "", "", minimalConfig(), "", "", "UNDECISIVE");
             int firstPanel = page.indexOf("class=\"panel");
             assertTrue(page.substring(firstPanel, firstPanel + 30).contains("active"),
-                    "First tab panel must have the active class");
+                "First tab panel must have the active class");
         }
 
         @Test
@@ -674,7 +674,7 @@ class HtmlPageBuilderTest {
         void chartsTabButtonHasDataChartsAttribute() {
             String page = HtmlPageBuilder.buildPage(sevenSectionBody(), "", "", minimalConfig(), "", "", "UNDECISIVE");
             assertTrue(page.contains("el.querySelector('canvas')"),
-                    "Charts panel activation must trigger Chart.js resize via canvas detection");
+                "Charts panel activation must trigger Chart.js resize via canvas detection");
         }
 
         @Test
@@ -682,8 +682,8 @@ class HtmlPageBuilderTest {
         void chartInitScriptOutsideTabPanels() {
             long now = System.currentTimeMillis();
             List<JTLParser.TimeBucket> buckets = List.of(
-                    new JTLParser.TimeBucket(now, 250.0, 0.0, 10.0, 50.0),
-                    new JTLParser.TimeBucket(now + 30_000, 300.0, 1.0, 12.0, 60.0));
+                new JTLParser.TimeBucket(now, 250.0, 0.0, 10.0, 50.0),
+                new JTLParser.TimeBucket(now + 30_000, 300.0, 1.0, 12.0, 60.0));
             String chartsBlock = HtmlPageBuilder.buildChartsSection(buckets);
             String page = HtmlPageBuilder.buildPage(sevenSectionBody(), "", chartsBlock, minimalConfig(), "", "", "UNDECISIVE");
 
@@ -696,7 +696,7 @@ class HtmlPageBuilderTest {
             // script is placed outside (after) all panels.
             int lastDataTitle = page.lastIndexOf("data-title=");
             assertTrue(chartScript > lastDataTitle,
-                    "Chart.js init must appear after all tab panel definitions");
+                "Chart.js init must appear after all tab panel definitions");
         }
 
         @Test
@@ -722,8 +722,8 @@ class HtmlPageBuilderTest {
         @DisplayName("truncated AI response with 3 sections produces 4 tabs (3 AI + Charts)")
         void truncatedReportProducesCorrectTabCount() {
             String truncatedBody = "<h2>Executive Summary</h2><p>A</p>"
-                    + "<h2>Bottleneck Analysis</h2><p>B</p>"
-                    + "<h2>Error Analysis</h2><p>C</p>";
+                + "<h2>Bottleneck Analysis</h2><p>B</p>"
+                + "<h2>Error Analysis</h2><p>C</p>";
             String page = HtmlPageBuilder.buildPage(truncatedBody, "", "", minimalConfig(), "", "", "UNDECISIVE");
             long tabCount = countOccurrences(page, "class=\"nav-item");
             assertEquals(4, tabCount, "3 AI sections + Charts tab = 4 tabs for truncated report");
@@ -735,9 +735,9 @@ class HtmlPageBuilderTest {
             String page = HtmlPageBuilder.buildPage(sevenSectionBody(), "", "", minimalConfig(), "", "", "UNDECISIVE");
             assertTrue(page.contains("@media print"), "@media print block must be present");
             assertTrue(page.contains(".sidebar { display: none !important"),
-                    "Sidebar must be hidden in print");
+                "Sidebar must be hidden in print");
             assertTrue(page.contains(".panel { display: block !important"),
-                    "All panels must be visible in print");
+                "All panels must be visible in print");
         }
 
         @Test
@@ -764,7 +764,7 @@ class HtmlPageBuilderTest {
             int headEnd = page.indexOf("</head>");
             int metaIdx = page.indexOf("window.jaarMeta");
             assertTrue(metaIdx > 0 && metaIdx < headEnd,
-                    "window.jaarMeta must be declared inside <head>");
+                "window.jaarMeta must be declared inside <head>");
         }
 
         @Test
@@ -772,7 +772,7 @@ class HtmlPageBuilderTest {
         void placeholderHasNoChartDataTable() {
             String chartsBlock = HtmlPageBuilder.buildChartsSection(null);
             assertFalse(chartsBlock.contains("jaar-chart-data"),
-                    "Placeholder chart section must not contain a hidden data table");
+                "Placeholder chart section must not contain a hidden data table");
         }
 
         @Test
@@ -780,11 +780,11 @@ class HtmlPageBuilderTest {
         void realChartsSectionHasNoHiddenTable() {
             long now = System.currentTimeMillis();
             List<JTLParser.TimeBucket> buckets = List.of(
-                    new JTLParser.TimeBucket(now, 250.0, 1.5, 10.0, 50.0),
-                    new JTLParser.TimeBucket(now + 30_000, 300.0, 0.0, 12.0, 60.0));
+                new JTLParser.TimeBucket(now, 250.0, 1.5, 10.0, 50.0),
+                new JTLParser.TimeBucket(now + 30_000, 300.0, 0.0, 12.0, 60.0));
             String chartsBlock = HtmlPageBuilder.buildChartsSection(buckets);
             assertFalse(chartsBlock.contains("jaar-chart-data"),
-                    "Charts section must not embed a hidden data table");
+                "Charts section must not embed a hidden data table");
         }
 
         @Test
@@ -792,7 +792,7 @@ class HtmlPageBuilderTest {
         void chartsSheetContainsReferralMessage() {
             String page = HtmlPageBuilder.buildPage(sevenSectionBody(), "", "", minimalConfig(), "", "", "UNDECISIVE");
             assertTrue(page.contains("Refer to the HTML report for interactive charts."),
-                    "Excel export JS must write the HTML report referral message for the charts sheet");
+                "Excel export JS must write the HTML report referral message for the charts sheet");
         }
 
         // ── Helper ───────────────────────────────────────────────────────────

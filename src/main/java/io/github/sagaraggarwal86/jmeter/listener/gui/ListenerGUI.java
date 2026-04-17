@@ -81,7 +81,7 @@ public class ListenerGUI extends AbstractVisualizer {
 
         // Inject "Help on this plugin" link into the title panel
         JLabel helpLink = new JLabel(
-                "<html><a href=''>&#x2139; Help on this plugin</a></html>");
+            "<html><a href=''>&#x2139; Help on this plugin</a></html>");
         helpLink.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         helpLink.setFont(AggregateReportPanel.FONT_REGULAR);
         helpLink.addMouseListener(new MouseAdapter() {
@@ -101,7 +101,7 @@ public class ListenerGUI extends AbstractVisualizer {
         // file's directory, then immediately loads the selected file.
         FilePanelCustomizer.hideFilePanelExtras(titlePanel);
         FilePanelCustomizer.overrideBrowseButton(
-                titlePanel, this::getFile, this::setFile, this, this::checkAndLoadFile);
+            titlePanel, this::getFile, this::setFile, this, this::checkAndLoadFile);
         FilePanelCustomizer.wireEnterKeyOnFilenameField(titlePanel, this::checkAndLoadFile);
 
         add(reportPanel, BorderLayout.CENTER);
@@ -121,8 +121,8 @@ public class ListenerGUI extends AbstractVisualizer {
         }
         if (!new File(filename.trim()).exists()) {
             JOptionPane.showMessageDialog(this,
-                    "File not found:\n" + filename.trim(),
-                    "File Not Found", JOptionPane.ERROR_MESSAGE);
+                "File not found:\n" + filename.trim(),
+                "File Not Found", JOptionPane.ERROR_MESSAGE);
             return;
         }
         missingFileWarned.remove(filename.trim());
@@ -179,32 +179,32 @@ public class ListenerGUI extends AbstractVisualizer {
             super.configure(el);
             // ── Filter fields ────────────────────────────────────
             reportPanel.setStartOffset(
-                    el.getPropertyAsString(ListenerCollector.PROP_START_OFFSET, ""));
+                el.getPropertyAsString(ListenerCollector.PROP_START_OFFSET, ""));
             reportPanel.setEndOffset(
-                    el.getPropertyAsString(ListenerCollector.PROP_END_OFFSET, ""));
+                el.getPropertyAsString(ListenerCollector.PROP_END_OFFSET, ""));
             reportPanel.setPercentile(
-                    el.getPropertyAsString(ListenerCollector.PROP_PERCENTILE, "90"));
+                el.getPropertyAsString(ListenerCollector.PROP_PERCENTILE, "90"));
             // ── SLA fields ───────────────────────────────────────
             reportPanel.setTpsSla(
-                    el.getPropertyAsString(ListenerCollector.PROP_TPS_SLA, ""));
+                el.getPropertyAsString(ListenerCollector.PROP_TPS_SLA, ""));
             reportPanel.setErrorPctSla(
-                    el.getPropertyAsString(ListenerCollector.PROP_ERROR_PCT_SLA, ""));
+                el.getPropertyAsString(ListenerCollector.PROP_ERROR_PCT_SLA, ""));
             reportPanel.setRtThresholdSla(
-                    el.getPropertyAsString(ListenerCollector.PROP_RT_THRESHOLD_SLA, ""));
+                el.getPropertyAsString(ListenerCollector.PROP_RT_THRESHOLD_SLA, ""));
             reportPanel.setRtMetricIndex(
-                    el.getPropertyAsInt(ListenerCollector.PROP_RT_METRIC, 1));
+                el.getPropertyAsInt(ListenerCollector.PROP_RT_METRIC, 1));
             // ── Chart / search fields ────────────────────────────
             reportPanel.setChartInterval(
-                    el.getPropertyAsString(ListenerCollector.PROP_CHART_INTERVAL, "0"));
+                el.getPropertyAsString(ListenerCollector.PROP_CHART_INTERVAL, "0"));
             reportPanel.setSearch(
-                    el.getPropertyAsString(ListenerCollector.PROP_SEARCH, ""));
+                el.getPropertyAsString(ListenerCollector.PROP_SEARCH, ""));
             reportPanel.setRegex(
-                    el.getPropertyAsBoolean(ListenerCollector.PROP_REGEX, false));
+                el.getPropertyAsBoolean(ListenerCollector.PROP_REGEX, false));
             reportPanel.setFilterModeIndex(
-                    el.getPropertyAsInt(ListenerCollector.PROP_FILTER_MODE, 0));
+                el.getPropertyAsInt(ListenerCollector.PROP_FILTER_MODE, 0));
             // ── Column visibility ────────────────────────────────
             reportPanel.setColumnVisibility(
-                    el.getPropertyAsString(ListenerCollector.PROP_COL_VISIBILITY, ""));
+                el.getPropertyAsString(ListenerCollector.PROP_COL_VISIBILITY, ""));
         } finally {
             reportPanel.setSuppressReload(false);
         }
@@ -215,9 +215,9 @@ public class ListenerGUI extends AbstractVisualizer {
                 if (!missingFileWarned.contains(lastFile)) {
                     missingFileWarned.add(lastFile);
                     JOptionPane.showMessageDialog(this,
-                            "Previously loaded file not found:\n" + lastFile
-                                    + "\n\nPlease browse for the file again.",
-                            "File Not Found", JOptionPane.WARNING_MESSAGE);
+                        "Previously loaded file not found:\n" + lastFile
+                            + "\n\nPlease browse for the file again.",
+                        "File Not Found", JOptionPane.WARNING_MESSAGE);
                 }
             } else {
                 reportPanel.loadJtlFileForRestore(lastFile);

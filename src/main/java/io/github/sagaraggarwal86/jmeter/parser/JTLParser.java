@@ -43,8 +43,8 @@ public class JTLParser {
      * that x-axis labels always land on round clock times (e.g. :00, :30, :00).
      */
     private static final long[] SNAP_INTERVALS_MS = {
-            10_000L, 30_000L, 60_000L, 120_000L, 300_000L,
-            600_000L, 1_800_000L, 3_600_000L
+        10_000L, 30_000L, 60_000L, 120_000L, 300_000L,
+        600_000L, 1_800_000L, 3_600_000L
     };
 
     // ─────────────────────────────────────────────────────────────
@@ -73,8 +73,8 @@ public class JTLParser {
      */
     static long computeAutoBucketSizeMs(long minTimestamp, long maxTimestamp) {
         long durationMs = (minTimestamp > 0 && maxTimestamp > minTimestamp)
-                ? maxTimestamp - minTimestamp
-                : 0L;
+            ? maxTimestamp - minTimestamp
+            : 0L;
 
         // Guard: if duration is too short or unknown, fall back to smallest snap interval
         if (durationMs <= 0) {
@@ -87,7 +87,7 @@ public class JTLParser {
         for (long snap : SNAP_INTERVALS_MS) {
             if (snap >= rawIntervalMs) {
                 log.debug("computeAutoBucketSizeMs: durationMs={} rawInterval={}ms snapped={}ms",
-                        durationMs, rawIntervalMs, snap);
+                    durationMs, rawIntervalMs, snap);
                 return snap;
             }
         }
@@ -95,7 +95,7 @@ public class JTLParser {
         // Duration exceeds all snap values — use the largest (1 hour buckets)
         long largest = SNAP_INTERVALS_MS[SNAP_INTERVALS_MS.length - 1];
         log.debug("computeAutoBucketSizeMs: durationMs={} exceeds all snaps — using {}ms",
-                durationMs, largest);
+            durationMs, largest);
         return largest;
     }
 
@@ -145,7 +145,7 @@ public class JTLParser {
         final char delimiter = options.delimiter;
 
         try (BufferedReader reader = new BufferedReader(
-                new InputStreamReader(new FileInputStream(filePath), StandardCharsets.UTF_8), 65_536)) {
+            new InputStreamReader(new FileInputStream(filePath), StandardCharsets.UTF_8), 65_536)) {
             String headerLine = reader.readLine();
             if (headerLine == null) throw new JtlParseException("JTL file is empty: " + filePath);
 
@@ -205,10 +205,10 @@ public class JTLParser {
                         } catch (NumberFormatException e) {
                             // Step 4: format unrecognised by all steps — throw clear error.
                             throw new JtlParseException(
-                                    "Unrecognised timestamp format in JTL file: \"" + ts + "\".\n"
-                                            + "Set jmeter.save.saveservice.timestamp_format in "
-                                            + "$JMETER_HOME/bin/user.properties or jmeter.properties "
-                                            + "to match the format used in this file.");
+                                "Unrecognised timestamp format in JTL file: \"" + ts + "\".\n"
+                                    + "Set jmeter.save.saveservice.timestamp_format in "
+                                    + "$JMETER_HOME/bin/user.properties or jmeter.properties "
+                                    + "to match the format used in this file.");
                         }
                     }
                     // else: auto-detect returned null but resolver (steps 2/3) provided
@@ -223,12 +223,12 @@ public class JTLParser {
                 // are nominally identical but can differ by ±1 ms due to
                 // sub-millisecond scheduling jitter on busy systems.
                 if (options.generateParentSample
-                        && prevDataType != null
-                        && prevDataType.isEmpty()
-                        && !dataType.isEmpty()
-                        && !ts.isEmpty()
-                        && !prevTs.isEmpty()
-                        && elapsed.equals(prevElapsed)) {
+                    && prevDataType != null
+                    && prevDataType.isEmpty()
+                    && !dataType.isEmpty()
+                    && !ts.isEmpty()
+                    && !prevTs.isEmpty()
+                    && elapsed.equals(prevElapsed)) {
                     long tsMs = JtlParserCore.parseTimestampMs(ts, options.timestampFormatter);
                     long prevTsMs = JtlParserCore.parseTimestampMs(prevTs, options.timestampFormatter);
                     if (tsMs > 0 && prevTsMs > 0 && Math.abs(tsMs - prevTsMs) <= 1) {
@@ -263,8 +263,8 @@ public class JTLParser {
                 String suffix = candidate.substring(dashIdx + 1);
                 String parent = candidate.substring(0, dashIdx);
                 if (!suffix.isEmpty()
-                        && suffix.chars().allMatch(Character::isDigit)
-                        && allLabels.contains(parent)) {
+                    && suffix.chars().allMatch(Character::isDigit)
+                    && allLabels.contains(parent)) {
                     subResultLabels.add(candidate);
                 }
             }
@@ -281,8 +281,8 @@ public class JTLParser {
         //     for historical JTL files where wall-clock distance would be years.
         final long p1MaxTimestamp = (maxTimestamp == Long.MIN_VALUE) ? 0 : maxTimestamp;
         final long bucketSizeMs = (options.chartIntervalSeconds > 0)
-                ? options.chartIntervalSeconds * 1_000L
-                : computeAutoBucketSizeMs(options.minTimestamp, p1MaxTimestamp);
+            ? options.chartIntervalSeconds * 1_000L
+            : computeAutoBucketSizeMs(options.minTimestamp, p1MaxTimestamp);
 
         Map<String, SamplingStatCalculator> results = new LinkedHashMap<>();
         SamplingStatCalculator totalCalc = new SamplingStatCalculator(TOTAL_LABEL);
@@ -298,7 +298,7 @@ public class JTLParser {
         int skippedRows = 0;
 
         try (BufferedReader reader = new BufferedReader(
-                new InputStreamReader(new FileInputStream(filePath), StandardCharsets.UTF_8), 65_536)) {
+            new InputStreamReader(new FileInputStream(filePath), StandardCharsets.UTF_8), 65_536)) {
             reader.readLine(); // M1: skip header — colMap already built in Pass 1
 
             // M2: pre-compute filter flags once — invariant for the entire parse.
@@ -326,15 +326,15 @@ public class JTLParser {
                 // Must happen before shouldInclude, which uses sr.getTimeStamp() for
                 // start/end offset filtering.
                 if (sr.getTimeStamp() == 0
-                        && tsIdx != null && tsIdx < tokens.length
-                        && !tokens[tsIdx].isEmpty()) {
+                    && tsIdx != null && tsIdx < tokens.length
+                    && !tokens[tsIdx].isEmpty()) {
                     long parsedTs = JtlParserCore.parseTimestampMs(
-                            tokens[tsIdx], options.timestampFormatter);
+                        tokens[tsIdx], options.timestampFormatter);
                     if (parsedTs > 0) sr.setTimeStamp(parsedTs);
                 }
 
                 if (subResultLabels.contains(sr.getSampleLabel())
-                        || !JtlParserCore.shouldInclude(sr, options, hasInclude, hasExclude, hasOffset)) {
+                    || !JtlParserCore.shouldInclude(sr, options, hasInclude, hasExclude, hasOffset)) {
                     continue;
                 }
 
@@ -343,8 +343,8 @@ public class JTLParser {
                 // exactly once on a SampleResult.
                 long rawElapsed = JtlParserCore.parseElapsedTokens(tokens, colMap);
                 long adjusted = (!options.includeTimerDuration && sr.getIdleTime() > 0)
-                        ? Math.max(0L, rawElapsed - sr.getIdleTime())
-                        : rawElapsed;
+                    ? Math.max(0L, rawElapsed - sr.getIdleTime())
+                    : rawElapsed;
                 sr.setStampAndTime(sr.getTimeStamp(), adjusted);
 
                 // Accumulate Latency and Connect for Advanced Web Diagnostics averages.
@@ -370,8 +370,8 @@ public class JTLParser {
                 // or JMeter version differences in getTimeStamp() behaviour.
                 // rawElapsed is already on the stack; sampleEnd uses it directly.
                 long sampleStart = (tsIdx != null && tsIdx < tokens.length)
-                        ? JtlParserCore.parseTimestampMs(tokens[tsIdx], options.timestampFormatter)
-                        : sr.getTimeStamp();
+                    ? JtlParserCore.parseTimestampMs(tokens[tsIdx], options.timestampFormatter)
+                    : sr.getTimeStamp();
                 long sampleEnd = sampleStart + rawElapsed;
                 if (sampleStart > 0 && sampleStart < testStartMs) testStartMs = sampleStart;
                 if (sampleEnd > testEndMs) testEndMs = sampleEnd;
@@ -382,7 +382,7 @@ public class JTLParser {
                 // cause a partial first bucket when test start is not on a clean boundary,
                 // which cascades to also drop the last bucket via the coverage filter.
                 long bucketKey = ((sampleStart - options.minTimestamp) / bucketSizeMs)
-                        * bucketSizeMs + options.minTimestamp;
+                    * bucketSizeMs + options.minTimestamp;
                 long[] acc = bucketMap.computeIfAbsent(bucketKey, k -> new long[4]);
                 acc[0] += sr.getTime();
                 acc[1] += 1;
@@ -401,20 +401,20 @@ public class JTLParser {
         // those where Latency > 0.  latencyPresent drives the prompt's branch logic.
         final long totalSampleCount = totalCalc.getCount();
         final long avgLatencyMs = (latencySampleCount > 0 && totalSampleCount > 0)
-                ? totalLatencyMs / totalSampleCount : 0L;
+            ? totalLatencyMs / totalSampleCount : 0L;
         final long avgConnectMs = (latencySampleCount > 0 && totalSampleCount > 0)
-                ? totalConnectMs / totalSampleCount : 0L;
+            ? totalConnectMs / totalSampleCount : 0L;
         final boolean latencyPresent = latencySampleCount > 0;
 
         List<TimeBucket> timeBuckets = JtlParserCore.buildTimeBuckets(
-                bucketMap, bucketSizeMs, testStartMs, testEndMs);
+            bucketMap, bucketSizeMs, testStartMs, testEndMs);
         if (skippedRows > 0) {
             log.warn("parse: {} row(s) skipped due to malformed CSV data. filePath={}", skippedRows, filePath);
         }
         log.info("parse: completed. labels={}, samples={}, buckets={}, skippedRows={}, latencyPresent={}",
-                results.size(), totalCalc.getCount(), timeBuckets.size(), skippedRows, latencyPresent);
+            results.size(), totalCalc.getCount(), timeBuckets.size(), skippedRows, latencyPresent);
         return new ParseResult(results, testStartMs, testEndMs, timeBuckets, errorTypeCount,
-                avgLatencyMs, avgConnectMs, latencyPresent, skippedRows);
+            avgLatencyMs, avgConnectMs, latencyPresent, skippedRows);
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -432,7 +432,7 @@ public class JTLParser {
          * that previously lived in {@code AggregateReportPanel} and {@code CliReportPipeline}.
          */
         private static final DateTimeFormatter DISPLAY_TIME_FORMAT =
-                DateTimeFormatter.ofPattern("MM/dd/yy HH:mm:ss");
+            DateTimeFormatter.ofPattern("MM/dd/yy HH:mm:ss");
         /**
          * Per-label aggregated statistics.
          */
@@ -515,26 +515,26 @@ public class JTLParser {
 
         private static String formatEpochMs(long epochMs) {
             return LocalDateTime.ofInstant(Instant.ofEpochMilli(epochMs), ZoneId.systemDefault())
-                    .format(DISPLAY_TIME_FORMAT);
+                .format(DISPLAY_TIME_FORMAT);
         }
 
         private static List<Map<String, Object>> buildErrorTypeSummary(
-                Map<String, Long> errorTypeCount) {
+            Map<String, Long> errorTypeCount) {
             if (errorTypeCount == null || errorTypeCount.isEmpty())
                 return Collections.emptyList();
 
             return errorTypeCount.entrySet().stream()
-                    .sorted(Map.Entry.<String, Long>comparingByValue().reversed())
-                    .limit(MAX_ERROR_TYPES)
-                    .map(e -> {
-                        String[] parts = e.getKey().split(" \\| ", 2);
-                        Map<String, Object> m = new LinkedHashMap<>();
-                        m.put("responseCode", parts[0].trim());
-                        m.put("responseMessage", parts.length > 1 ? parts[1].trim() : "");
-                        m.put("count", e.getValue());
-                        return m;
-                    })
-                    .toList();
+                .sorted(Map.Entry.<String, Long>comparingByValue().reversed())
+                .limit(MAX_ERROR_TYPES)
+                .map(e -> {
+                    String[] parts = e.getKey().split(" \\| ", 2);
+                    Map<String, Object> m = new LinkedHashMap<>();
+                    m.put("responseCode", parts[0].trim());
+                    m.put("responseMessage", parts.length > 1 ? parts[1].trim() : "");
+                    m.put("count", e.getValue());
+                    return m;
+                })
+                .toList();
         }
 
         /**

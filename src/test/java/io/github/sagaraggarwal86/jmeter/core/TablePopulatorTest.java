@@ -118,7 +118,7 @@ class TablePopulatorTest {
         @DisplayName("returns exactly 13 elements")
         void returns13Elements() {
             String[] row = TablePopulator.buildRowAsStrings(
-                    allPassed("Login", 300L), 0.90);
+                allPassed("Login", 300L), 0.90);
             assertEquals(13, row.length);
         }
 
@@ -126,7 +126,7 @@ class TablePopulatorTest {
         @DisplayName("first element is the label")
         void firstElementIsLabel() {
             String[] row = TablePopulator.buildRowAsStrings(
-                    allPassed("Checkout", 300L), 0.90);
+                allPassed("Checkout", 300L), 0.90);
             assertEquals("Checkout", row[0]);
         }
 
@@ -134,7 +134,7 @@ class TablePopulatorTest {
         @DisplayName("no element is null")
         void noElementIsNull() {
             String[] row = TablePopulator.buildRowAsStrings(
-                    allPassed("Login", 300L), 0.90);
+                allPassed("Login", 300L), 0.90);
             for (int i = 0; i < row.length; i++) {
                 assertNotNull(row[i], "Element at index " + i + " must not be null");
             }
@@ -153,7 +153,7 @@ class TablePopulatorTest {
         @DisplayName("total count matches number of samples added")
         void totalCountCorrect() {
             String[] row = TablePopulator.buildRowAsStrings(
-                    allPassed("Login", 100L, 200L, 300L), 0.90);
+                allPassed("Login", 100L, 200L, 300L), 0.90);
             assertEquals("3", row[1]);
         }
 
@@ -161,7 +161,7 @@ class TablePopulatorTest {
         @DisplayName("passed count equals total when no failures")
         void passedCountAllPassed() {
             String[] row = TablePopulator.buildRowAsStrings(
-                    allPassed("Login", 100L, 200L), 0.90);
+                allPassed("Login", 100L, 200L), 0.90);
             assertEquals("2", row[2]); // passed
             assertEquals("0", row[3]); // failed
         }
@@ -170,9 +170,9 @@ class TablePopulatorTest {
         @DisplayName("failed count reflects error samples")
         void failedCountReflectsErrors() {
             SamplingStatCalculator calc = calcWithSamples(
-                    "Login",
-                    new long[]{100L, 200L, 300L},
-                    new boolean[]{true, false, false});
+                "Login",
+                new long[]{100L, 200L, 300L},
+                new boolean[]{true, false, false});
             String[] row = TablePopulator.buildRowAsStrings(calc, 0.90);
             assertEquals("3", row[1]); // total
             assertEquals("1", row[2]); // passed
@@ -193,7 +193,7 @@ class TablePopulatorTest {
         void avgIsIntegerRounded() {
             // Two samples: 100ms and 200ms → avg = 150ms
             String[] row = TablePopulator.buildRowAsStrings(
-                    allPassed("Tx", 100L, 200L), 0.90);
+                allPassed("Tx", 100L, 200L), 0.90);
             assertEquals("150", row[4]);
         }
 
@@ -201,7 +201,7 @@ class TablePopulatorTest {
         @DisplayName("min is the smallest elapsed")
         void minIsSmallest() {
             String[] row = TablePopulator.buildRowAsStrings(
-                    allPassed("Tx", 100L, 300L, 500L), 0.90);
+                allPassed("Tx", 100L, 300L, 500L), 0.90);
             assertEquals("100", row[5]);
         }
 
@@ -209,7 +209,7 @@ class TablePopulatorTest {
         @DisplayName("max is the largest elapsed")
         void maxIsLargest() {
             String[] row = TablePopulator.buildRowAsStrings(
-                    allPassed("Tx", 100L, 300L, 500L), 0.90);
+                allPassed("Tx", 100L, 300L, 500L), 0.90);
             assertEquals("500", row[6]);
         }
 
@@ -217,7 +217,7 @@ class TablePopulatorTest {
         @DisplayName("percentile column index is 7")
         void percentileColumnIndex() {
             String[] row = TablePopulator.buildRowAsStrings(
-                    allPassed("Tx", 100L, 200L, 300L), 0.90);
+                allPassed("Tx", 100L, 200L, 300L), 0.90);
             assertNotNull(row[7], "Percentile value must not be null");
             assertFalse(row[7].isBlank(), "Percentile value must not be blank");
         }
@@ -226,9 +226,9 @@ class TablePopulatorTest {
         @DisplayName("std deviation has one decimal place")
         void stdDevOneDecimalPlace() {
             String[] row = TablePopulator.buildRowAsStrings(
-                    allPassed("Tx", 100L, 200L, 300L), 0.90);
+                allPassed("Tx", 100L, 200L, 300L), 0.90);
             assertTrue(row[8].matches("\\d+\\.\\d"),
-                    "Std deviation must match pattern 'N.N', got: " + row[8]);
+                "Std deviation must match pattern 'N.N', got: " + row[8]);
         }
     }
 
@@ -240,7 +240,7 @@ class TablePopulatorTest {
         @DisplayName("error rate is 0.00% when no failures")
         void errorRateZeroWhenNoFailures() {
             String[] row = TablePopulator.buildRowAsStrings(
-                    allPassed("Login", 200L, 300L), 0.90);
+                allPassed("Login", 200L, 300L), 0.90);
             assertEquals("0.00%", row[9]);
         }
 
@@ -248,9 +248,9 @@ class TablePopulatorTest {
         @DisplayName("error rate ends with percent sign")
         void errorRateEndsWithPercent() {
             SamplingStatCalculator calc = calcWithSamples(
-                    "Login",
-                    new long[]{100L, 200L},
-                    new boolean[]{true, false});
+                "Login",
+                new long[]{100L, 200L},
+                new boolean[]{true, false});
             String[] row = TablePopulator.buildRowAsStrings(calc, 0.90);
             assertTrue(row[9].endsWith("%"), "Error rate must end with '%', got: " + row[9]);
         }
@@ -259,18 +259,18 @@ class TablePopulatorTest {
         @DisplayName("throughput ends with /sec")
         void throughputEndsWithPerSec() {
             String[] row = TablePopulator.buildRowAsStrings(
-                    allPassed("Login", 200L, 300L), 0.90);
+                allPassed("Login", 200L, 300L), 0.90);
             assertTrue(row[10].endsWith("/sec"),
-                    "Throughput must end with '/sec', got: " + row[10]);
+                "Throughput must end with '/sec', got: " + row[10]);
         }
 
         @Test
         @DisplayName("100% error rate when all samples fail")
         void fullErrorRate() {
             SamplingStatCalculator calc = calcWithSamples(
-                    "Login",
-                    new long[]{100L, 200L},
-                    new boolean[]{false, false});
+                "Login",
+                new long[]{100L, 200L},
+                new boolean[]{false, false});
             String[] row = TablePopulator.buildRowAsStrings(calc, 0.90);
             assertEquals("100.00%", row[9]);
             assertEquals("0", row[2]); // passed = 0
@@ -286,7 +286,7 @@ class TablePopulatorTest {
         @DisplayName("p50 and p90 both produce non-null non-blank values")
         void differentPercentilesNonNull() {
             SamplingStatCalculator calc = allPassed("Tx",
-                    100L, 150L, 200L, 250L, 300L, 350L, 400L, 450L, 500L, 600L);
+                100L, 150L, 200L, 250L, 300L, 350L, 400L, 450L, 500L, 600L);
             String[] rowP50 = TablePopulator.buildRowAsStrings(calc, 0.50);
             String[] rowP90 = TablePopulator.buildRowAsStrings(calc, 0.90);
             assertFalse(rowP50[7].isBlank());
@@ -343,7 +343,7 @@ class TablePopulatorTest {
 
             TablePopulator pop = buildPopulator(model);
             assertTrue(pop.getVisibleRows().isEmpty(),
-                    "TOTAL row must be excluded from getVisibleRows()");
+                "TOTAL row must be excluded from getVisibleRows()");
         }
 
         @Test

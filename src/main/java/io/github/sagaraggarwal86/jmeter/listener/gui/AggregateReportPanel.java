@@ -150,21 +150,21 @@ public class AggregateReportPanel extends JPanel {
         setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
 
         tablePopulator = new TablePopulator(tableModel, resultsTable,
-                allTableColumns, columnMenuItems);
+            allTableColumns, columnMenuItems);
         csvExporter = new CsvExporter(this, tableModel, allTableColumns,
-                columnMenuItems, this::buildSlaConfig);
+            columnMenuItems, this::buildSlaConfig);
         aiExecutor = newAiExecutor(); // CHANGED: initialised here; recreated in addNotify()
         aiReportLauncher = new AiReportLauncher(this, aiExecutor, new PanelDataProvider());
 
         ReportPanelBuilder builder = new ReportPanelBuilder(
-                startOffsetField, endOffsetField, percentileField,
-                transactionSearchField, regexCheckBox, filterModeCombo,
-                startTimeField, endTimeField, durationField,
-                tpsSlaField, errorPctSlaField, rtMetricCombo, rtThresholdSlaField,
-                resultsTable, columnMenuItems, allTableColumns,
-                tablePopulator,
-                viewCol -> tablePopulator.handleHeaderClick(viewCol,
-                        () -> repopulate(readPercentile())));
+            startOffsetField, endOffsetField, percentileField,
+            transactionSearchField, regexCheckBox, filterModeCombo,
+            startTimeField, endTimeField, durationField,
+            tpsSlaField, errorPctSlaField, rtMetricCombo, rtThresholdSlaField,
+            resultsTable, columnMenuItems, allTableColumns,
+            tablePopulator,
+            viewCol -> tablePopulator.handleHeaderClick(viewCol,
+                () -> repopulate(readPercentile())));
 
         JPanel north = new JPanel(new GridLayout(0, 1));
         north.add(builder.buildFilterPanel());
@@ -231,7 +231,7 @@ public class AggregateReportPanel extends JPanel {
 
     private static void copyToClipboard(String text) { // CHANGED
         Toolkit.getDefaultToolkit().getSystemClipboard()
-                .setContents(new java.awt.datatransfer.StringSelection(text), null);
+            .setContents(new java.awt.datatransfer.StringSelection(text), null);
     }
 
     /**
@@ -267,7 +267,7 @@ public class AggregateReportPanel extends JPanel {
             updateTimeInfo(result);
         } catch (IOException e) {
             log.error("loadJtlFileForRestore: parse failed. filePath={}, reason={}",
-                    filePath, e.getMessage(), e);
+                filePath, e.getMessage(), e);
         }
     }
 
@@ -308,17 +308,17 @@ public class AggregateReportPanel extends JPanel {
             updateTimeInfo(result);
             if (showSuccessDialog) {
                 JOptionPane.showMessageDialog(this,
-                        "Loaded " + Math.max(0, result.results.size() - 1)
-                                + " transaction types from JTL file.",
-                        "Success", JOptionPane.INFORMATION_MESSAGE);
+                    "Loaded " + Math.max(0, result.results.size() - 1)
+                        + " transaction types from JTL file.",
+                    "Success", JOptionPane.INFORMATION_MESSAGE);
             }
             return true;
         } catch (IOException e) {
             log.error("loadJtlFile: parse failed. filePath={}, reason={}",
-                    filePath, e.getMessage(), e);
+                filePath, e.getMessage(), e);
             JOptionPane.showMessageDialog(this,
-                    "Failed to load JTL file:\n" + e.getMessage(),
-                    "Load Error", JOptionPane.ERROR_MESSAGE);
+                "Failed to load JTL file:\n" + e.getMessage(),
+                "Load Error", JOptionPane.ERROR_MESSAGE);
             return false;
         }
     }
@@ -629,9 +629,9 @@ public class AggregateReportPanel extends JPanel {
         opts.percentile = readPercentile();
         opts.chartIntervalSeconds = parseIntField(chartIntervalField, 0);
         opts.delimiter = DelimiterResolver.resolve(
-                AiReportLauncher.resolveJmeterHomeStatic());
+            AiReportLauncher.resolveJmeterHomeStatic());
         opts.timestampFormatter = TimestampFormatResolver.resolve(
-                AiReportLauncher.resolveJmeterHomeStatic());
+            AiReportLauncher.resolveJmeterHomeStatic());
         return opts;
     }
 
@@ -645,12 +645,12 @@ public class AggregateReportPanel extends JPanel {
      */
     private void installSlaRenderer() {
         SlaRowRenderer renderer = new SlaRowRenderer(
-                this::buildSlaConfig,
-                ColumnIndex.TPS_COL_INDEX,
-                ColumnIndex.ERROR_RATE_COL_INDEX,
-                ColumnIndex.AVG_COL_INDEX,
-                ColumnIndex.PERCENTILE_COL_INDEX,
-                ColumnIndex.NAME_COL_INDEX);
+            this::buildSlaConfig,
+            ColumnIndex.TPS_COL_INDEX,
+            ColumnIndex.ERROR_RATE_COL_INDEX,
+            ColumnIndex.AVG_COL_INDEX,
+            ColumnIndex.PERCENTILE_COL_INDEX,
+            ColumnIndex.NAME_COL_INDEX);
         resultsTable.setDefaultRenderer(Object.class, renderer);
     }
 
@@ -732,14 +732,14 @@ public class AggregateReportPanel extends JPanel {
         // (validation has already fired on focus-lost before this is called)
         try {
             SlaConfig.RtMetric metric = rtMetricCombo.getSelectedIndex() == 0
-                    ? SlaConfig.RtMetric.AVG
-                    : SlaConfig.RtMetric.PNN;
+                ? SlaConfig.RtMetric.AVG
+                : SlaConfig.RtMetric.PNN;
             return SlaConfig.from(
-                    isValidTpsSla(tpsStr) ? tpsStr : "",
-                    isValidErrorPct(errorPctStr) ? errorPctStr : "",
-                    isValidRtThreshold(rtStr) ? rtStr : "",
-                    metric,
-                    readPercentile());
+                isValidTpsSla(tpsStr) ? tpsStr : "",
+                isValidErrorPct(errorPctStr) ? errorPctStr : "",
+                isValidRtThreshold(rtStr) ? rtStr : "",
+                metric,
+                readPercentile());
         } catch (NumberFormatException e) {
             return SlaConfig.disabled(readPercentile());
         }
@@ -779,10 +779,10 @@ public class AggregateReportPanel extends JPanel {
         refreshBtn.addActionListener(e -> refreshProviderCombo());
 
         JComboBox<String> reportTypeCombo = new JComboBox<>(new String[]{
-                "Generate AI HTML Report", "Generate HTML Report"});
+            "Generate AI HTML Report", "Generate HTML Report"});
         reportTypeCombo.setFont(FONT_REGULAR);
         reportTypeCombo.setToolTipText(
-                "AI HTML Report: AI-powered analysis with SLA. HTML Report: SLA evaluation only (no AI).");
+            "AI HTML Report: AI-powered analysis with SLA. HTML Report: SLA evaluation only (no AI).");
 
         JButton generateBtn = new JButton("Go");
         generateBtn.setFont(FONT_REGULAR);
@@ -826,10 +826,10 @@ public class AggregateReportPanel extends JPanel {
     private void refreshProviderCombo() {
         java.io.File jmeterHome = AiReportLauncher.resolveJmeterHomeStatic();
         java.util.List<AiProviderConfig> providers =
-                AiProviderRegistry.loadConfiguredProviders(jmeterHome);
+            AiProviderRegistry.loadConfiguredProviders(jmeterHome);
 
         AiProviderConfig previousSelection =
-                (AiProviderConfig) providerCombo.getSelectedItem();
+            (AiProviderConfig) providerCombo.getSelectedItem();
 
         providerCombo.removeAllItems();
 
@@ -839,7 +839,7 @@ public class AggregateReportPanel extends JPanel {
             providerCombo.addItem(null);
             providerCombo.setEnabled(false);
             providerCombo.setToolTipText(
-                    "No providers configured. Set api.key in $JMETER_HOME/bin/ai-reporter.properties");
+                "No providers configured. Set api.key in $JMETER_HOME/bin/ai-reporter.properties");
         } else {
             providerCombo.setEnabled(true);
             providerCombo.setToolTipText("AI provider to use for report generation");
@@ -876,13 +876,13 @@ public class AggregateReportPanel extends JPanel {
 
         // ── Chart interval field: debounced reload on change ──
         chartIntervalField.getDocument().addDocumentListener(
-                (SimpleDocListener) () -> reloadDebounceTimer.restart());
+            (SimpleDocListener) () -> reloadDebounceTimer.restart());
 
         // ── Transaction search: repopulate on change ──
         transactionSearchField.getDocument().addDocumentListener(
-                (SimpleDocListener) () -> {
-                    if (!cachedResults.isEmpty()) repopulate(readPercentile());
-                });
+            (SimpleDocListener) () -> {
+                if (!cachedResults.isEmpty()) repopulate(readPercentile());
+            });
         regexCheckBox.addActionListener(e -> {
             if (!cachedResults.isEmpty()) repopulate(readPercentile());
         });
@@ -899,23 +899,23 @@ public class AggregateReportPanel extends JPanel {
 
         // ── Focus-lost validation: Filter Settings fields ──
         addPositiveIntFocusValidator(startOffsetField,
-                "Start Offset must be a positive integer (or leave blank).");
+            "Start Offset must be a positive integer (or leave blank).");
         addPositiveIntFocusValidator(endOffsetField,
-                "End Offset must be a positive integer (or leave blank).");
+            "End Offset must be a positive integer (or leave blank).");
         addRangeFocusValidator(percentileField, 1, 99,
-                "Percentile must be an integer between 1 and 99.");
+            "Percentile must be an integer between 1 and 99.");
 
         // ── Focus-lost validation: Chart interval field ──
         addRangeFocusValidator(chartIntervalField, 0, 3600,
-                "Chart Interval must be an integer between 0 and 3600 seconds (0 = auto).");
+            "Chart Interval must be an integer between 0 and 3600 seconds (0 = auto).");
 
         // ── Focus-lost validation: SLA fields ──
         addPositiveNumberFocusValidator(tpsSlaField,
-                "TPS threshold must be a positive number (or leave blank).", true);
+            "TPS threshold must be a positive number (or leave blank).", true);
         addRangeFocusValidator(errorPctSlaField, 1, 99,
-                "Error % threshold must be an integer between 1 and 99 (or leave blank).");
+            "Error % threshold must be an integer between 1 and 99 (or leave blank).");
         addPositiveIntFocusValidator(rtThresholdSlaField,
-                "Response Time threshold must be a positive integer in ms (or leave blank).");
+            "Response Time threshold must be a positive integer in ms (or leave blank).");
     }
 
     private void addPositiveIntFocusValidator(JTextField field, String message) {
@@ -931,12 +931,12 @@ public class AggregateReportPanel extends JPanel {
                 if (val.isEmpty()) return;
                 try {
                     double n = allowDecimal
-                            ? Double.parseDouble(val)
-                            : Integer.parseInt(val);
+                        ? Double.parseDouble(val)
+                        : Integer.parseInt(val);
                     if (n <= 0) throw new NumberFormatException("not positive");
                 } catch (NumberFormatException ex) {
                     JOptionPane.showMessageDialog(AggregateReportPanel.this,
-                            message, "Invalid Input", JOptionPane.ERROR_MESSAGE);
+                        message, "Invalid Input", JOptionPane.ERROR_MESSAGE);
                     field.setText("");
                 }
             }
@@ -958,7 +958,7 @@ public class AggregateReportPanel extends JPanel {
                     if (n < min || n > max) throw new NumberFormatException("out of range");
                 } catch (NumberFormatException ex) {
                     JOptionPane.showMessageDialog(AggregateReportPanel.this,
-                            message, "Invalid Input", JOptionPane.ERROR_MESSAGE);
+                        message, "Invalid Input", JOptionPane.ERROR_MESSAGE);
                     field.setText("");
                 }
             }
@@ -988,7 +988,7 @@ public class AggregateReportPanel extends JPanel {
 
     private void reloadJtl() {
         if (suppressReload || lastLoadedFilePath == null
-                || !new java.io.File(lastLoadedFilePath).exists()) return;
+            || !new java.io.File(lastLoadedFilePath).exists()) return;
         try {
             JTLParser.FilterOptions opts = buildFilterOptions();
             JTLParser.ParseResult result = new JTLParser().parse(lastLoadedFilePath, opts);
@@ -1002,7 +1002,7 @@ public class AggregateReportPanel extends JPanel {
             updateTimeInfo(result);
         } catch (IOException e) {
             log.error("reloadJtl: failed. filePath={}, reason={}",
-                    lastLoadedFilePath, e.getMessage(), e);
+                lastLoadedFilePath, e.getMessage(), e);
         }
     }
 
@@ -1012,8 +1012,8 @@ public class AggregateReportPanel extends JPanel {
 
     private void repopulate(int percentile) {
         tablePopulator.populate(cachedResults, percentile,
-                transactionSearchField.getText().trim(), regexCheckBox.isSelected(),
-                filterModeCombo.getSelectedIndex() == 1);
+            transactionSearchField.getText().trim(), regexCheckBox.isSelected(),
+            filterModeCombo.getSelectedIndex() == 1);
     }
 
     private void updateTimeInfo(JTLParser.ParseResult result) {

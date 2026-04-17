@@ -19,10 +19,10 @@ public final class ColumnIndex {
      * All column header names in display order.
      */
     public static final String[] ALL_COLUMNS = {
-            "Transaction Name", "Count", "Passed",
-            "Failed", "Avg (ms)", "Min (ms)",
-            "Max (ms)", "P90 (ms)", "Std. Dev.", "Error Rate", "TPS",
-            "Received KB/Sec", "Avg Bytes"
+        "Transaction Name", "Count", "Passed",
+        "Failed", "Avg (ms)", "Min (ms)",
+        "Max (ms)", "P90 (ms)", "Std. Dev.", "Error Rate", "TPS",
+        "Received KB/Sec", "Avg Bytes"
     };
 
     /**

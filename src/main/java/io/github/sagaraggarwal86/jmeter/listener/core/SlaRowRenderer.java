@@ -67,7 +67,7 @@ public final class SlaRowRenderer extends DefaultTableCellRenderer {
 
         // Let super set correct background, foreground, and text for the current L&F
         Component c = super.getTableCellRendererComponent(
-                table, value, isSelected, hasFocus, row, column);
+            table, value, isSelected, hasFocus, row, column);
 
         // Always reset font to the table font first
         setFont(table.getFont());
@@ -78,7 +78,7 @@ public final class SlaRowRenderer extends DefaultTableCellRenderer {
 
         Object nameCell = table.getModel().getValueAt(row, nameColIdx);
         if (JTLParser.TOTAL_LABEL.equals(
-                nameCell != null ? nameCell.toString() : "")) {
+            nameCell != null ? nameCell.toString() : "")) {
             return c;
         }
 
@@ -99,23 +99,23 @@ public final class SlaRowRenderer extends DefaultTableCellRenderer {
     private boolean isBreach(JTable table, int row, int modelCol, SlaConfig config) {
         if (modelCol == tpsColIdx && config.isTpsEnabled()) {
             return CellValueParser.parseTps(table.getModel().getValueAt(row, tpsColIdx))
-                    < config.tpsThreshold;
+                < config.tpsThreshold;
         }
         if (modelCol == errorRateColIdx && config.isErrorPctEnabled()) {
             return CellValueParser.parseErrorRate(table.getModel().getValueAt(row, errorRateColIdx)) // CHANGED — delegates to shared utility
-                    > config.errorPctThreshold;
+                > config.errorPctThreshold;
         }
         if (modelCol == avgColIdx
-                && config.isRtEnabled()
-                && config.rtMetric == SlaConfig.RtMetric.AVG) {
+            && config.isRtEnabled()
+            && config.rtMetric == SlaConfig.RtMetric.AVG) {
             return CellValueParser.parseDouble(table.getModel().getValueAt(row, avgColIdx)) // CHANGED — delegates to shared utility
-                    > config.rtThresholdMs;
+                > config.rtThresholdMs;
         }
         if (modelCol == pnnColIdx
-                && config.isRtEnabled()
-                && config.rtMetric == SlaConfig.RtMetric.PNN) {
+            && config.isRtEnabled()
+            && config.rtMetric == SlaConfig.RtMetric.PNN) {
             return CellValueParser.parseDouble(table.getModel().getValueAt(row, pnnColIdx)) // CHANGED — delegates to shared utility
-                    > config.rtThresholdMs;
+                > config.rtThresholdMs;
         }
         return false;
     }

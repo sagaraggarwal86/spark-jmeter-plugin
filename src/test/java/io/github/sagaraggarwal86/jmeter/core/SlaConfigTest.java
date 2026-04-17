@@ -82,7 +82,7 @@ class SlaConfigTest {
     class FromBothEnabledTests {
 
         private final SlaConfig config = SlaConfig.from("", "5", "2000",
-                SlaConfig.RtMetric.PNN, 90);
+            SlaConfig.RtMetric.PNN, 90);
 
         @Test
         @DisplayName("isErrorPctEnabled() returns true")

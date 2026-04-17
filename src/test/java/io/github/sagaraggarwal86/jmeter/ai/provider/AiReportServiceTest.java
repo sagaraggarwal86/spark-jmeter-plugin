@@ -30,22 +30,22 @@ class AiReportServiceTest {
      * Used in happy-path tests that must not trigger the missing-sections notice.
      */
     private static final String FULL_CONTENT =
-            "## Executive Summary\n\nThe test ran well. BRIEF_VERDICT:PASS\n\n"
-                    + "## Bottleneck Analysis\n\nTHROUGHPUT-BOUND.\n\n"
-                    + "## Error Analysis\n\nError rate 1.01%.\n\n"
-                    + "## Advanced Web Diagnostics\n\nConnect 0ms.\n\n"
-                    + "## Root Cause Hypotheses\n\n#1 Backend processing.\n\n"
-                    + "## Recommendations\n\n| Priority | Hypothesis | Action | Expected Impact | Effort |\n"
-                    + "|---|---|---|---|---|\n| P2 | #1 | Optimise queries | Reduce latency | Medium |\n\n"
-                    + "## Verdict\n\nPASS — all SLAs met.\nVERDICT:PASS";
+        "## Executive Summary\n\nThe test ran well. BRIEF_VERDICT:PASS\n\n"
+            + "## Bottleneck Analysis\n\nTHROUGHPUT-BOUND.\n\n"
+            + "## Error Analysis\n\nError rate 1.01%.\n\n"
+            + "## Advanced Web Diagnostics\n\nConnect 0ms.\n\n"
+            + "## Root Cause Hypotheses\n\n#1 Backend processing.\n\n"
+            + "## Recommendations\n\n| Priority | Hypothesis | Action | Expected Impact | Effort |\n"
+            + "|---|---|---|---|---|\n| P2 | #1 | Optimise queries | Reduce latency | Medium |\n\n"
+            + "## Verdict\n\nPASS — all SLAs met.\nVERDICT:PASS";
 
     /**
      * JSON-escaped version of {@link #FULL_CONTENT} for embedding in JSON strings.
      */
     private static final String FULL_CONTENT_ESCAPED = FULL_CONTENT
-            .replace("\\", "\\\\")
-            .replace("\"", "\\\"")
-            .replace("\n", "\\n");
+        .replace("\\", "\\\\")
+        .replace("\"", "\\\"")
+        .replace("\n", "\\n");
 
     private AiReportService service;
 
@@ -59,16 +59,16 @@ class AiReportServiceTest {
     private static String buildResponse(String content, String finishReason) {
         // Escape content for embedding in JSON
         String escaped = content
-                .replace("\\", "\\\\")
-                .replace("\"", "\\\"")
-                .replace("\n", "\\n");
+            .replace("\\", "\\\\")
+            .replace("\"", "\\\"")
+            .replace("\n", "\\n");
         return "{"
-                + "\"choices\":[{"
-                + "\"message\":{\"role\":\"assistant\",\"content\":\"" + escaped + "\"},"
-                + "\"finish_reason\":\"" + finishReason + "\","
-                + "\"index\":0"
-                + "}]"
-                + "}";
+            + "\"choices\":[{"
+            + "\"message\":{\"role\":\"assistant\",\"content\":\"" + escaped + "\"},"
+            + "\"finish_reason\":\"" + finishReason + "\","
+            + "\"index\":0"
+            + "}]"
+            + "}";
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -88,21 +88,21 @@ class AiReportServiceTest {
     private static String buildResponseWithUsage(String content, String finishReason,
                                                  int completionTokens, int configMaxTokens) {
         String escaped = content
-                .replace("\\", "\\\\")
-                .replace("\"", "\\\"")
-                .replace("\n", "\\n");
+            .replace("\\", "\\\\")
+            .replace("\"", "\\\"")
+            .replace("\n", "\\n");
         return "{"
-                + "\"choices\":[{"
-                + "\"message\":{\"role\":\"assistant\",\"content\":\"" + escaped + "\"},"
-                + "\"finish_reason\":\"" + finishReason + "\","
-                + "\"index\":0"
-                + "}],"
-                + "\"usage\":{"
-                + "\"prompt_tokens\":500,"
-                + "\"completion_tokens\":" + completionTokens + ","
-                + "\"total_tokens\":" + (500 + completionTokens)
-                + "}"
-                + "}";
+            + "\"choices\":[{"
+            + "\"message\":{\"role\":\"assistant\",\"content\":\"" + escaped + "\"},"
+            + "\"finish_reason\":\"" + finishReason + "\","
+            + "\"index\":0"
+            + "}],"
+            + "\"usage\":{"
+            + "\"prompt_tokens\":500,"
+            + "\"completion_tokens\":" + completionTokens + ","
+            + "\"total_tokens\":" + (500 + completionTokens)
+            + "}"
+            + "}";
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -132,9 +132,9 @@ class AiReportServiceTest {
         // Constructor order: providerKey, displayName, apiKey, model, baseUrl,
         //                    timeoutSeconds, maxTokens, temperature
         AiProviderConfig config = new AiProviderConfig(
-                "gemini", "Gemini (Free)", "fake-key",
-                "gemini-2.0-flash", "https://example.com/v1/chat/completions",
-                120, 1500, 0.3);
+            "gemini", "Gemini (Free)", "fake-key",
+            "gemini-2.0-flash", "https://example.com/v1/chat/completions",
+            120, 1500, 0.3);
         service = new AiReportService(config);
     }
 
@@ -167,10 +167,10 @@ class AiReportServiceTest {
         @DisplayName("missing finish_reason — response with heading, no skeleton prepend")
         void missingFinishReason_returnsContentUnchanged() throws AiServiceException {
             String json = "{"
-                    + "\"choices\":[{"
-                    + "\"message\":{\"content\":\"" + FULL_CONTENT_ESCAPED + "\"},"
-                    + "\"index\":0"
-                    + "}]}";
+                + "\"choices\":[{"
+                + "\"message\":{\"content\":\"" + FULL_CONTENT_ESCAPED + "\"},"
+                + "\"index\":0"
+                + "}]}";
             String result = service.extractAndValidateContent(json);
             assertEquals(FULL_CONTENT, result);
         }
@@ -180,18 +180,18 @@ class AiReportServiceTest {
         void noHeading_skeletonPrepended() throws AiServiceException {
             // Cerebras omits ## Executive Summary → skeleton must be prepended
             String noHeading = "The load test ran well.\n\n"
-                    + "## Bottleneck Analysis\n\nTB.\n\n"
-                    + "## Error Analysis\n\nErr.\n\n"
-                    + "## Advanced Web Diagnostics\n\nDiag.\n\n"
-                    + "## Root Cause Hypotheses\n\nHyp.\n\n"
-                    + "## Recommendations\n\nRow.\n\n"
-                    + "## Verdict\n\nPASS.\nVERDICT:PASS";
+                + "## Bottleneck Analysis\n\nTB.\n\n"
+                + "## Error Analysis\n\nErr.\n\n"
+                + "## Advanced Web Diagnostics\n\nDiag.\n\n"
+                + "## Root Cause Hypotheses\n\nHyp.\n\n"
+                + "## Recommendations\n\nRow.\n\n"
+                + "## Verdict\n\nPASS.\nVERDICT:PASS";
             String json = buildResponse(noHeading, "stop");
             String result = service.extractAndValidateContent(json);
             assertTrue(result.startsWith(SKELETON),
-                    "Skeleton must be prepended when heading is absent");
+                "Skeleton must be prepended when heading is absent");
             assertEquals(1, countOccurrences(result, "## Executive Summary"),
-                    "Exactly one ES heading in result");
+                "Exactly one ES heading in result");
         }
     }
 
@@ -209,9 +209,9 @@ class AiReportServiceTest {
             String json = buildResponse(FULL_CONTENT, "stop");
             String result = service.extractAndValidateContent(json);
             assertFalse(result.contains("Missing sections detected"),
-                    "No missing sections notice when all 7 sections are present");
+                "No missing sections notice when all 7 sections are present");
             assertFalse(result.contains("Partial report"),
-                    "No partial report notice when all 7 sections are present");
+                "No partial report notice when all 7 sections are present");
         }
 
         @Test
@@ -221,13 +221,13 @@ class AiReportServiceTest {
             String json = buildResponse(partial, "stop");
             String result = service.extractAndValidateContent(json);
             assertTrue(result.contains("Missing sections detected"),
-                    "Missing sections notice must be injected");
+                "Missing sections notice must be injected");
             assertTrue(result.contains("Bottleneck Analysis"),
-                    "Notice must name the missing section");
+                "Notice must name the missing section");
             assertTrue(result.contains("regenerating the report") || result.contains("Regenerate"),
-                    "Notice must recommend regenerating");
+                "Notice must recommend regenerating");
             assertFalse(result.contains("Partial report"),
-                    "Must not use consolidated notice when not truncated");
+                "Must not use consolidated notice when not truncated");
         }
 
         @Test
@@ -235,32 +235,32 @@ class AiReportServiceTest {
         void truncationWithMissingSections_consolidatedNotice() throws AiServiceException {
             // Gemini pattern: truncated AND Verdict section missing
             String partial = "## Executive Summary\n\nContent. BRIEF_VERDICT:PASS\n\n"
-                    + "## Bottleneck Analysis\n\nTB.\n\n"
-                    + "## Error Analysis\n\nErr.\n\n"
-                    + "## Advanced Web Diagnostics\n\nDiag.\n\n"
-                    + "## Root Cause Hypotheses\n\nHyp.\n\n"
-                    + "## Recommendations\n\nRow.";
+                + "## Bottleneck Analysis\n\nTB.\n\n"
+                + "## Error Analysis\n\nErr.\n\n"
+                + "## Advanced Web Diagnostics\n\nDiag.\n\n"
+                + "## Root Cause Hypotheses\n\nHyp.\n\n"
+                + "## Recommendations\n\nRow.";
             String json = buildResponseWithUsage(partial, "stop", 1500, 1500);
             String result = service.extractAndValidateContent(json);
             // Must use consolidated notice — NOT two separate notices
             assertTrue(result.contains("Partial report"),
-                    "Consolidated notice header must appear");
+                "Consolidated notice header must appear");
             assertTrue(result.contains("Sections completed"),
-                    "Consolidated notice must list completed sections");
+                "Consolidated notice must list completed sections");
             assertTrue(result.contains("Sections not reached"),
-                    "Consolidated notice must list missing sections");
+                "Consolidated notice must list missing sections");
             assertTrue(result.contains("Verdict"),
-                    "Missing section must be named");
+                "Missing section must be named");
             assertFalse(result.contains("Missing sections detected"),
-                    "Must NOT show the separate missing-sections notice");
+                "Must NOT show the separate missing-sections notice");
             assertFalse(result.contains("Report truncated"),
-                    "Must NOT show the separate truncation notice");
+                "Must NOT show the separate truncation notice");
             assertTrue(result.contains("max.tokens") || result.contains("regenerating"),
-                    "Must recommend actionable fix (increase max.tokens or regenerate)");
+                "Must recommend actionable fix (increase max.tokens or regenerate)");
             assertFalse(result.contains("Cerebras") && result.contains("Mistral"),
-                    "Must NOT recommend specific provider names");
+                "Must NOT recommend specific provider names");
             assertTrue(result.contains("SLA verdict") || result.contains("transaction metrics"),
-                    "Must reassure user that existing data is accurate");
+                "Must reassure user that existing data is accurate");
         }
 
         @Test
@@ -269,11 +269,11 @@ class AiReportServiceTest {
             String json = buildResponseWithUsage(FULL_CONTENT, "stop", 1500, 1500);
             String result = service.extractAndValidateContent(json);
             assertTrue(result.contains("Report truncated"),
-                    "Simple truncation notice must appear");
+                "Simple truncation notice must appear");
             assertFalse(result.contains("Partial report"),
-                    "Consolidated notice must NOT appear when all sections present");
+                "Consolidated notice must NOT appear when all sections present");
             assertFalse(result.contains("Missing sections detected"),
-                    "Missing sections notice must NOT appear");
+                "Missing sections notice must NOT appear");
         }
 
         @Test
@@ -283,14 +283,14 @@ class AiReportServiceTest {
             String json = buildResponse(partial, "stop");
             String result = service.extractAndValidateContent(json);
             assertTrue(result.contains("\n> "),
-                    "Notice must be a Markdown blockquote");
+                "Notice must be a Markdown blockquote");
         }
 
         @Test
         @DisplayName("consolidated notice lists present sections correctly")
         void consolidatedNotice_listsPresentSections() throws AiServiceException {
             String partial = "## Executive Summary\n\nContent.\n\n"
-                    + "## Bottleneck Analysis\n\nTB.";
+                + "## Bottleneck Analysis\n\nTB.";
             String json = buildResponseWithUsage(partial, "stop", 1500, 1500);
             String result = service.extractAndValidateContent(json);
             int noticeStart = result.indexOf("Partial report");
@@ -312,11 +312,11 @@ class AiReportServiceTest {
             String json = buildResponse(FULL_CONTENT, "length");
             String result = service.extractAndValidateContent(json);
             assertTrue(result.startsWith(FULL_CONTENT),
-                    "Original content must be preserved at the start");
+                "Original content must be preserved at the start");
             assertTrue(result.contains("⚠ Report truncated"),
-                    "Truncation notice must be appended");
+                "Truncation notice must be appended");
             assertTrue(result.contains("gemini") || result.contains("Gemini"),
-                    "Notice must name the provider");
+                "Notice must name the provider");
         }
 
         @Test
@@ -325,7 +325,7 @@ class AiReportServiceTest {
             String json = buildResponse("content", "length");
             String result = service.extractAndValidateContent(json);
             assertTrue(result.contains("\n> "),
-                    "Truncation notice must be a Markdown blockquote (starts with '> ')");
+                "Truncation notice must be a Markdown blockquote (starts with '> ')");
         }
 
         @Test
@@ -336,7 +336,7 @@ class AiReportServiceTest {
             String json = buildResponse(original, "length");
             String result = service.extractAndValidateContent(json);
             assertTrue(result.startsWith(SKELETON + original),
-                    "Original content must appear verbatim after skeleton");
+                "Original content must appear verbatim after skeleton");
         }
 
         @Test
@@ -345,7 +345,7 @@ class AiReportServiceTest {
             String json = buildResponseWithUsage(FULL_CONTENT, "stop", 1500, 1500);
             String result = service.extractAndValidateContent(json);
             assertTrue(result.contains("⚠ Report truncated"),
-                    "Truncation notice must be appended when completion_tokens == max_tokens");
+                "Truncation notice must be appended when completion_tokens == max_tokens");
         }
 
         @Test
@@ -354,7 +354,7 @@ class AiReportServiceTest {
             String json = buildResponseWithUsage(FULL_CONTENT, "stop", 1502, 1500);
             String result = service.extractAndValidateContent(json);
             assertTrue(result.contains("⚠ Report truncated"),
-                    "Truncation notice must be appended when completion_tokens > max_tokens");
+                "Truncation notice must be appended when completion_tokens > max_tokens");
         }
 
         @Test
@@ -363,7 +363,7 @@ class AiReportServiceTest {
             String json = buildResponseWithUsage(FULL_CONTENT, "stop", 900, 1500);
             String result = service.extractAndValidateContent(json);
             assertFalse(result.contains("⚠ Report truncated"),
-                    "No truncation notice expected when response completed normally");
+                "No truncation notice expected when response completed normally");
             assertEquals(FULL_CONTENT, result);
         }
 
@@ -373,25 +373,25 @@ class AiReportServiceTest {
             String json = buildResponseWithUsage(FULL_CONTENT, "length", 1500, 1500);
             String result = service.extractAndValidateContent(json);
             assertTrue(result.startsWith(FULL_CONTENT),
-                    "Original content must be preserved");
+                "Original content must be preserved");
             assertEquals(1, countOccurrences(result, "⚠ Report truncated"),
-                    "Truncation notice must appear exactly once");
+                "Truncation notice must appear exactly once");
         }
 
         @Test
         @DisplayName("malformed usage object does not cause exception — falls back gracefully")
         void malformedUsage_noException() throws AiServiceException {
             String json = "{"
-                    + "\"choices\":[{"
-                    + "\"message\":{\"role\":\"assistant\",\"content\":\"" + FULL_CONTENT_ESCAPED + "\"},"
-                    + "\"finish_reason\":\"stop\","
-                    + "\"index\":0"
-                    + "}],"
-                    + "\"usage\":{\"prompt_tokens\":200}"
-                    + "}";
+                + "\"choices\":[{"
+                + "\"message\":{\"role\":\"assistant\",\"content\":\"" + FULL_CONTENT_ESCAPED + "\"},"
+                + "\"finish_reason\":\"stop\","
+                + "\"index\":0"
+                + "}],"
+                + "\"usage\":{\"prompt_tokens\":200}"
+                + "}";
             String result = service.extractAndValidateContent(json);
             assertEquals(FULL_CONTENT, result,
-                    "Malformed usage must be ignored; content returned as-is");
+                "Malformed usage must be ignored; content returned as-is");
         }
     }
 
@@ -404,16 +404,16 @@ class AiReportServiceTest {
         void blankContent_throwsException() {
             String json = buildResponse("   ", "stop");
             assertThrows(AiServiceException.class,
-                    () -> service.extractAndValidateContent(json),
-                    "Blank content must throw AiServiceException");
+                () -> service.extractAndValidateContent(json),
+                "Blank content must throw AiServiceException");
         }
 
         @Test
         @DisplayName("malformed JSON throws AiServiceException")
         void malformedJson_throwsException() {
             assertThrows(AiServiceException.class,
-                    () -> service.extractAndValidateContent("{not valid json}"),
-                    "Malformed JSON must throw AiServiceException");
+                () -> service.extractAndValidateContent("{not valid json}"),
+                "Malformed JSON must throw AiServiceException");
         }
 
         @Test
@@ -421,8 +421,8 @@ class AiReportServiceTest {
         void emptyChoices_throwsException() {
             String json = "{\"choices\":[]}";
             assertThrows(AiServiceException.class,
-                    () -> service.extractAndValidateContent(json),
-                    "Empty choices array must throw AiServiceException");
+                () -> service.extractAndValidateContent(json),
+                "Empty choices array must throw AiServiceException");
         }
 
         @Test
@@ -430,8 +430,8 @@ class AiReportServiceTest {
         void missingChoices_throwsException() {
             String json = "{\"id\":\"abc\",\"model\":\"gemini\"}";
             assertThrows(AiServiceException.class,
-                    () -> service.extractAndValidateContent(json),
-                    "Missing choices field must throw AiServiceException");
+                () -> service.extractAndValidateContent(json),
+                "Missing choices field must throw AiServiceException");
         }
     }
 }

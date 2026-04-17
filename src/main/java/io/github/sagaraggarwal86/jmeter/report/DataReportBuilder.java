@@ -43,19 +43,19 @@ public final class DataReportBuilder {
      * @return mutable list of {@code [title, htmlContent]} section pairs
      */
     public static List<String[]> buildSections(
-            Map<String, Object> classification,
-            Map<String, Object> globalStats,
-            String slaVerdictHtml,
-            List<String[]> tableRows,
-            int percentile,
-            String rtMetric) {
+        Map<String, Object> classification,
+        Map<String, Object> globalStats,
+        String slaVerdictHtml,
+        List<String[]> tableRows,
+        int percentile,
+        String rtMetric) {
 
         List<String[]> sections = new ArrayList<>();
 
         // 1. Workload Classification — present when classification was computed
         if (classification != null && classification.containsKey("label")) {
             sections.add(new String[]{"Workload Classification",
-                    buildClassificationSection(classification, globalStats)});
+                buildClassificationSection(classification, globalStats)});
         }
 
         // 2. SLA Evaluation — present when SLAs were configured
@@ -67,7 +67,7 @@ public final class DataReportBuilder {
         // 3. Slowest Endpoints — present when table rows exist
         if (tableRows != null && !tableRows.isEmpty()) {
             sections.add(new String[]{"Slowest Endpoints",
-                    buildSlowestEndpointsSection(tableRows, percentile, rtMetric)});
+                buildSlowestEndpointsSection(tableRows, percentile, rtMetric)});
         }
 
         return sections;
@@ -87,7 +87,7 @@ public final class DataReportBuilder {
 
         StringBuilder sb = new StringBuilder(1024);
         sb.append("<h2>Workload Classification</h2>\n")
-                .append("<div class=\"classification-section\">\n");
+            .append("<div class=\"classification-section\">\n");
 
         // Classification badge — colour-coded by severity
         String badgeClass = switch (label) {
@@ -96,50 +96,50 @@ public final class DataReportBuilder {
             default -> "badge-pass"; // THROUGHPUT-BOUND or unknown
         };
         sb.append("  <div class=\"classification-badge ").append(badgeClass).append("\">")
-                .append(HtmlReportRenderer.escapeHtml(label)).append("</div>\n");
+            .append(HtmlReportRenderer.escapeHtml(label)).append("</div>\n");
 
         // Human-readable analysis
         String description = humanizeClassification(label);
         sb.append("  <div class=\"classification-reasoning\">\n")
-                .append("    <h3>Analysis</h3>\n")
-                .append("    <p>").append(HtmlReportRenderer.escapeHtml(description)).append("</p>\n")
-                .append("  </div>\n");
+            .append("    <h3>Analysis</h3>\n")
+            .append("    <p>").append(HtmlReportRenderer.escapeHtml(description)).append("</p>\n")
+            .append("  </div>\n");
 
         // Classification decision factors — show how close to thresholds
         sb.append("  <div class=\"classification-metrics\">\n")
-                .append("    <h3>Classification Factors</h3>\n")
-                .append("    <table class=\"data-table\">\n")
-                .append("      <thead><tr><th>Factor</th><th>Value</th><th>Threshold</th><th>Status</th></tr></thead>\n")
-                .append("      <tbody>\n");
+            .append("    <h3>Classification Factors</h3>\n")
+            .append("    <table class=\"data-table\">\n")
+            .append("      <thead><tr><th>Factor</th><th>Value</th><th>Threshold</th><th>Status</th></tr></thead>\n")
+            .append("      <tbody>\n");
 
         double errorPct = toDouble(classification.get("errorRatePct"),
-                globalStats != null ? toDouble(globalStats.get("errorRatePct"), 0) : 0);
+            globalStats != null ? toDouble(globalStats.get("errorRatePct"), 0) : 0);
         appendThresholdRow(sb, "Error Rate", String.format("%.2f%%", errorPct), "> 2.0%",
-                errorPct > 2.0);
+            errorPct > 2.0);
 
         Object latRatioObj = classification.get("latencyRatio");
         if (latRatioObj instanceof Number n) {
             appendThresholdRow(sb, "Latency Ratio (P99/Avg)", String.format("%.2f", n.doubleValue()),
-                    "> 3.0", n.doubleValue() > 3.0);
+                "> 3.0", n.doubleValue() > 3.0);
         }
 
         Object platObj = classification.get("plateauRatio");
         if (platObj instanceof Number n) {
             appendThresholdRow(sb, "TPS Plateau Ratio", String.format("%.2f", n.doubleValue()),
-                    "\u2265 0.90", n.doubleValue() >= 0.90);
+                "\u2265 0.90", n.doubleValue() >= 0.90);
         }
 
         sb.append("      </tbody>\n")
-                .append("    </table>\n")
-                .append("  </div>\n");
+            .append("    </table>\n")
+            .append("  </div>\n");
 
         // Key metrics from globalStats
         if (globalStats != null && !globalStats.isEmpty()) {
             sb.append("  <div class=\"classification-metrics\">\n")
-                    .append("    <h3>Key Metrics</h3>\n")
-                    .append("    <table class=\"data-table\">\n")
-                    .append("      <thead><tr><th>Metric</th><th>Value</th></tr></thead>\n")
-                    .append("      <tbody>\n");
+                .append("    <h3>Key Metrics</h3>\n")
+                .append("    <table class=\"data-table\">\n")
+                .append("      <thead><tr><th>Metric</th><th>Value</th></tr></thead>\n")
+                .append("      <tbody>\n");
 
             appendMetricRow(sb, "Avg Response Time", globalStats, "avgResponseMs", " ms");
             appendMetricRow(sb, "P99 Response Time", globalStats, "p99ResponseMs", " ms");
@@ -148,8 +148,8 @@ public final class DataReportBuilder {
             appendMetricRow(sb, "Throughput (TPS)", globalStats, "throughputTPS", "/sec");
 
             sb.append("      </tbody>\n")
-                    .append("    </table>\n")
-                    .append("  </div>\n");
+                .append("    </table>\n")
+                .append("  </div>\n");
         }
 
         sb.append("</div>\n");
@@ -181,7 +181,7 @@ public final class DataReportBuilder {
 
         StringBuilder sb = new StringBuilder(512);
         sb.append("<div class=\"sla-breach-details\" style=\"margin-top:16px\">\n")
-                .append("  <h3>Breached Transactions</h3>\n");
+            .append("  <h3>Breached Transactions</h3>\n");
 
         if (hasTps) appendBreachList(sb, "TPS", tableRows, 10, tpsSla, true);
         if (hasError) appendBreachList(sb, "Error%", tableRows, 9, errorSla, false);
@@ -198,8 +198,8 @@ public final class DataReportBuilder {
         for (String[] row : rows) {
             String cellStr = safeCell(row, col);
             double val = col == 10 ? CellValueParser.parseTps(cellStr)
-                    : col == 9 ? CellValueParser.parseErrorRate(cellStr)
-                      : CellValueParser.parseMs(cellStr);
+                : col == 9 ? CellValueParser.parseErrorRate(cellStr)
+                  : CellValueParser.parseMs(cellStr);
             boolean breach = breachWhenBelow ? val < threshold : val > threshold;
             if (breach) {
                 breached.add(safeCell(row, 0) + " (" + cellStr.trim() + ")");
@@ -208,10 +208,10 @@ public final class DataReportBuilder {
         if (breached.isEmpty()) return;
 
         sb.append("  <p style=\"margin:8px 0 4px;font-weight:600;font-size:12px;color:var(--color-text-secondary)\">")
-                .append(HtmlReportRenderer.escapeHtml(slaName))
-                .append(" \u2014 ").append(breached.size()).append(" breach")
-                .append(breached.size() == 1 ? "" : "es").append(":</p>\n")
-                .append("  <p style=\"font-size:12px;color:var(--color-text-tertiary);line-height:1.6\">");
+            .append(HtmlReportRenderer.escapeHtml(slaName))
+            .append(" \u2014 ").append(breached.size()).append(" breach")
+            .append(breached.size() == 1 ? "" : "es").append(":</p>\n")
+            .append("  <p style=\"font-size:12px;color:var(--color-text-tertiary);line-height:1.6\">");
         int shown = Math.min(breached.size(), 10);
         for (int i = 0; i < shown; i++) {
             if (i > 0) sb.append(", ");
@@ -238,37 +238,37 @@ public final class DataReportBuilder {
 
         // Sort by RT descending, take top 5
         List<String[]> sorted = rows.stream()
-                .sorted((a, b) -> Double.compare(CellValueParser.parseMs(safeCell(b, rtCol)),
-                        CellValueParser.parseMs(safeCell(a, rtCol))))
-                .limit(5)
-                .toList();
+            .sorted((a, b) -> Double.compare(CellValueParser.parseMs(safeCell(b, rtCol)),
+                CellValueParser.parseMs(safeCell(a, rtCol))))
+            .limit(5)
+            .toList();
 
         StringBuilder sb = new StringBuilder(512);
         sb.append("<h2>Slowest Endpoints</h2>\n")
-                .append("<div class=\"slowest-section\">\n")
-                .append("  <table class=\"data-table\">\n")
-                .append("    <thead><tr>\n")
-                .append("      <th>#</th><th>Transaction</th><th>")
-                .append(HtmlReportRenderer.escapeHtml(rtLabel))
-                .append("</th><th>Count</th><th>Error Rate</th><th>TPS</th>\n")
-                .append("    </tr></thead>\n")
-                .append("    <tbody>\n");
+            .append("<div class=\"slowest-section\">\n")
+            .append("  <table class=\"data-table\">\n")
+            .append("    <thead><tr>\n")
+            .append("      <th>#</th><th>Transaction</th><th>")
+            .append(HtmlReportRenderer.escapeHtml(rtLabel))
+            .append("</th><th>Count</th><th>Error Rate</th><th>TPS</th>\n")
+            .append("    </tr></thead>\n")
+            .append("    <tbody>\n");
 
         int rank = 1;
         for (String[] row : sorted) {
             sb.append("    <tr>")
-                    .append("<td class=\"num\">").append(rank++).append("</td>")
-                    .append("<td>").append(HtmlReportRenderer.escapeHtml(safeCell(row, 0))).append("</td>")
-                    .append("<td class=\"num\">").append(HtmlReportRenderer.escapeHtml(safeCell(row, rtCol))).append("</td>")
-                    .append("<td class=\"num\">").append(HtmlReportRenderer.escapeHtml(safeCell(row, 1))).append("</td>")
-                    .append("<td class=\"num\">").append(HtmlReportRenderer.escapeHtml(safeCell(row, 9))).append("</td>")
-                    .append("<td class=\"num\">").append(HtmlReportRenderer.escapeHtml(safeCell(row, 10))).append("</td>")
-                    .append("</tr>\n");
+                .append("<td class=\"num\">").append(rank++).append("</td>")
+                .append("<td>").append(HtmlReportRenderer.escapeHtml(safeCell(row, 0))).append("</td>")
+                .append("<td class=\"num\">").append(HtmlReportRenderer.escapeHtml(safeCell(row, rtCol))).append("</td>")
+                .append("<td class=\"num\">").append(HtmlReportRenderer.escapeHtml(safeCell(row, 1))).append("</td>")
+                .append("<td class=\"num\">").append(HtmlReportRenderer.escapeHtml(safeCell(row, 9))).append("</td>")
+                .append("<td class=\"num\">").append(HtmlReportRenderer.escapeHtml(safeCell(row, 10))).append("</td>")
+                .append("</tr>\n");
         }
 
         sb.append("    </tbody>\n")
-                .append("  </table>\n")
-                .append("</div>\n");
+            .append("  </table>\n")
+            .append("</div>\n");
         return sb.toString();
     }
 
@@ -279,13 +279,13 @@ public final class DataReportBuilder {
     private static String humanizeClassification(String label) {
         return switch (label) {
             case "THROUGHPUT-BOUND" -> "Healthy workload \u2014 TPS is stable with acceptable latency and error rates. "
-                    + "The system is operating within its throughput capacity.";
+                + "The system is operating within its throughput capacity.";
             case "ERROR-BOUND" -> "Error-bound workload \u2014 error rate exceeds the 2% threshold, "
-                    + "indicating reliability issues that need investigation.";
+                + "indicating reliability issues that need investigation.";
             case "CAPACITY-WALL" -> "Capacity wall detected \u2014 TPS has plateaued while latency is growing, "
-                    + "suggesting the system has reached its maximum throughput capacity.";
+                + "suggesting the system has reached its maximum throughput capacity.";
             case "LATENCY-BOUND" -> "Latency-bound workload \u2014 response times are disproportionately high "
-                    + "relative to averages, indicating server-side or network bottlenecks.";
+                + "relative to averages, indicating server-side or network bottlenecks.";
             default -> "Workload classification: " + label + ".";
         };
     }
@@ -298,24 +298,24 @@ public final class DataReportBuilder {
         if (val instanceof Number n) {
             double d = n.doubleValue();
             formatted = (d == Math.floor(d) && !Double.isInfinite(d))
-                    ? n.longValue() + suffix
-                    : String.format("%.2f%s", d, suffix);
+                ? n.longValue() + suffix
+                : String.format("%.2f%s", d, suffix);
         } else {
             formatted = val + suffix;
         }
         sb.append("      <tr><td>").append(HtmlReportRenderer.escapeHtml(label))
-                .append("</td><td class=\"num\">").append(HtmlReportRenderer.escapeHtml(formatted))
-                .append("</td></tr>\n");
+            .append("</td><td class=\"num\">").append(HtmlReportRenderer.escapeHtml(formatted))
+            .append("</td></tr>\n");
     }
 
     private static void appendThresholdRow(StringBuilder sb, String factor, String value,
                                            String threshold, boolean breached) {
         sb.append("      <tr><td>").append(HtmlReportRenderer.escapeHtml(factor))
-                .append("</td><td class=\"num\">").append(HtmlReportRenderer.escapeHtml(value))
-                .append("</td><td class=\"num\">").append(HtmlReportRenderer.escapeHtml(threshold))
-                .append("</td><td class=\"").append(breached ? "sla-fail" : "sla-pass")
-                .append("\">").append(breached ? "BREACHED" : "OK")
-                .append("</td></tr>\n");
+            .append("</td><td class=\"num\">").append(HtmlReportRenderer.escapeHtml(value))
+            .append("</td><td class=\"num\">").append(HtmlReportRenderer.escapeHtml(threshold))
+            .append("</td><td class=\"").append(breached ? "sla-fail" : "sla-pass")
+            .append("\">").append(breached ? "BREACHED" : "OK")
+            .append("</td></tr>\n");
     }
 
     private static double toDouble(Object obj, double fallback) {

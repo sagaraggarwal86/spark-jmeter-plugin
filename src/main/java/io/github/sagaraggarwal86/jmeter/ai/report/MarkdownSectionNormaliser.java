@@ -32,13 +32,13 @@ final class MarkdownSectionNormaliser {
      * All seven expected section headings, used for duplicate detection.
      */
     static final String[] EXPECTED_HEADINGS = {
-            "## Executive Summary",
-            "## Bottleneck Analysis",
-            "## Error Analysis",
-            "## Advanced Web Diagnostics",
-            "## Root Cause Hypotheses",
-            "## Recommendations",
-            "## Verdict",
+        "## Executive Summary",
+        "## Bottleneck Analysis",
+        "## Error Analysis",
+        "## Advanced Web Diagnostics",
+        "## Root Cause Hypotheses",
+        "## Recommendations",
+        "## Verdict",
     };
     private static final Logger log = LoggerFactory.getLogger(MarkdownSectionNormaliser.class);
 
@@ -105,7 +105,7 @@ final class MarkdownSectionNormaliser {
         if (!changed) return markdown;
         String result = sb.toString();
         return result.endsWith("\n") && !markdown.endsWith("\n")
-                ? result.substring(0, result.length() - 1)
-                : result;
+            ? result.substring(0, result.length() - 1)
+            : result;
     }
 }

@@ -129,7 +129,7 @@ public final class MarkdownUtils {
         for (String raw : lines) {
             String normalised = normaliseTokenLine(raw);
             if (normalised.equals("VERDICT:PASS") || normalised.equals("VERDICT:FAIL")
-                    || normalised.equals("BRIEF_VERDICT:PASS") || normalised.equals("BRIEF_VERDICT:FAIL")) {
+                || normalised.equals("BRIEF_VERDICT:PASS") || normalised.equals("BRIEF_VERDICT:FAIL")) {
                 // Token is on its own line — omit the entire line
                 stripped = true;
             } else if (normalised.startsWith("VERDICT:") || normalised.startsWith("BRIEF_VERDICT:")) {

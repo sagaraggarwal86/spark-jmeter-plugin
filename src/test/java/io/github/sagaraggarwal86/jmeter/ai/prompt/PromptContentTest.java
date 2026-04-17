@@ -27,21 +27,21 @@ class PromptContentTest {
         @DisplayName("null systemPrompt throws NullPointerException")
         void nullSystemPromptThrows() {
             assertThrows(NullPointerException.class,
-                    () -> new PromptContent(null, "user message"));
+                () -> new PromptContent(null, "user message"));
         }
 
         @Test
         @DisplayName("null userMessage throws NullPointerException")
         void nullUserMessageThrows() {
             assertThrows(NullPointerException.class,
-                    () -> new PromptContent("system prompt", null));
+                () -> new PromptContent("system prompt", null));
         }
 
         @Test
         @DisplayName("both null throws NullPointerException")
         void bothNullThrows() {
             assertThrows(NullPointerException.class,
-                    () -> new PromptContent(null, null));
+                () -> new PromptContent(null, null));
         }
     }
 

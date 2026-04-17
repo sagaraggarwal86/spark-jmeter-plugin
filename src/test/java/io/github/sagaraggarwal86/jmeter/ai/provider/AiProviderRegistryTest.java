@@ -36,8 +36,8 @@ class AiProviderRegistryTest {
         @DisplayName("valid Groq key prefix returns null")
         void validGroqPrefix() {
             AiProviderConfig config = new AiProviderConfig(
-                    "groq", "Groq (Free)", "gsk_abc123", "llama-3.3-70b-versatile",
-                    "https://api.groq.com/openai/v1", 60, 4096, 0.3);
+                "groq", "Groq (Free)", "gsk_abc123", "llama-3.3-70b-versatile",
+                "https://api.groq.com/openai/v1", 60, 4096, 0.3);
             assertNull(AiProviderRegistry.checkKeyFormat(config));
         }
 
@@ -45,8 +45,8 @@ class AiProviderRegistryTest {
         @DisplayName("invalid Groq key prefix returns error message")
         void invalidGroqPrefix() {
             AiProviderConfig config = new AiProviderConfig(
-                    "groq", "Groq (Free)", "sk-wrong-prefix", "llama-3.3-70b-versatile",
-                    "https://api.groq.com/openai/v1", 60, 4096, 0.3);
+                "groq", "Groq (Free)", "sk-wrong-prefix", "llama-3.3-70b-versatile",
+                "https://api.groq.com/openai/v1", 60, 4096, 0.3);
             String error = AiProviderRegistry.checkKeyFormat(config);
             assertNotNull(error, "Should return an error for wrong prefix");
             assertTrue(error.contains("gsk_"), "Error should mention expected prefix");
@@ -56,8 +56,8 @@ class AiProviderRegistryTest {
         @DisplayName("valid OpenAI key prefix returns null")
         void validOpenAiPrefix() {
             AiProviderConfig config = new AiProviderConfig(
-                    "openai", "OpenAI (Paid)", "sk-proj123abc", "gpt-4o",
-                    "https://api.openai.com/v1", 60, 4096, 0.3);
+                "openai", "OpenAI (Paid)", "sk-proj123abc", "gpt-4o",
+                "https://api.openai.com/v1", 60, 4096, 0.3);
             assertNull(AiProviderRegistry.checkKeyFormat(config));
         }
 
@@ -65,8 +65,8 @@ class AiProviderRegistryTest {
         @DisplayName("unknown provider — no format rule, returns null")
         void unknownProviderNoFormatRule() {
             AiProviderConfig config = new AiProviderConfig(
-                    "custom-llm", "Custom LLM", "anything-goes", "my-model",
-                    "https://my.llm/v1", 60, 4096, 0.3);
+                "custom-llm", "Custom LLM", "anything-goes", "my-model",
+                "https://my.llm/v1", 60, 4096, 0.3);
             assertNull(AiProviderRegistry.checkKeyFormat(config));
         }
     }
@@ -92,10 +92,10 @@ class AiProviderRegistryTest {
             Path binDir = dir.resolve("bin");
             Files.createDirectories(binDir);
             Files.writeString(binDir.resolve("ai-reporter.properties"),
-                    "ai.reporter.testprovider.api.key=test-key-123\n"
-                            + "ai.reporter.testprovider.model=test-model\n"
-                            + "ai.reporter.testprovider.base.url=https://test.api/v1\n",
-                    StandardCharsets.UTF_8);
+                "ai.reporter.testprovider.api.key=test-key-123\n"
+                    + "ai.reporter.testprovider.model=test-model\n"
+                    + "ai.reporter.testprovider.base.url=https://test.api/v1\n",
+                StandardCharsets.UTF_8);
 
             Properties props = AiProviderRegistry.loadProperties(dir.toFile());
             assertEquals("test-key-123", props.getProperty("ai.reporter.testprovider.api.key"));
@@ -117,15 +117,15 @@ class AiProviderRegistryTest {
             Files.createDirectories(binDir);
             // Configure three providers: one unknown (zebra), one known (openai), one known (groq)
             Files.writeString(binDir.resolve("ai-reporter.properties"),
-                    "ai.reporter.zebra.api.key=zkey\n"
-                            + "ai.reporter.zebra.model=z-model\n"
-                            + "ai.reporter.zebra.base.url=https://zebra/v1\n"
-                            + "ai.reporter.openai.api.key=sk-oaikey\n"
-                            + "ai.reporter.groq.api.key=gsk_groqkey\n",
-                    StandardCharsets.UTF_8);
+                "ai.reporter.zebra.api.key=zkey\n"
+                    + "ai.reporter.zebra.model=z-model\n"
+                    + "ai.reporter.zebra.base.url=https://zebra/v1\n"
+                    + "ai.reporter.openai.api.key=sk-oaikey\n"
+                    + "ai.reporter.groq.api.key=gsk_groqkey\n",
+                StandardCharsets.UTF_8);
 
             List<AiProviderConfig> providers =
-                    AiProviderRegistry.loadConfiguredProviders(dir.toFile());
+                AiProviderRegistry.loadConfiguredProviders(dir.toFile());
 
             assertEquals(3, providers.size(), "Should discover 3 configured providers");
             // Known order: groq before openai (canonical list), then zebra (unknown, alphabetical)
@@ -140,10 +140,10 @@ class AiProviderRegistryTest {
             Path binDir = dir.resolve("bin");
             Files.createDirectories(binDir);
             Files.writeString(binDir.resolve("ai-reporter.properties"),
-                    "ai.reporter.groq.api.key=\n", StandardCharsets.UTF_8);
+                "ai.reporter.groq.api.key=\n", StandardCharsets.UTF_8);
 
             List<AiProviderConfig> providers =
-                    AiProviderRegistry.loadConfiguredProviders(dir.toFile());
+                AiProviderRegistry.loadConfiguredProviders(dir.toFile());
 
             assertTrue(providers.isEmpty(), "Blank api.key should not produce a provider");
         }
@@ -155,13 +155,13 @@ class AiProviderRegistryTest {
             Files.createDirectories(binDir);
             // Unknown provider with key but no model/base.url — buildConfig returns null
             Files.writeString(binDir.resolve("ai-reporter.properties"),
-                    "ai.reporter.niche.api.key=some-key\n", StandardCharsets.UTF_8);
+                "ai.reporter.niche.api.key=some-key\n", StandardCharsets.UTF_8);
 
             List<AiProviderConfig> providers =
-                    AiProviderRegistry.loadConfiguredProviders(dir.toFile());
+                AiProviderRegistry.loadConfiguredProviders(dir.toFile());
 
             assertTrue(providers.isEmpty(),
-                    "Unknown provider without model or base.url should be skipped");
+                "Unknown provider without model or base.url should be skipped");
         }
     }
 
@@ -179,21 +179,21 @@ class AiProviderRegistryTest {
             Path binDir = dir.resolve("bin");
             Files.createDirectories(binDir);
             Files.writeString(binDir.resolve("ai-reporter.properties"),
-                    "ai.reporter.groq.api.key=gsk_testkey\n",
-                    StandardCharsets.UTF_8);
+                "ai.reporter.groq.api.key=gsk_testkey\n",
+                StandardCharsets.UTF_8);
 
             // Path overload expects the properties file itself, not a directory
             List<AiProviderConfig> fromPath = AiProviderRegistry.loadConfiguredProviders(
-                    binDir.resolve("ai-reporter.properties"));
+                binDir.resolve("ai-reporter.properties"));
             // File overload expects jmeterHome; resolves bin/ai-reporter.properties internally
             List<AiProviderConfig> fromFile = AiProviderRegistry.loadConfiguredProviders(
-                    dir.toFile());
+                dir.toFile());
 
             assertEquals(fromFile.size(), fromPath.size(),
-                    "Path and File overloads must return the same number of providers");
+                "Path and File overloads must return the same number of providers");
             if (!fromFile.isEmpty()) {
                 assertEquals(fromFile.get(0).providerKey, fromPath.get(0).providerKey,
-                        "Provider keys must match between overloads");
+                    "Provider keys must match between overloads");
             }
         }
 
@@ -207,7 +207,7 @@ class AiProviderRegistryTest {
 
             assertDoesNotThrow(() -> {
                 List<AiProviderConfig> providers =
-                        AiProviderRegistry.loadConfiguredProviders(emptyProps);
+                    AiProviderRegistry.loadConfiguredProviders(emptyProps);
                 assertNotNull(providers);
                 assertTrue(providers.isEmpty());
             });
@@ -226,10 +226,10 @@ class AiProviderRegistryTest {
         @DisplayName("evictPingCache does not throw for a config that was never cached")
         void evictNonExistentKeyNoThrow() {
             AiProviderConfig config = new AiProviderConfig(
-                    "nonexistent", "Nonexistent", "key-never-cached", "some-model",
-                    "https://nonexistent.example/v1", 60, 4096, 0.3);
+                "nonexistent", "Nonexistent", "key-never-cached", "some-model",
+                "https://nonexistent.example/v1", 60, 4096, 0.3);
             assertDoesNotThrow(() -> AiProviderRegistry.evictPingCache(config),
-                    "evictPingCache should not throw for a config that was never cached");
+                "evictPingCache should not throw for a config that was never cached");
         }
     }
 }

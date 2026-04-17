@@ -159,7 +159,7 @@ final class ReportPanelBuilder {
         transactionSearchField.setFont(FONT_REGULAR);
         transactionSearchField.setColumns(20);
         transactionSearchField.setToolTipText(
-                "Filter table by transaction name. Supports plain text and RegEx.");
+            "Filter table by transaction name. Supports plain text and RegEx.");
         panel.add(transactionSearchField);
 
         regexCheckBox.setFont(FONT_REGULAR);
@@ -168,7 +168,7 @@ final class ReportPanelBuilder {
 
         filterModeCombo.setFont(FONT_REGULAR);
         filterModeCombo.setToolTipText(
-                "Include: show only matching transactions. Exclude: hide matching transactions.");
+            "Include: show only matching transactions. Exclude: hide matching transactions.");
         panel.add(filterModeCombo);
 
         return panel;
@@ -225,7 +225,7 @@ final class ReportPanelBuilder {
         tpsSlaField.setFont(FONT_REGULAR);
         tpsSlaField.setColumns(5);
         tpsSlaField.setToolTipText(
-                "Highlight TPS cells below this minimum value. Leave blank to disable.");
+            "Highlight TPS cells below this minimum value. Leave blank to disable.");
         panel.add(tpsSlaField);
 
         panel.add(Box.createHorizontalStrut(10));
@@ -234,7 +234,7 @@ final class ReportPanelBuilder {
         errorPctSlaField.setFont(FONT_REGULAR);
         errorPctSlaField.setColumns(4);
         errorPctSlaField.setToolTipText(
-                "Highlight Error Rate cells exceeding this value (1–99). Leave blank to disable.");
+            "Highlight Error Rate cells exceeding this value (1–99). Leave blank to disable.");
         panel.add(errorPctSlaField);
 
         panel.add(Box.createHorizontalStrut(10));
@@ -242,13 +242,13 @@ final class ReportPanelBuilder {
         panel.add(compactLabel("Response Time:"));
         rtMetricCombo.setFont(FONT_REGULAR);
         rtMetricCombo.setToolTipText(
-                "Select which response time column to compare against the threshold");
+            "Select which response time column to compare against the threshold");
         panel.add(rtMetricCombo);
 
         rtThresholdSlaField.setFont(FONT_REGULAR);
         rtThresholdSlaField.setColumns(5);
         rtThresholdSlaField.setToolTipText(
-                "Highlight response time cells exceeding this value (ms). Leave blank to disable.");
+            "Highlight response time cells exceeding this value (ms). Leave blank to disable.");
         panel.add(rtThresholdSlaField);
 
         return panel;
@@ -280,19 +280,19 @@ final class ReportPanelBuilder {
         // Wrap native renderer to append sort-direction arrow — preserves platform L&F.
         TableCellRenderer nativeRenderer = resultsTable.getTableHeader().getDefaultRenderer();
         resultsTable.getTableHeader().setDefaultRenderer(
-                (table, value, isSelected, hasFocus, row, col) -> {
-                    Component c = nativeRenderer.getTableCellRendererComponent(
-                            table, value, isSelected, hasFocus, row, col);
-                    int modelCol = table.convertColumnIndexToModel(col);
-                    String arrow = modelCol == tablePopulator.getSortColumn()
-                            ? (tablePopulator.isSortAscending() ? " \u2191" : " \u2193")
-                            : " \u2195";
-                    if (c instanceof JLabel lbl) {
-                        lbl.setText(value + arrow);
-                        lbl.setHorizontalAlignment(JLabel.CENTER);
-                    }
-                    return c;
-                });
+            (table, value, isSelected, hasFocus, row, col) -> {
+                Component c = nativeRenderer.getTableCellRendererComponent(
+                    table, value, isSelected, hasFocus, row, col);
+                int modelCol = table.convertColumnIndexToModel(col);
+                String arrow = modelCol == tablePopulator.getSortColumn()
+                    ? (tablePopulator.isSortAscending() ? " \u2191" : " \u2193")
+                    : " \u2195";
+                if (c instanceof JLabel lbl) {
+                    lbl.setText(value + arrow);
+                    lbl.setHorizontalAlignment(JLabel.CENTER);
+                }
+                return c;
+            });
 
         JScrollPane scroll = new JScrollPane(resultsTable);
         scroll.setPreferredSize(new Dimension(TABLE_SCROLL_WIDTH, TABLE_SCROLL_HEIGHT));
@@ -313,7 +313,7 @@ final class ReportPanelBuilder {
             } else {
                 final int col = i;
                 item.addActionListener(e ->
-                        tablePopulator.toggleColumnVisibility(col, item.isSelected()));
+                    tablePopulator.toggleColumnVisibility(col, item.isSelected()));
             }
             columnMenuItems[i] = item;
             popup.add(item);
