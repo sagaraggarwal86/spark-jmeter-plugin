@@ -5,7 +5,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Parses and validates command-line arguments for the CLI report generator.
+ * Parses and validates command-line arguments for CLI report generator.
  *
  * <p>No external libraries — uses a plain {@code String[]} loop.
  * All validation is performed eagerly; callers inspect {@link #errors()}

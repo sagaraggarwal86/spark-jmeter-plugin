@@ -42,7 +42,7 @@ runtime overhead.
 | ✅ **Pass / Fail Counts**       | Dedicated columns for transactions passed and transactions failed                                |
 | 🕐 **Test Time Info**          | Start Date/Time, End Date/Time, and total Duration shown automatically                           |
 | 🔀 **Sortable Columns**        | Click any column header to sort ascending; click again for descending                            |
-| 🚨 **SLA Thresholds**          | Set TPS, Error %, and Response Time thresholds — breaching cells are highlighted in red           |
+| 🚨 **SLA Thresholds**          | Set TPS, Error %, and Response Time thresholds — breaching cells are highlighted in red          |
 | 💾 **CSV Export**              | Save all visible columns to a CSV file; SLA status columns (PASS/FAIL) included when configured  |
 | 🤖 **AI Performance Report**   | Generate a styled HTML report with deep-dive analysis, powered by any OpenAI-compatible provider |
 | 📊 **Chart Interval**          | Configure the time-bucket interval for performance charts (default: auto, or set custom)         |
@@ -315,12 +315,12 @@ Ensure at least 8 GB RAM free before pulling a 7B model.
 Generate a performance report from the command line — no JMeter GUI required. All four modes produce a
 self-contained HTML report with tabbed navigation, charts, Excel export, and dark mode.
 
-| Mode              | Required Args                                                 | Verdict Source                                                | HTML Report           |
-|-------------------|---------------------------------------------------------------|---------------------------------------------------------------|-----------------------|
-| **Analysis only** | `-i results.jtl`                                              | Workload classification (see table below)                     | Performance Report  |
-| **SLA only**      | `-i results.jtl --tps-sla 10`                                 | SLA threshold evaluation                                      | Performance Report  |
-| **AI only**       | `-i results.jtl --provider groq --config props`               | AI report + classification                                    | AI Performance Report |
-| **AI + SLA**      | `-i results.jtl --provider groq --config props --error-sla 5` | AI report + SLA evaluation                                    | AI Performance Report |
+| Mode              | Required Args                                                 | Verdict Source                            | HTML Report           |
+|-------------------|---------------------------------------------------------------|-------------------------------------------|-----------------------|
+| **Analysis only** | `-i results.jtl`                                              | Workload classification (see table below) | Performance Report    |
+| **SLA only**      | `-i results.jtl --tps-sla 10`                                 | SLA threshold evaluation                  | Performance Report    |
+| **AI only**       | `-i results.jtl --provider groq --config props`               | AI report + classification                | AI Performance Report |
+| **AI + SLA**      | `-i results.jtl --provider groq --config props --error-sla 5` | AI report + SLA evaluation                | AI Performance Report |
 
 ### Setup
 
@@ -389,16 +389,16 @@ Help:
 
 ### Exit Codes
 
-| Code | Meaning                                       |
-|------|-----------------------------------------------|
-| `0`  | Verdict **PASS**                              |
-| `1`  | Verdict **FAIL**                              |
-| `2`  | Verdict **UNDECISIVE** (AI mode only)         |
-| `3`  | Invalid arguments                             |
-| `4`  | JTL parse error                               |
+| Code | Meaning                                                               |
+|------|-----------------------------------------------------------------------|
+| `0`  | Verdict **PASS**                                                      |
+| `1`  | Verdict **FAIL**                                                      |
+| `2`  | Verdict **UNDECISIVE** (AI mode only)                                 |
+| `3`  | Invalid arguments                                                     |
+| `4`  | JTL parse error                                                       |
 | `5`  | AI provider error (bad provider name, missing config, or corrupt JAR) |
-| `6`  | Report write error                            |
-| `7`  | Unexpected error                              |
+| `6`  | Report write error                                                    |
+| `7`  | Unexpected error                                                      |
 
 ### AI Fallback Behavior
 
@@ -435,15 +435,15 @@ classification engine to derive a verdict:
 When running without an AI provider (Analysis-only or SLA-only), the CLI generates a **JMeter Performance Report**
 with these tabbed sections:
 
-| Tab                     | Content                                        | When shown                       |
-|-------------------------|------------------------------------------------|----------------------------------|
-| Transaction Metrics     | Sortable, searchable table with SLA columns    | Always                           |
-| Workload Classification | Classification badge, reasoning, key metrics   | Always                           |
-| SLA Evaluation          | SLA verdict panel with threshold details       | Only when any SLA is configured  |
-| Slowest Endpoints       | Top 5 transactions by response time            | When table has rows              |
-| Error Analysis          | Error breakdown by status code                 | Only when errors are present     |
-| Network & Server Timing | Latency, connect, server processing KPIs       | Only when JTL has latency fields |
-| Performance Charts      | TPS, RT, Error %, KB/s time-series charts      | Always                           |
+| Tab                     | Content                                      | When shown                       |
+|-------------------------|----------------------------------------------|----------------------------------|
+| Transaction Metrics     | Sortable, searchable table with SLA columns  | Always                           |
+| Workload Classification | Classification badge, reasoning, key metrics | Always                           |
+| SLA Evaluation          | SLA verdict panel with threshold details     | Only when any SLA is configured  |
+| Slowest Endpoints       | Top 5 transactions by response time          | When table has rows              |
+| Error Analysis          | Error breakdown by status code               | Only when errors are present     |
+| Network & Server Timing | Latency, connect, server processing KPIs     | Only when JTL has latency fields |
+| Performance Charts      | TPS, RT, Error %, KB/s time-series charts    | Always                           |
 
 Test metadata (scenario name, users, duration, etc.) is shown in the always-visible report header.
 Same CSS, Chart.js, Excel export, and dark mode as the AI report — with zero AI dependency.
@@ -504,11 +504,16 @@ java -Xmx2g -jar jaar-jmeter-plugin-*.jar ...
 
 ## Known Limitations
 
-- **JMeter 5.6.3 only** — plugin is built and tested exclusively against this version. Other versions may work but are untested.
-- **No live metric collection** — JAAR analyses completed JTL files; it does not stream samples in real time during a test run.
-- **AI report requires network** — all built-in providers are cloud-hosted. For offline use, see [Local LLM Support](#local-llm-support).
-- **GUI requires display** — the listener panel is Swing-based. Headless analysis is only available via [CLI Mode](#cli-mode).
-- **Provider token limits** — very large test runs can exceed a provider's `max_tokens`; the report shows a truncation banner when this happens.
+- **JMeter 5.6.3 only** — plugin is built and tested exclusively against this version. Other versions may work but are
+  untested.
+- **No live metric collection** — JAAR analyses completed JTL files; it does not stream samples in real time during a
+  test run.
+- **AI report requires network** — all built-in providers are cloud-hosted. For offline use,
+  see [Local LLM Support](#local-llm-support).
+- **GUI requires display** — the listener panel is Swing-based. Headless analysis is only available
+  via [CLI Mode](#cli-mode).
+- **Provider token limits** — very large test runs can exceed a provider's `max_tokens`; the report shows a truncation
+  banner when this happens.
 
 ---
 

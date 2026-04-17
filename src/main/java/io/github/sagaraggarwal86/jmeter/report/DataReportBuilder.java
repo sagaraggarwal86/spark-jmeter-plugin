@@ -160,11 +160,11 @@ public final class DataReportBuilder {
      * Builds an HTML detail list of transactions that breached each SLA threshold.
      * Appended to the SLA verdict panel to show exactly which endpoints failed.
      *
-     * @param tableRows      data rows (TOTAL excluded)
-     * @param tpsSla         TPS threshold (min); -1 = disabled
-     * @param errorSla       error % threshold (max); -1 = disabled
-     * @param rtSla          RT threshold in ms (max); -1 = disabled
-     * @param rtMetric       {@code "avg"} or {@code "pnn"}
+     * @param tableRows data rows (TOTAL excluded)
+     * @param tpsSla    TPS threshold (min); -1 = disabled
+     * @param errorSla  error % threshold (max); -1 = disabled
+     * @param rtSla     RT threshold in ms (max); -1 = disabled
+     * @param rtMetric  {@code "avg"} or {@code "pnn"}
      * @return HTML string; empty if no SLAs configured or no breaches
      */
     public static String buildSlaBreachDetails(List<String[]> tableRows,
@@ -199,7 +199,7 @@ public final class DataReportBuilder {
             String cellStr = safeCell(row, col);
             double val = col == 10 ? CellValueParser.parseTps(cellStr)
                     : col == 9 ? CellValueParser.parseErrorRate(cellStr)
-                    : CellValueParser.parseMs(cellStr);
+                      : CellValueParser.parseMs(cellStr);
             boolean breach = breachWhenBelow ? val < threshold : val > threshold;
             if (breach) {
                 breached.add(safeCell(row, 0) + " (" + cellStr.trim() + ")");
@@ -278,18 +278,14 @@ public final class DataReportBuilder {
 
     private static String humanizeClassification(String label) {
         return switch (label) {
-            case "THROUGHPUT-BOUND" ->
-                    "Healthy workload \u2014 TPS is stable with acceptable latency and error rates. "
-                            + "The system is operating within its throughput capacity.";
-            case "ERROR-BOUND" ->
-                    "Error-bound workload \u2014 error rate exceeds the 2% threshold, "
-                            + "indicating reliability issues that need investigation.";
-            case "CAPACITY-WALL" ->
-                    "Capacity wall detected \u2014 TPS has plateaued while latency is growing, "
-                            + "suggesting the system has reached its maximum throughput capacity.";
-            case "LATENCY-BOUND" ->
-                    "Latency-bound workload \u2014 response times are disproportionately high "
-                            + "relative to averages, indicating server-side or network bottlenecks.";
+            case "THROUGHPUT-BOUND" -> "Healthy workload \u2014 TPS is stable with acceptable latency and error rates. "
+                    + "The system is operating within its throughput capacity.";
+            case "ERROR-BOUND" -> "Error-bound workload \u2014 error rate exceeds the 2% threshold, "
+                    + "indicating reliability issues that need investigation.";
+            case "CAPACITY-WALL" -> "Capacity wall detected \u2014 TPS has plateaued while latency is growing, "
+                    + "suggesting the system has reached its maximum throughput capacity.";
+            case "LATENCY-BOUND" -> "Latency-bound workload \u2014 response times are disproportionately high "
+                    + "relative to averages, indicating server-side or network bottlenecks.";
             default -> "Workload classification: " + label + ".";
         };
     }
@@ -313,7 +309,7 @@ public final class DataReportBuilder {
     }
 
     private static void appendThresholdRow(StringBuilder sb, String factor, String value,
-                                              String threshold, boolean breached) {
+                                           String threshold, boolean breached) {
         sb.append("      <tr><td>").append(HtmlReportRenderer.escapeHtml(factor))
                 .append("</td><td class=\"num\">").append(HtmlReportRenderer.escapeHtml(value))
                 .append("</td><td class=\"num\">").append(HtmlReportRenderer.escapeHtml(threshold))
